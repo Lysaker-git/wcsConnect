@@ -175,4 +175,35 @@ A platform for registering, discovering, and managing West Coast Swing events, r
 
 ---
 
+## Branching Strategy & Versioning
+
+### Branch Naming Conventions
+- **main**: Stable, production-ready code.
+- **dev**: Integration branch for features before merging to main.
+- **feature/<feature-name>**: For new features (e.g., feature/event-creation, feature/payment-integration)
+- **bugfix/<short-description>**: For bug fixes (e.g., bugfix/rsvp-status-update)
+- **hotfix/<short-description>**: For urgent fixes to production (e.g., hotfix/payment-error)
+- **docs/<short-description>**: For documentation updates (e.g., docs/update-readme)
+- **test/<short-description>**: For testing-related changes (e.g., test/add-event-tests)
+
+### Versioning Guidelines
+- Use [Semantic Versioning](https://semver.org/) (MAJOR.MINOR.PATCH)
+  - **MAJOR**: Breaking changes or major new releases (e.g., 1.0.0 → 2.0.0)
+  - **MINOR**: New features, backwards compatible (e.g., 1.1.0 → 1.2.0)
+  - **PATCH**: Bug fixes, small improvements (e.g., 1.1.1 → 1.1.2)
+- **Recommended:**
+  - Bump MINOR version for each significant feature (e.g., event creation, payments, messaging)
+  - Bump PATCH version for bug fixes or minor enhancements
+  - Only bump MAJOR for breaking changes or major refactors
+- Tag releases in main branch (e.g., v1.0.0, v1.1.0)
+
+### Example Workflow
+1. Create a new branch from dev: `git checkout -b feature/event-creation dev`
+2. Work on the feature, commit changes.
+3. Open a pull request to dev for review.
+4. After testing, merge to dev.
+5. When dev is stable and ready for release, merge to main and tag with the new version.
+
+---
+
 *This outline is a living document and should be updated as the project evolves.*
