@@ -56,8 +56,8 @@ A platform for registering, discovering, and managing West Coast Swing events, r
   - [ ] Task: Implement dark mode support.
 
 ### 7. Backend & Data Management
-- [ ] **Rational:** Store and manage event, user, and message data securely.
-  - [ ] Task: Set up Supabase database schema for events, users, messages, payments, RSVPs, and regions.
+- [x] **Rational:** Store and manage event, user, and message data securely.
+  - [x] Task: Set up Supabase database schema for events, users, messages, payments, RSVPs, and regions.
   - [ ] Task: Implement API endpoints for CRUD operations.
   - [ ] Task: Secure endpoints and data access based on user roles.
   - [ ] Task: Add rate limiting and logging for sensitive actions.
