@@ -1,8 +1,12 @@
 <script lang="ts">
   import { invalidate } from '$app/navigation';
-  export let data: { user?: { id?: string; email?: string } | null };
+  import maleAvatar from '$lib/images/avatar/male.png';
+  import femaleAvatar from '$lib/images/avatar/female.png';
+
+  export let data: { user?: { id?: string; email?: string } | null; profile?: any };
 
   let user = data?.user ?? null;
+  let profile = data?.profile ?? null;
 
   // Sign-in form fields
   let signinEmail = '';
@@ -13,6 +17,12 @@
   let title = '';
   let start_date = '';
   let end_date = '';
+
+  // Profile editing
+  let editUsername = profile?.username ?? '';
+  let editRole = profile?.role ?? 'follower';
+  let editDescription = profile?.description ?? '';
+  let editAvatar = profile?.avatar_url ?? '/lib/images/avatar/male.png';
 
   async function signIn(e: Event) {
     e.preventDefault();
@@ -77,10 +87,14 @@
 <div class="max-w-3xl mx-auto py-12 px-6">
   {#if user}
     <section class="mb-8 p-6 rounded-lg bg-white shadow">
-      <h2 class="text-2xl font-bold mb-2">{user.email}</h2>
-      <p class="text-sm text-gray-500 mb-4">User ID: {user.id}</p>
+      <div class="flex items-center gap-4">
+        <img src={profile?.avatar_url ?? editAvatar} alt="avatar" class="w-16 h-16 rounded-full object-cover" />
+        <div>
+          <h2 class="text-2xl font-bold mb-1">{profile?.username ?? user.email}</h2>
+          <p class="text-sm text-gray-500">{profile?.role ?? 'follower'} • User ID: {user.id}</p>
+        </div>
+      </div>
     </section>
-
     <section class="p-6 rounded-lg bg-white shadow">
       <h3 class="text-xl font-semibold mb-4">Create Event</h3>
       <form on:submit|preventDefault={onSubmit} class="space-y-4">
@@ -102,6 +116,62 @@
 
         <div class="pt-4">
           <button type="submit" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md">Create Event</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- Profile edit form -->
+    <section class="mt-6 p-6 rounded-lg bg-white shadow">
+      <h3 class="text-xl font-semibold mb-4">Edit Profile</h3>
+      <form on:submit|preventDefault={async (e) => {
+        const form = new FormData();
+        form.set('username', editUsername);
+        form.set('role', editRole);
+        form.set('description', editDescription);
+        form.set('avatar', editAvatar);
+        const res = await fetch('/api/profile', { method: 'POST', body: form });
+        const json = await res.json();
+        if (res.ok) {
+          alert('Profile updated');
+          await invalidate('/profile');
+        } else {
+          alert('Profile update failed: ' + (json?.error?.message ?? JSON.stringify(json)));
+        }
+      }} class="space-y-4">
+        <div>
+          <label for="edit-username" class="block text-sm font-medium text-gray-700">Username</label>
+          <input id="edit-username" bind:value={editUsername} type="text" name="username" required class="mt-1 block w-full rounded-md border-gray-200 shadow-sm" />
+        </div>
+
+        <div>
+          <label for="edit-role" class="block text-sm font-medium text-gray-700">Role</label>
+          <select id="edit-role" bind:value={editRole} name="role" class="mt-1 block w-full rounded-md border-gray-200 shadow-sm">
+            <option value="follower">Follower</option>
+            <option value="leader">Leader</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="edit-description" class="block text-sm font-medium text-gray-700">Description</label>
+          <textarea id="edit-description" bind:value={editDescription} name="description" class="mt-1 block w-full rounded-md border-gray-200 shadow-sm" rows="3"></textarea>
+        </div>
+
+        <fieldset class="mt-2">
+          <legend class="block text-sm font-medium text-gray-700">Avatar</legend>
+          <div class="mt-2 flex items-center gap-4">
+            <label class="inline-flex items-center gap-2">
+              <input id="edit-avatar-male" type="radio" bind:group={editAvatar} name="avatar" value="/lib/images/avatar/male.png" />
+              <img src={maleAvatar} alt="male avatar" class="w-12 h-12 rounded-full" />
+            </label>
+            <label class="inline-flex items-center gap-2">
+              <input id="edit-avatar-female" type="radio" bind:group={editAvatar} name="avatar" value="/lib/images/avatar/female.png" />
+              <img src={femaleAvatar} alt="female avatar" class="w-12 h-12 rounded-full" />
+            </label>
+          </div>
+        </fieldset>
+
+        <div>
+          <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-md">Save Profile</button>
         </div>
       </form>
     </section>
