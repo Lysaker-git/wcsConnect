@@ -1,5 +1,5 @@
 import { fail } from '@sveltejs/kit';
-import { signUpUser } from '$lib/api/signup';
+import { signUpUser } from '$lib/api/auth/signup/signup';
 
 export const actions = {
   default: async ({ request }) => {

@@ -10,6 +10,20 @@
     { title: 'Learning Portal', href: '/wcs-education' },
     { title: 'About', href: '/about' }
   ];
+
+  async function logout() {
+    try {
+      const res = await fetch('/api/auth/signout', { method: 'POST' });
+      if (res.ok) {
+        // reload to refresh cookies and UI
+        location.reload();
+      } else {
+        console.error('Logout failed', await res.text());
+      }
+    } catch (err) {
+      console.error('Logout error', err);
+    }
+  }
 </script>
 
 <header class="w-full bg-white/60 backdrop-blur-md border-b border-gray-200">
@@ -38,16 +52,28 @@
       <!-- Right side (auth) + mobile toggle -->
       <div class="flex items-center gap-4">
         {#if user}
-          <a href="/profile" class="flex items-center gap-3 text-sm text-gray-800 hover:text-blue-600">
-            {#if user.avatarUrl}
-              <img src={user.avatarUrl} alt="avatar" class="w-8 h-8 rounded-full object-cover border border-gray-200" />
-            {:else}
-              <div class="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-semibold">{user.username ? user.username.charAt(0).toUpperCase() : 'U'}</div>
-            {/if}
-            <span class="hidden sm:inline">{user.username ?? 'Profile'}</span>
-          </a>
+          <div class="inline-flex items-center gap-2">
+            <a href="/profile" class="inline-flex items-center gap-3 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded-md">
+            <!-- profile svg icon -->
+            <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" />
+              <path d="M4 20c0-3.314 2.686-6 6-6h4c3.314 0 6 2.686 6 6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+            <span class="hidden sm:inline">My Profile</span>
+            </a>
+
+            <!-- logout icon-only button -->
+            <button on:click={logout} aria-label="Sign out" title="Sign out" class="ml-2 inline-flex items-center justify-center w-9 h-9 rounded-md bg-gray-100 hover:bg-gray-200 text-gray-700">
+              <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path d="M16 17l5-5-5-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M21 12H9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M9 19H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </button>
+          </div>
         {:else}
-          <a href="/login" class="text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded-md">Sign In</a>
+          <a href="/signup" class="text-sm font-medium text-gray-700 border border-gray-200 bg-white px-3 py-2 rounded-md hover:bg-gray-50">Sign Up</a>
+          <a href="/profile" class="text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded-md">Sign In</a>
         {/if}
 
         <!-- Mobile menu button -->
@@ -72,9 +98,11 @@
           {/each}
           <div class="mt-2 px-3">
             {#if user}
-              <a href="/profile" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50">Profile</a>
+              <a href="/profile" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50">My Profile</a>
+              <button on:click={logout} class="mt-1 w-full text-left px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50">Sign out</button>
             {:else}
-              <a href="/login" class="block px-3 py-2 rounded-md text-base font-medium text-white bg-blue-600 hover:bg-blue-700">Sign In</a>
+              <a href="/signup" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50">Sign Up</a>
+              <a href="/profile" class="mt-1 block px-3 py-2 rounded-md text-base font-medium text-white bg-blue-600 hover:bg-blue-700">Sign In</a>
             {/if}
           </div>
         </div>

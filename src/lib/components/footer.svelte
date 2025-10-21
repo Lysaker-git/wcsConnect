@@ -41,7 +41,8 @@
           <h4 class="text-sm font-semibold text-gray-900 mb-3">Resources</h4>
           <ul class="space-y-2 text-sm text-gray-600">
             <li><a href="/about" class="hover:text-blue-600">About the project</a></li>
-            <li><a href="/login" class="hover:text-blue-600">Sign in</a></li>
+            <li><a href="/profile" class="hover:text-blue-600">Sign in / Profile</a></li>
+            <li><a href="/signup" class="hover:text-blue-600">Sign up</a></li>
             <li><a href="/contact" class="hover:text-blue-600">Contact</a></li>
           </ul>
         </div>
