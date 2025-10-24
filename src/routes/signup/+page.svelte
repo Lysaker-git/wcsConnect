@@ -1,7 +1,8 @@
 <script lang="ts">
   import { invalidate } from '$app/navigation';
-  import maleAvatar from '$lib/images/avatar/male.png';
-  import femaleAvatar from '$lib/images/avatar/female.png';
+  
+  const maleAvatar = '/images/avatar/male.png'
+  const femaleAvatar = '/images/avatar/female.png'
 
   let email = '';
   let password = '';
@@ -19,7 +20,7 @@
     form.set('role', role);
     form.set('avatar', avatar as unknown as string);
 
-    const res = await fetch('/signup', { method: 'POST', body: form });
+  const res = await fetch('/signup', { method: 'POST', body: form, credentials: 'include' });
     const json = await res.json();
 
     if (res.ok) {

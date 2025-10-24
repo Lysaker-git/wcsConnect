@@ -1,12 +1,16 @@
 <script lang="ts">
   import { invalidate } from '$app/navigation';
-  import maleAvatar from '$lib/images/avatar/male.png';
-  import femaleAvatar from '$lib/images/avatar/female.png';
+
+  // Use static public URLs (moved to static/images/avatar/)
+  const maleAvatar = '/images/avatar/male.png';
+  const femaleAvatar = '/images/avatar/female.png';
 
   export let data: { user?: { id?: string; email?: string } | null; profile?: any };
 
   let user = data?.user ?? null;
   let profile = data?.profile ?? null;
+  console.log('[profile page] loaded user data:', user);
+  console.log('[profile page] loaded profile data:', profile);
 
   // Sign-in form fields
   let signinEmail = '';
@@ -22,7 +26,16 @@
   let editUsername = profile?.username ?? '';
   let editRole = profile?.role ?? 'follower';
   let editDescription = profile?.description ?? '';
-  let editAvatar = profile?.avatar_url ?? '/lib/images/avatar/male.png';
+  // default to static male avatar so the image URL is valid
+  let editAvatar = profile?.avatar_url ?? maleAvatar;
+
+  // keep editable fields in sync when `profile` is loaded/changes
+  $: if (profile) {
+    editUsername = profile.username ?? editUsername;
+    editRole = profile.role ?? editRole;
+    editDescription = profile.description ?? editDescription;
+    editAvatar = profile.avatar_url ?? editAvatar;
+  }
 
   async function signIn(e: Event) {
     e.preventDefault();
@@ -31,12 +44,12 @@
     form.set('email', signinEmail);
     form.set('password', signinPassword);
 
-    const res = await fetch('/api/auth/signin', { method: 'POST', body: form });
+  const res = await fetch('/api/auth/signin', { method: 'POST', body: form, credentials: 'include' });
     const json = await res.json();
     if (res.ok) {
       signinMessage = 'Signed in successfully';
-      // refresh page data
-      await invalidate('/profile');
+      // refresh root layout so Header receives updated sb_user cookie
+      await invalidate('/');
       // update local user
       user = json.user;
     } else {
@@ -56,7 +69,7 @@
     form.set('end_date', end_date);
     console.log('[profile page] sending FormData entries:', Array.from(form.entries()));
 
-    const res = await fetch('/profile', { method: 'POST', body: form });
+  const res = await fetch('/profile', { method: 'POST', body: form, credentials: 'include' });
     console.log('[profile page] fetch response:', res);
 
     let json: any = null;
@@ -91,7 +104,20 @@
         <img src={profile?.avatar_url ?? editAvatar} alt="avatar" class="w-16 h-16 rounded-full object-cover" />
         <div>
           <h2 class="text-2xl font-bold mb-1">{profile?.username ?? user.email}</h2>
-          <p class="text-sm text-gray-500">{profile?.role ?? 'follower'} • User ID: {user.id}</p>
+          <p class="text-sm text-gray-500">
+            {#if profile?.role && profile.role === 'leader'}
+              <span class="inline-flex items-center px-2 py-0.5 bg-green-100 text-green-800 text-xs rounded-full border mr-2">Leader</span>
+            {:else}
+              <span class="inline-flex items-center px-2 py-0.5 bg-gray-100 text-gray-800 text-xs rounded-full border mr-2">Follower</span>
+            {/if}
+          </p>
+          {#if profile?.userRole && profile.userRole.length}
+            <div class="mt-2 flex flex-wrap gap-2">
+              {#each profile.userRole as r}
+                <span class="inline-flex items-center rounded-md bg-gray-400/10 px-2 py-1 text-xs font-medium text-gray-400 inset-ring inset-ring-gray-400/20">{r}</span>
+              {/each}
+            </div>
+          {/if}
         </div>
       </div>
     </section>
@@ -129,7 +155,7 @@
         form.set('role', editRole);
         form.set('description', editDescription);
         form.set('avatar', editAvatar);
-        const res = await fetch('/api/profile', { method: 'POST', body: form });
+  const res = await fetch('/api/profile', { method: 'POST', body: form, credentials: 'include' });
         const json = await res.json();
         if (res.ok) {
           alert('Profile updated');
@@ -160,11 +186,11 @@
           <legend class="block text-sm font-medium text-gray-700">Avatar</legend>
           <div class="mt-2 flex items-center gap-4">
             <label class="inline-flex items-center gap-2">
-              <input id="edit-avatar-male" type="radio" bind:group={editAvatar} name="avatar" value="/lib/images/avatar/male.png" />
+              <input id="edit-avatar-male" type="radio" bind:group={editAvatar} name="avatar" value="/images/avatar/male.png" />
               <img src={maleAvatar} alt="male avatar" class="w-12 h-12 rounded-full" />
             </label>
             <label class="inline-flex items-center gap-2">
-              <input id="edit-avatar-female" type="radio" bind:group={editAvatar} name="avatar" value="/lib/images/avatar/female.png" />
+              <input id="edit-avatar-female" type="radio" bind:group={editAvatar} name="avatar" value="/images/avatar/female.png" />
               <img src={femaleAvatar} alt="female avatar" class="w-12 h-12 rounded-full" />
             </label>
           </div>

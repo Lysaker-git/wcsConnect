@@ -20,6 +20,8 @@ export const load = async ({ cookies }) => {
       user = null;
     }
   }
+  console.log('[profile load] user:', user);
+  console.log('[profile load] profile:', profile);
   return { user, profile };
 };
 

@@ -61,11 +61,28 @@ export const actions = {
               maxAge
             });
 
-            cookies.set('sb_user', JSON.stringify({ id: user.id, email: user.email, username: profilePayload.username, avatar_url: profilePayload.avatar_url }), {
-              httpOnly: false,
-              path: '/',
-              maxAge
-            });
+            try {
+              // try to read the profile row to include userRole and other fields
+              const { data: profileRow, error: profileFetchErr } = await supabase.from('profiles').select('userRole, username, avatar_url').eq('id', user.id).maybeSingle();
+              if (profileFetchErr) console.warn('[signup action] profile fetch after insert error', profileFetchErr);
+
+              const sbUserPayload = {
+                id: user.id,
+                email: user.email,
+                username: profileRow?.username ?? profilePayload.username,
+                avatar_url: profileRow?.avatar_url ?? profilePayload.avatar_url,
+                userRole: profileRow?.userRole ?? []
+              };
+
+              cookies.set('sb_user', JSON.stringify(sbUserPayload), {
+                httpOnly: false,
+                path: '/',
+                maxAge
+              });
+            } catch (cookieErr) {
+              console.warn('[signup action] failed to fetch profile for cookie', cookieErr);
+              cookies.set('sb_user', JSON.stringify({ id: user.id, email: user.email, username: profilePayload.username, avatar_url: profilePayload.avatar_url }), { httpOnly: false, path: '/', maxAge });
+            }
           }
         }
       } catch (profileErr) {

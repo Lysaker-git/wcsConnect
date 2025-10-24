@@ -11,12 +11,14 @@
     { title: 'About', href: '/about' }
   ];
 
+  import { invalidate } from '$app/navigation';
+
   async function logout() {
     try {
       const res = await fetch('/api/auth/signout', { method: 'POST' });
       if (res.ok) {
-        // reload to refresh cookies and UI
-        location.reload();
+        // invalidate root so +layout.server.ts reloads and header gets updated user
+        await invalidate('/');
       } else {
         console.error('Logout failed', await res.text());
       }

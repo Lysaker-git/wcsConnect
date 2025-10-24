@@ -49,11 +49,28 @@ export async function POST({ request, cookies }) {
     });
 
     // also set a non-httpOnly cookie with basic user info for client display
-    cookies.set('sb_user', JSON.stringify({ id: user?.id, email: user?.email }), {
-      httpOnly: false,
-      path: '/',
-      maxAge
-    });
+    try {
+      // fetch profile to include roles and a display name
+      const { data: profile, error: profileError } = await (supabase as any).from('profiles').select('userRole, username, avatar_url').eq('id', user?.id).maybeSingle();
+      if (profileError) console.warn('[api/auth/signin] profile fetch error', profileError);
+
+      const sbUserPayload = {
+        id: user?.id,
+        email: user?.email,
+        username: profile?.username ?? null,
+        avatar_url: profile?.avatar_url ?? null,
+        userRole: profile?.userRole ?? []
+      };
+
+      cookies.set('sb_user', JSON.stringify(sbUserPayload), {
+        httpOnly: false,
+        path: '/',
+        maxAge
+      });
+    } catch (cookieErr) {
+      console.warn('[api/auth/signin] failed to fetch profile for cookie', cookieErr);
+      cookies.set('sb_user', JSON.stringify({ id: user?.id, email: user?.email }), { httpOnly: false, path: '/', maxAge });
+    }
 
     return json({ user, session });
   } catch (err) {
