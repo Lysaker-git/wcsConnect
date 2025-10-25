@@ -16,9 +16,11 @@
   async function logout() {
     try {
       const res = await fetch('/api/auth/signout', { method: 'POST' });
-      if (res.ok) {
+      console.log(res);
+      if (res.status === 200) {
         // invalidate root so +layout.server.ts reloads and header gets updated user
-        await invalidate('/');
+        window.location.href = '/';
+        // await invalidate('/');
       } else {
         console.error('Logout failed', await res.text());
       }

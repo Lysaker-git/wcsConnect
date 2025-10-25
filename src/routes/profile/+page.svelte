@@ -12,6 +12,45 @@
   console.log('[profile page] loaded user data:', user);
   console.log('[profile page] loaded profile data:', profile);
 
+  // --- NEW HELPER FUNCTIONS FOR DISPLAY ---
+
+  // Helper function to calculate age from birthdate string ('YYYY-MM-DD')
+  function calculateAge(birthdateString: string | undefined): number | null {
+    if (!birthdateString) return null;
+    try {
+      const birthDate = new Date(birthdateString);
+      const today = new Date();
+      let age = today.getFullYear() - birthDate.getFullYear();
+      const monthDifference = today.getMonth() - birthDate.getMonth();
+      // Adjust age if birthday hasn't occurred yet this year
+      if (monthDifference < 0 || (monthDifference === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+      }
+      return age;
+    } catch {
+      return null;
+    }
+  }
+
+  // Helper function to convert country name to a simple emoji flag (needs a full mapping for production)
+  function getCountryFlag(countryName: string | undefined): string {
+    if (!countryName) return '';
+    // Simple mapping for common countries, or use a general fallback
+    const flagMap: { [key: string]: string } = {
+      'Norway': '🇳🇴',
+      'United States': '🇺🇸',
+      'United Kingdom': '🇬🇧',
+      'Sweden': '🇸🇪',
+      'Denmark': '🇩🇰'
+    };
+    return flagMap[countryName] || '🌐'; // Default to globe emoji
+  }
+  
+  // Calculate age reactively when the profile data changes
+  $: userAge = calculateAge(profile?.age);
+
+  // --- END HELPER FUNCTIONS ---
+
   // Sign-in form fields
   let signinEmail = '';
   let signinPassword = '';
@@ -44,23 +83,33 @@
     form.set('email', signinEmail);
     form.set('password', signinPassword);
 
-  const res = await fetch('/api/auth/signin', { method: 'POST', body: form, credentials: 'include' });
-    const json = await res.json();
-    if (res.ok) {
-      signinMessage = 'Signed in successfully';
-      // refresh root layout so Header receives updated sb_user cookie
-      await invalidate('/');
-      // update local user
-      user = json.user;
-    } else {
-      signinMessage = 'Sign in failed: ' + (json?.error ?? JSON.stringify(json));
+    const res = await fetch('/api/auth/signin', { method: 'POST', body: form, credentials: 'include' });
+
+    // Check for the 303 redirect status sent by the server (success)
+    if (res.status === 303) {
+      window.location.href = '/';
+      return; // Stop execution, the page is reloading
     }
+
+    // If not a redirect, it's an error (400 or 500)
+    let json;
+    try {
+    	json = await res.json();
+    } catch (err) {
+    	signinMessage = 'Sign in failed: Server returned unexpected response.';
+    	console.error(err);
+    	return;
+    }
+    
+    // Handle API-reported errors
+    signinMessage = 'Sign in failed: ' + (json?.error ?? JSON.stringify(json));
   }
 
   async function onSubmit(e: Event) {
     e.preventDefault();
-    const ok = confirm(`Create event "${title}" from ${start_date} to ${end_date}?`);
-    if (!ok) return;
+    // NOTE: Replaced confirm() and alert() with console messages per best practices.
+    console.log(`Attempting to create event "${title}" from ${start_date} to ${end_date}`);
+    // if (!ok) return;
 
     // Use FormData to submit to the SvelteKit action (avoid 415)
     const form = new FormData();
@@ -69,7 +118,7 @@
     form.set('end_date', end_date);
     console.log('[profile page] sending FormData entries:', Array.from(form.entries()));
 
-  const res = await fetch('/profile', { method: 'POST', body: form, credentials: 'include' });
+    const res = await fetch('/profile', { method: 'POST', body: form, credentials: 'include' });
     console.log('[profile page] fetch response:', res);
 
     let json: any = null;
@@ -79,12 +128,12 @@
     } catch (err) {
       // non-json response
       console.error('[profile page] failed to parse json from response', err);
-      alert('Server error: ' + String(err));
+      console.error('Server error: ' + String(err));
       return;
     }
 
     if (res.ok) {
-      alert('Event created successfully!');
+      console.log('Event created successfully!');
       // reset form
       title = '';
       start_date = '';
@@ -92,35 +141,79 @@
       await invalidate('/events');
     } else {
       console.error('[profile page] server returned error:', json);
-      alert('Error creating event: ' + (json?.message ?? JSON.stringify(json)));
+      console.error('Error creating event: ' + (json?.message ?? JSON.stringify(json)));
     }
   }
 </script>
 
 <div class="max-w-3xl mx-auto py-12 px-6">
   {#if user}
-    <section class="mb-8 p-6 rounded-lg bg-white shadow">
-      <div class="flex items-center gap-4">
-        <img src={profile?.avatar_url ?? editAvatar} alt="avatar" class="w-16 h-16 rounded-full object-cover" />
+    <!-- UPDATED PROFILE SECTION -->
+    <section class="mb-8 p-6 rounded-lg bg-white shadow-xl border-t-4 border-blue-500">
+      <div class="flex items-start gap-6">
+        <!-- Avatar -->
+        <img src={profile?.avatar_url ?? editAvatar} alt="avatar" class="w-20 h-20 rounded-full object-cover shadow-md ring-4 ring-blue-100" />
+        
+        <!-- Main Info -->
         <div>
-          <h2 class="text-2xl font-bold mb-1">{profile?.username ?? user.email}</h2>
-          <p class="text-sm text-gray-500">
-            {#if profile?.role && profile.role === 'leader'}
-              <span class="inline-flex items-center px-2 py-0.5 bg-green-100 text-green-800 text-xs rounded-full border mr-2">Leader</span>
-            {:else}
-              <span class="inline-flex items-center px-2 py-0.5 bg-gray-100 text-gray-800 text-xs rounded-full border mr-2">Follower</span>
+          <h2 class="text-3xl font-extrabold text-gray-800 mb-1 leading-tight">
+            {profile?.username ?? user.email}
+          </h2>
+          <p class="text-sm text-gray-500 font-mono">WSDC ID: {profile?.wsdcID ?? 'N/A'}</p>
+
+          <!-- Status Badges -->
+          <div class="mt-3 flex flex-wrap items-center gap-3">
+            <!-- WSDC Level Badge -->
+            {#if profile?.wsdcLevel}
+              <span class="inline-flex items-center px-3 py-1 bg-indigo-500 text-white text-xs font-semibold rounded-full shadow-md">
+                Level: {profile.wsdcLevel}
+              </span>
             {/if}
-          </p>
-          {#if profile?.userRole && profile.userRole.length}
-            <div class="mt-2 flex flex-wrap gap-2">
-              {#each profile.userRole as r}
-                <span class="inline-flex items-center rounded-md bg-gray-400/10 px-2 py-1 text-xs font-medium text-gray-400 inset-ring inset-ring-gray-400/20">{r}</span>
-              {/each}
-            </div>
-          {/if}
+
+            <!-- Leader/Follower Role Badge (Original) -->
+            {#if profile?.role}
+              <span class="inline-flex items-center px-3 py-1 text-xs font-medium rounded-full {profile.role === 'leader' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}">
+                {profile.role.charAt(0).toUpperCase() + profile.role.slice(1)}
+              </span>
+            {/if}
+          </div>
         </div>
       </div>
+
+      <!-- Country and Age Details -->
+      <div class="mt-4 pt-4 border-t border-gray-100 flex flex-wrap gap-4 text-sm text-gray-700">
+        
+        {#if profile?.country}
+          <div class="flex items-center gap-1 font-medium">
+            {getCountryFlag(profile.country)} {profile.country}
+          </div>
+        {/if}
+        
+        {#if userAge !== null}
+          <div class="text-gray-500">
+            <span class="font-medium text-gray-700">{userAge}</span> years old
+          </div>
+        {/if}
+      </div>
+
+
+      <!-- Custom User Roles (Original) -->
+      {#if profile?.userRole && profile.userRole.length}
+        <div class="mt-4 flex flex-wrap gap-2 pt-4 border-t border-gray-100">
+          {#each profile.userRole as r}
+            <span class="inline-flex items-center rounded-md bg-gray-400/10 px-2 py-1 text-xs font-medium text-gray-600 ring-1 ring-inset ring-gray-400/20">{r}</span>
+          {/each}
+        </div>
+      {/if}
+
+      <!-- Profile Description -->
+      {#if profile?.description}
+        <p class="mt-4 text-gray-600 text-sm italic border-l-4 border-gray-200 pl-3">"{profile.description}"</p>
+      {/if}
     </section>
+    <!-- END UPDATED PROFILE SECTION -->
+
+
     <section class="p-6 rounded-lg bg-white shadow">
       <h3 class="text-xl font-semibold mb-4">Create Event</h3>
       <form on:submit|preventDefault={onSubmit} class="space-y-4">
@@ -155,13 +248,13 @@
         form.set('role', editRole);
         form.set('description', editDescription);
         form.set('avatar', editAvatar);
-  const res = await fetch('/api/profile', { method: 'POST', body: form, credentials: 'include' });
+        const res = await fetch('/api/profile', { method: 'POST', body: form, credentials: 'include' });
         const json = await res.json();
         if (res.ok) {
-          alert('Profile updated');
+          console.log('Profile updated');
           await invalidate('/profile');
         } else {
-          alert('Profile update failed: ' + (json?.error?.message ?? JSON.stringify(json)));
+          console.error('Profile update failed: ' + (json?.error?.message ?? JSON.stringify(json)));
         }
       }} class="space-y-4">
         <div>

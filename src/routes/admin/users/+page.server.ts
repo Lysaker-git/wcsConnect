@@ -6,7 +6,7 @@ export const load = async () => {
   // Simplified loader: return all rows from profiles
   try {
     const { data: profiles, error } = await supabase.from('profiles').select('*');
-    if (error) {
+    if (error) {    
       console.error('[admin/users load] supabase error', error);
       return { status: 500, error: error.message ?? String(error) };
     }

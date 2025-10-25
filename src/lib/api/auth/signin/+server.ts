@@ -1,5 +1,5 @@
 import { supabase } from '$lib/api/supabaseClient';
-import { json } from '@sveltejs/kit';
+import { json, redirect } from '@sveltejs/kit'; // <-- Added redirect
 
 export async function POST({ request, cookies }) {
   try {
@@ -72,8 +72,15 @@ export async function POST({ request, cookies }) {
       cookies.set('sb_user', JSON.stringify({ id: user?.id, email: user?.email }), { httpOnly: false, path: '/', maxAge });
     }
 
-    return json({ user, session });
+    // *** MODIFICATION: Return a redirect instead of a JSON success payload ***
+    // This signals the client to navigate to the root path (/), causing a full page refresh.
+    throw redirect(303, '/profile');
   } catch (err) {
+    // SvelteKit handles the redirect as a special type of error, so we only catch
+    // true unexpected errors here, or re-throw the redirect if it came from
+    // another module.
+    if ((err as any)?.status === 303) throw err; 
+    
     console.error('[api/auth/signin] unexpected error', err);
     return json({ error: (err as any)?.message ?? String(err) }, { status: 500 });
   }
