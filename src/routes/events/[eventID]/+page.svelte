@@ -48,12 +48,6 @@
                     <h2 class="text-5xl font-extrabold text-blue-800 mb-6 leading-tight tracking-tight">
                         {event.title}
                     </h2>
-                    
-                    <!-- Event ID -->
-                    <p class="text-base text-gray-500 mb-8 border-b pb-4">
-                        <span class="font-semibold text-gray-700">Unique Identifier:</span> 
-                        <span class="font-mono bg-gray-100 px-2 py-1 rounded-md text-gray-600 ml-2">{$page.params.eventID}</span>
-                    </p>
 
                     <!-- Dates and Info Block -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-8"> <!-- Increased gap between date blocks -->
@@ -93,9 +87,12 @@
 
                     <!-- Main Call to Action -->
                     <div class="mt-12 pt-6 border-t border-gray-200">
-                        <button class="w-full py-4 bg-blue-600 text-white text-xl font-bold rounded-xl shadow-xl hover:bg-blue-700 transition duration-300 transform hover:scale-[1.005]">
+                        <a href={`/events/${event.id}/register`}
+                           class="block text-center w-full py-4 bg-blue-600 text-white text-xl font-bold rounded-xl shadow-xl hover:bg-blue-700 transition duration-300 transform hover:scale-[1.005]"
+                           role="button"
+                        >
                             Register for {event.title}
-                        </button>
+                        </a>
                     </div>
                 </div>
             </div>

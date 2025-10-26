@@ -85,9 +85,10 @@
 
     const res = await fetch('/api/auth/signin', { method: 'POST', body: form, credentials: 'include' });
 
+
     // Check for the 303 redirect status sent by the server (success)
-    if (res.status === 303) {
-      window.location.href = '/';
+    if (res.status === 200) {
+      window.location.href = '/profile';
       return; // Stop execution, the page is reloading
     }
 
