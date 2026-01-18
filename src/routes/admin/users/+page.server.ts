@@ -1,6 +1,4 @@
 import { supabase } from '$lib/api/supabaseClient';
-import { createClient } from '@supabase/supabase-js';
-import { SUPABASE_URL } from '$env/static/private';
 
 export const load = async () => {
   // Simplified loader: return all rows from profiles

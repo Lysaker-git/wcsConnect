@@ -1,4 +1,4 @@
-import { SUPABASE_URL, SUPABASE_API_KEY } from '$env/static/private';
+import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_API_KEY } from '$env/static/public';
 import { createClient } from '@supabase/supabase-js';
 
 export type Role = 'Owner' | 'Super User' | 'Event director' | 'Local Teacher' | 'Dancer' | 'Scorer';
@@ -30,11 +30,11 @@ export async function setRolesAsCaller(callerJwt: string, targetId: string, role
 
 	// create a temporary supabase client that includes the caller's JWT
 	console.log('🔗 [API/Admin/setRoles] Creating temporary Supabase client with caller JWT for RLS.');
-	const temp = createClient(SUPABASE_URL, SUPABASE_API_KEY, {
+	const temp = createClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_API_KEY, {
 		global: {
 			headers: {
 				Authorization: `Bearer ${callerJwt}`,
-				apikey: SUPABASE_API_KEY
+				apikey: PUBLIC_SUPABASE_API_KEY
 			}
 		}
 	});

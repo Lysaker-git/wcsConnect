@@ -1,4 +1,4 @@
-<script></script>
+<script>
   // Competition details, registration, marshalling, heat lists
   export let params;
 </script>

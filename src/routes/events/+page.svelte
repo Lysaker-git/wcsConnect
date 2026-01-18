@@ -15,7 +15,10 @@
                     class="block p-6 rounded-xl border border-gray-200 bg-white shadow-xl transition-all duration-300 hover:shadow-2xl hover:border-blue-500 transform hover:-translate-y-0.5">
                     
                     <!-- Event Title -->
-                    <h2 class="text-2xl font-bold text-gray-800 mb-3 border-b pb-2 border-blue-500/20">{event.title}</h2>
+                    <h2 class="text-2xl font-bold text-gray-800 mb-2 border-b pb-2 border-blue-500/20">{event.title}</h2>
+                    
+                    <!-- Event ID -->
+                    <p class="text-xs text-gray-500 mb-3 font-mono">ID: {event.id}</p>
                     
                     <!-- Date Range -->
                     <div class="flex flex-wrap gap-4 text-sm">
@@ -38,8 +41,11 @@
                     </div>
                     
                     <!-- Subtle Call to action hint -->
-                    <p class="mt-4 text-sm text-blue-600 font-bold tracking-wider pt-2 border-t border-gray-100">
-                        Tap to View Event Details $\rightarrow$
+                    <p class="mt-4 text-sm text-blue-600 font-bold tracking-wider pt-2 border-t border-gray-100 flex items-center gap-2">
+                        Tap to View Event Details
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 10l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd" />
+                        </svg>
                     </p>
                 </a>
           </li>

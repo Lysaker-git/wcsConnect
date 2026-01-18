@@ -5,6 +5,8 @@ import type { PageLoad } from './$types';
 export const load: PageLoad = async ({ params }) => {
     const eventId = params.eventID;
 
+    console.log('[Event Load] Received eventID param:', eventId);
+
     console.log(`[Event Load] Attempting to fetch event with ID: ${eventId}`);
 
     // Assuming selectFromSupabase supports filtering using a structure like:
@@ -12,22 +14,22 @@ export const load: PageLoad = async ({ params }) => {
     // This fetches the row where the 'id' column equals the eventId.
     const { data: events, error } = await selectFromSupabase(
         'events',
-        '*', // Select all columns
-        { column: 'id', operator: 'eq', value: eventId }
+        '*',
+        eventId // Select all columns
+        
     );
+    console.log('[Event Load] Supabase response - data:', events);
 
     if (error) {
         console.error(`[Event Load] Database Error: ${error.message}`);
         return { event: null, error: error.message };
     }
     
-    // Supabase select returns an array, so we extract the first (and only) matching event.
-    const event = events?.[0] ?? null;
+    // Supabase returns the object directly (not an array)
+    const event = events ?? null;
 
     if (!event) {
         console.warn(`[Event Load] Event not found for ID: ${eventId}`);
-        // Throwing a 404 error is often appropriate here if the event isn't found
-        // throw error(404, 'Event not found'); 
         return { event: null, error: 'Event not found' };
     }
     

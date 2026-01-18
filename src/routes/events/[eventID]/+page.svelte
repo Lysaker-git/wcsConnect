@@ -4,6 +4,8 @@
     // The data object comes from the load function (src/routes/events/[eventID]/+page.ts)
     export let data;
 
+    console.log('🎉 [Event Detail Page] Loaded event data:', data);
+
     const event = data.event;
     const error = data.error;
 

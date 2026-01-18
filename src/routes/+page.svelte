@@ -16,7 +16,7 @@
             href: '/classes' 
         },
         { 
-            title: 'WSDC Competitions', 
+            title: 'Mock Competitions', 
             description: 'Track your heats, view results, and compete in all divisions.', 
             icon: 'M9 19V6l2-2h5l2 2v13a2 2 0 01-2 2H9a2 2 0 01-2-2z', // Trophy
             href: '/competition' 
@@ -73,7 +73,7 @@
                 <a href="/signup" class="px-8 py-3 text-lg font-bold rounded-xl bg-pink-500 text-white shadow-2xl hover:bg-pink-600 transition duration-300 transform hover:scale-105">
                     Sign Up Now!
                 </a>
-                <a href="/signin" class="px-8 py-3 text-lg font-semibold rounded-xl bg-transparent border-2 border-indigo-400 text-indigo-200 hover:bg-indigo-700 transition duration-300 transform hover:scale-105">
+                <a href="/profile" class="px-8 py-3 text-lg font-semibold rounded-xl bg-transparent border-2 border-indigo-400 text-indigo-200 hover:bg-indigo-700 transition duration-300 transform hover:scale-105">
                     Sign In
                 </a>
             </div>

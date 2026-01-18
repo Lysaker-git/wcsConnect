@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { invalidate } from '$app/navigation';
+  import { goto } from '$app/navigation';
   
   const maleAvatar = '/images/avatar/male.png'
   const femaleAvatar = '/images/avatar/female.png'
@@ -8,7 +8,7 @@
   let password = '';
   let username = '';
   let role: 'follower' | 'leader' = 'follower';
-  let avatar = maleAvatar;
+  let avatar_url = maleAvatar;
   let message: string | null = null;
 
   async function onSubmit(e: Event) {
@@ -18,7 +18,7 @@
     form.set('password', password);
     form.set('username', username);
     form.set('role', role);
-    form.set('avatar', avatar as unknown as string);
+    form.set('avatar_url', avatar_url);
 
   const res = await fetch('/signup', { method: 'POST', body: form, credentials: 'include' });
     const json = await res.json();
@@ -28,7 +28,7 @@
       email = '';
       password = '';
       username = '';
-      await invalidate('/');
+      await goto('/profile');
     } else {
       message = 'Signup failed: ' + (json?.message ?? JSON.stringify(json));
     }
@@ -69,11 +69,11 @@
       <legend class="block text-sm font-medium text-gray-700">Choose an avatar</legend>
       <div class="mt-2 flex gap-3">
         <label class="inline-flex items-center gap-2">
-          <input id="signup-avatar-male" type="radio" bind:group={avatar} name="avatar" value={maleAvatar} checked />
+          <input id="signup-avatar-male" type="radio" bind:group={avatar_url} name="avatar_url" value={maleAvatar} checked />
           <img src={maleAvatar} alt="male avatar" class="w-10 h-10 rounded-full" />
         </label>
         <label class="inline-flex items-center gap-2">
-          <input id="signup-avatar-female" type="radio" bind:group={avatar} name="avatar" value={femaleAvatar} />
+          <input id="signup-avatar-female" type="radio" bind:group={avatar_url} name="avatar_url" value={femaleAvatar} />
           <img src={femaleAvatar} alt="female avatar" class="w-10 h-10 rounded-full" />
         </label>
       </div>
