@@ -36,6 +36,7 @@
 
     // Product selection state
     let selectedProducts: Record<string, number> = {};
+    let selectedTicket = ''; // Single ticket selection (radio button)
     let isSubmitting = false;
     let errorMessage = '';
 
@@ -48,16 +49,27 @@
     }, {});
 
     // Calculate total
-    $: total = Object.entries(selectedProducts).reduce((sum, [productId, quantity]) => {
-        const product = products.find(p => p.id === productId);
-        if (product && quantity > 0) {
-            return sum + (parseFloat(product.price) * quantity);
+    $: total = (() => {
+        let sum = 0;
+        // Add selected ticket
+        if (selectedTicket) {
+            const ticket = products.find(p => p.id === selectedTicket);
+            if (ticket) {
+                sum += parseFloat(ticket.price);
+            }
         }
+        // Add other products
+        Object.entries(selectedProducts).forEach(([productId, quantity]) => {
+            const product = products.find(p => p.id === productId);
+            if (product && quantity > 0) {
+                sum += parseFloat(product.price) * quantity;
+            }
+        });
         return sum;
-    }, 0);
+    })();
 
     // Count selected products
-    $: selectedCount = Object.values(selectedProducts).filter(q => q > 0).length;
+    $: selectedCount = (selectedTicket ? 1 : 0) + Object.values(selectedProducts).filter(q => q > 0).length;
 
     async function goBack() {
         await goto('.');
@@ -83,6 +95,10 @@
             formData.append('age', age.toString());
             formData.append('partner', partner);
 
+            // Add selected ticket
+            if (selectedTicket) {
+                formData.append(`product_${selectedTicket}`, '1');
+            }
             // Add selected products
             Object.entries(selectedProducts).forEach(([productId, quantity]) => {
                 if (quantity > 0) {
@@ -246,23 +262,39 @@
                                                 </div>
                                             </div>
 
-                                            <!-- Quantity Input -->
-                                            <div class="flex items-center gap-3 mt-4">
-                                                <label for="qty-{product.id}" class="text-sm font-medium text-gray-700">Qty:</label>
-                                                <input 
-                                                    id="qty-{product.id}"
-                                                    type="number" 
-                                                    min="0" 
-                                                    bind:value={selectedProducts[product.id]}
-                                                    class="w-16 px-3 py-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-blue-500"
-                                                />
-                                                
-                                                {#if product.quantity_total && selectedProducts[product.id] > product.quantity_total}
-                                                    <span class="text-sm text-red-600">
-                                                        ({product.quantity_total} available)
-                                                    </span>
-                                                {/if}
-                                            </div>
+                                            <!-- Radio Button for Tickets, Quantity Input for Others -->
+                                            {#if type === 'ticket'}
+                                                <div class="flex items-center gap-3 mt-4">
+                                                    <input 
+                                                        id="ticket-{product.id}"
+                                                        type="radio" 
+                                                        name="ticket"
+                                                        value={product.id}
+                                                        bind:group={selectedTicket}
+                                                        class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                                                    />
+                                                    <label for="ticket-{product.id}" class="text-sm font-medium text-gray-700 cursor-pointer">
+                                                        Select this ticket
+                                                    </label>
+                                                </div>
+                                            {:else}
+                                                <div class="flex items-center gap-3 mt-4">
+                                                    <label for="qty-{product.id}" class="text-sm font-medium text-gray-700">Qty:</label>
+                                                    <input 
+                                                        id="qty-{product.id}"
+                                                        type="number" 
+                                                        min="0" 
+                                                        bind:value={selectedProducts[product.id]}
+                                                        class="w-16 px-3 py-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-blue-500"
+                                                    />
+                                                    
+                                                    {#if product.quantity_total && selectedProducts[product.id] > product.quantity_total}
+                                                        <span class="text-sm text-red-600">
+                                                            ({product.quantity_total} available)
+                                                        </span>
+                                                    {/if}
+                                                </div>
+                                            {/if}
                                         </div>
                                     {/each}
                                 </div>
@@ -279,7 +311,7 @@
                     </div>
                     <div class="flex items-center justify-between text-2xl font-bold">
                         <span class="text-gray-800">Total:</span>
-                        <span class="text-blue-600">{total.toFixed(2)} NOK</span>
+                        <span class="text-blue-600">{total.toFixed(2)} EUR</span>
                     </div>
                 </div>
 

@@ -84,6 +84,7 @@ $: isProfileIncomplete = user && (!profile || (
   let editAge = profile?.age ?? '';
   // default to static male avatar so the image URL is valid
   let editAvatar = profile?.avatar_url ?? maleAvatar;
+  let isSavingProfile = false;
 
   // Modal state
   let showModal = false;
@@ -158,6 +159,7 @@ $: isProfileIncomplete = user && (!profile || (
     const form = e.target as HTMLFormElement;
     const formData = new FormData(form);
     console.log('Submitting profile update with data:', Object.fromEntries(formData.entries()));
+    isSavingProfile = true;
     try {
       const res = await fetch('/profile?/updateProfile', {
         method: 'POST',
@@ -169,16 +171,19 @@ $: isProfileIncomplete = user && (!profile || (
       console.log('Profile update response:', res);
       const result = await res.json();
       console.log('Profile update result:', result);
-      if (result.status === 200) {
+      if (result.success) {
         showModal = false;
+        isSavingProfile = false;
         // Wait 2 seconds for database to sync before refreshing
         await new Promise(resolve => setTimeout(resolve, 2000));
         // Refresh all data
         await invalidate('/profile');
       } else {
+        isSavingProfile = false;
         alert('Failed to update profile: ' + (result.message || 'Unknown error'));
       }
     } catch (err) {
+      isSavingProfile = false;
       console.error('Profile update fetch error:', err);
       alert('Network error during profile update');
     }
@@ -371,7 +376,21 @@ $: isProfileIncomplete = user && (!profile || (
 
               <div class="flex justify-end gap-2 pt-4">
                 <button type="button" on:click={() => showModal = false} class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md">Cancel</button>
-                <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-md">Save</button>
+                <button 
+                  type="submit" 
+                  disabled={isSavingProfile}
+                  class="px-4 py-2 bg-green-600 text-white rounded-md transition-all duration-200 font-semibold {isSavingProfile ? 'bg-green-500 cursor-not-allowed flex items-center gap-2' : 'hover:bg-green-700 active:scale-95'}"
+                >
+                  {#if isSavingProfile}
+                    <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Saving...
+                  {:else}
+                    Save
+                  {/if}
+                </button>
               </div>
             </form>
           </div>
@@ -412,13 +431,27 @@ $: isProfileIncomplete = user && (!profile || (
       </div>
     {/if}
 
-    <!-- Fetching Profile Modal -->
+    <!-- Signing In Modal -->
     {#if isSigningIn}
       <div class="fixed inset-0 bg-white/10 backdrop-blur-lg flex items-center justify-center z-50 p-4 animate-fade-in">
-        <div class="bg-white rounded-lg shadow-lg p-6 animate-bounce-in">
-          <div class="flex items-center gap-3">
-            <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-            <p class="text-lg font-medium">Fetching profile...</p>
+        <div class="bg-white rounded-lg shadow-lg p-8 animate-bounce-in max-w-sm w-full">
+          <div class="flex flex-col items-center gap-4">
+            <div class="animate-spin rounded-full h-12 w-12 border-4 border-blue-200 border-t-blue-600"></div>
+            <p class="text-lg font-medium text-gray-700">Signing you in...</p>
+            <p class="text-sm text-gray-500">Please wait while we authenticate your account.</p>
+          </div>
+        </div>
+      </div>
+    {/if}
+
+    <!-- Saving Profile Modal -->
+    {#if isSavingProfile}
+      <div class="fixed inset-0 bg-white/10 backdrop-blur-lg flex items-center justify-center z-50 p-4 animate-fade-in">
+        <div class="bg-white rounded-lg shadow-lg p-8 animate-bounce-in max-w-sm w-full">
+          <div class="flex flex-col items-center gap-4">
+            <div class="animate-spin rounded-full h-12 w-12 border-4 border-green-200 border-t-green-600"></div>
+            <p class="text-lg font-medium text-gray-700">Saving your profile...</p>
+            <p class="text-sm text-gray-500">Please wait while we update your information.</p>
           </div>
         </div>
       </div>
@@ -440,7 +473,24 @@ $: isProfileIncomplete = user && (!profile || (
           <input id="signin-password-input" bind:value={signinPassword} type="password" name="password" required class="mt-1 block w-full rounded-md border-gray-200 shadow-sm" />
         </div>
         <div class="pt-4">
-          <button type="submit" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md transition-colors duration-150 {buttonPressed ? 'bg-blue-700' : ''}" on:mousedown={() => buttonPressed = true} on:mouseup={() => buttonPressed = false} on:mouseleave={() => buttonPressed = false}>Sign In</button>
+          <button 
+            type="submit" 
+            disabled={isSigningIn}
+            class="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-md transition-all duration-200 font-semibold {isSigningIn ? 'bg-blue-500 cursor-not-allowed' : 'hover:bg-blue-700 active:scale-95'}" 
+            on:mousedown={() => !isSigningIn && (buttonPressed = true)} 
+            on:mouseup={() => buttonPressed = false} 
+            on:mouseleave={() => buttonPressed = false}
+          >
+            {#if isSigningIn}
+              <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Signing In...
+            {:else}
+              Sign In
+            {/if}
+          </button>
         </div>
       </form>
     </section>

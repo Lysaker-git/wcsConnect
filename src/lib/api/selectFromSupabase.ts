@@ -8,3 +8,10 @@ export async function selectFromSupabase(table: string, columns: string = '*', e
     .single();
   return { data, error };
 }
+
+export async function selectAllFromSupabase(table: string, columns: string = '*') {
+  const { data, error } = await supabase
+    .from(table)
+    .select(columns);
+  return { data, error };
+}
