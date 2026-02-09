@@ -1,36 +1,52 @@
-import { supabase } from '../../supabaseClient';
+import { supabase } from '../../../server/supabaseServiceClient';
 
-export interface SignupResult {
-  data: any;
-  error: any;
-}
 
-/**
- * Sign up a user using Supabase auth.
- * This tries the public `auth.signUp` flow (email/password).
- * If that method does not exist on the client, it will try the admin create user flow (server-only and requires service role key).
- */
-export async function signUpUser(email: string, password: string): Promise<SignupResult> {
-  try {
-    console.log('[signup] attempting signUp for', email);
+export async function signUpUser(
+  { email, password, profile }) {
+    console.log('[signUpUser] email:', email, 'password:', password ? '****' : 'undefined');
+    console.log('[signUpUser] profile:', profile);
+    console.log('[signUpUser] starting user creation');
 
-    // supabase-js v2 has auth.signUp
-    if (typeof (supabase as any).auth?.signUp === 'function') {
-      const resp = await (supabase as any).auth.signUp({ email, password });
-      console.log('[signup] auth.signUp response', resp);
-      return { data: resp, error: resp.error ?? null };
+    const payload = {
+      email,
+      password,
+      email_confirm: true
+    };
+    console.log('[signUpUser] admin.createUser payload:', payload);
+
+    if (!payload.email || !payload.password) {
+      throw new Error('Email and password are required');
     }
 
-    // fallback: try admin createUser (may require service role key and server-only client)
-    if (typeof (supabase as any).auth?.admin?.createUser === 'function') {
-      const resp = await (supabase as any).auth.admin.createUser({ email, password });
-      console.log('[signup] auth.admin.createUser response', resp);
-      return { data: resp, error: resp.error ?? null };
+    const { data: { user }, error: signUpError } =
+      await supabase.auth.admin.createUser(payload);
+    console.log('[signUpUser] user creation attempt finished');
+    console.log('[signUpUser] user creation result:', { user, signUpError });
+
+    if (signUpError) throw signUpError
+
+    if (!profile?.username) {
+      throw new Error('Username is required');
     }
 
-    return { data: null, error: new Error('No supported signup method available on supabase client') };
-  } catch (err) {
-    console.error('[signup] unexpected error', err);
-    return { data: null, error: err };
-  }
-}
+    const profileRow = {
+      id: user?.id,
+      username: profile?.username,
+      role: profile?.role ?? 'follower',
+      avatar_url: profile?.avatar_url ?? null,
+      userRole: ['member']
+    }
+    console.log('[signUpUser] inserting profile row:', profileRow);
+
+    const { error: profileInsertError } = await supabase
+      .from('profiles')
+      .insert([profileRow])
+    
+    console.log('[signUpUser] profile row insert result:', { profileInsertError });
+    if (profileInsertError) {
+      // await supabase.auth.admin.deleteUser(user?.id || '')
+      throw profileInsertError
+    }
+    return user
+            };
+            

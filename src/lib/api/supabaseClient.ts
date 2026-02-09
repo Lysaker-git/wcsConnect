@@ -1,5 +1,5 @@
 // Supabase client setup
 import { createClient } from '@supabase/supabase-js';
-import { SUPABASE_API_KEY, SUPABASE_URL } from '$env/static/private';
+import { PUBLIC_SUPABASE_API_KEY, PUBLIC_SUPABASE_URL } from '$env/static/public';
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_API_KEY);
+export const supabase = createClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_API_KEY);

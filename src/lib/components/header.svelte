@@ -11,12 +11,16 @@
     { title: 'About', href: '/about' }
   ];
 
+  import { invalidate } from '$app/navigation';
+
   async function logout() {
     try {
       const res = await fetch('/api/auth/signout', { method: 'POST' });
-      if (res.ok) {
-        // reload to refresh cookies and UI
-        location.reload();
+      console.log(res);
+      if (res.status === 200) {
+        // invalidate root so +layout.server.ts reloads and header gets updated user
+        window.location.href = '/';
+        // await invalidate('/');
       } else {
         console.error('Logout failed', await res.text());
       }
@@ -43,7 +47,7 @@
       </a>
 
       <!-- Desktop nav -->
-      <nav class="hidden md:flex md:items-center md:space-x-4">
+      <nav class="hidden lg:flex lg:items-center lg:space-x-4">
         {#each navLinks as link}
           <a href={link.href} class="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium">{link.title}</a>
         {/each}
@@ -77,7 +81,7 @@
         {/if}
 
         <!-- Mobile menu button -->
-        <button class="md:hidden p-2 rounded-md text-gray-700 hover:bg-gray-100" aria-label="Toggle menu" on:click={() => mobileOpen = !mobileOpen}>
+        <button class="lg:hidden p-2 rounded-md text-gray-700 hover:bg-gray-100" aria-label="Toggle menu" on:click={() => mobileOpen = !mobileOpen}>
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
             {#if !mobileOpen}
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
@@ -91,7 +95,7 @@
 
     <!-- Mobile nav -->
     {#if mobileOpen}
-      <div class="md:hidden mt-2 pb-4 border-t border-gray-100">
+      <div class="lg:hidden mt-2 pb-4 border-t border-gray-100">
         <div class="flex flex-col px-1 space-y-1">
           {#each navLinks as link}
             <a href={link.href} class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50">{link.title}</a>

@@ -1,6 +1,6 @@
-import { selectFromSupabase } from '$lib/api/selectFromSupabase';
+import { selectAllFromSupabase } from '$lib/api/selectFromSupabase';
 
 export async function load() {
-  const { data: events, error } = await selectFromSupabase('events', '*');
+  const { data: events, error } = await selectAllFromSupabase('events', '*');
   return { events, error };
 }

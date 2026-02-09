@@ -1,5 +1,4 @@
 import { supabase } from './supabaseClient';
-import { SUPABASE_API_KEY, SUPABASE_URL } from '$env/static/private';
 
 export interface NewEvent {
   id?: string;
@@ -24,39 +23,8 @@ function generateUUID(): string {
 }
 
 async function fallbackInsert(payload: any) {
-  try {
-    console.log('[createEvent:fallback] attempting direct REST POST to Supabase');
-    const url = `${SUPABASE_URL.replace(/\/$/, '')}/rest/v1/events`;
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: {
-        apikey: SUPABASE_API_KEY,
-        Authorization: `Bearer ${SUPABASE_API_KEY}`,
-        'Content-Type': 'application/json',
-        Prefer: 'return=representation'
-      },
-      body: JSON.stringify([payload])
-    });
-
-    const text = await res.text();
-    let json: any = null;
-    try {
-      json = JSON.parse(text);
-    } catch (e) {
-      console.error('[createEvent:fallback] non-json response:', text);
-    }
-    console.log('[createEvent:fallback] status:', res.status, 'body:', json ?? text);
-
-    if (!res.ok) {
-      return { data: null, error: { status: res.status, body: json ?? text } };
-    }
-
-    // json is an array of inserted rows (because we sent array)
-    return { data: Array.isArray(json) ? json[0] : json, error: null };
-  } catch (err) {
-    console.error('[createEvent:fallback] unexpected error:', err);
-    return { data: null, error: err };
-  }
+  // Fallback removed - supabase client should handle this properly
+  return { data: null, error: new Error('Fallback not implemented') };
 }
 
 /**
@@ -64,7 +32,7 @@ async function fallbackInsert(payload: any) {
  * @param ev NewEvent object (id optional)
  * @returns { data, error } - data contains the inserted row on success
  */
-export async function createEvent(ev: NewEvent) {
+export async function createEvent(ev: NewEvent, organizerProfileId?: string) {
   try {
     console.log('[createEvent] start', ev);
 
@@ -109,6 +77,30 @@ export async function createEvent(ev: NewEvent) {
     }
 
     console.log('[createEvent] success, inserted:', data);
+
+    // If an organizer profile id was provided, insert them into event_participants
+    if (organizerProfileId) {
+      try {
+        const participant = {
+          id: generateUUID(),
+          event_id: (data as any).id,
+          user_id: organizerProfileId,
+          event_role: 'Event Director'
+        };
+
+        console.log('[createEvent] inserting organizer into event_participants:', participant);
+        const { error: participantError } = await supabase.from('event_participants').insert([participant]);
+        if (participantError) {
+          console.error('[createEvent] failed to insert event_participants row:', participantError);
+          // Not rolling back the event insert here. Return the participant error to caller.
+          return { data, error: participantError };
+        }
+      } catch (pe) {
+        console.error('[createEvent] unexpected error inserting participant:', pe);
+        return { data, error: pe };
+      }
+    }
+
     return { data, error: null };
   } catch (err) {
     console.error('[createEvent] unexpected error:', err);

@@ -1,5 +1,5 @@
 import { supabase } from '$lib/api/supabaseClient';
-import { json } from '@sveltejs/kit';
+import { json, redirect } from '@sveltejs/kit'; // <-- Added redirect
 
 export async function POST({ request, cookies }) {
   try {
@@ -49,14 +49,38 @@ export async function POST({ request, cookies }) {
     });
 
     // also set a non-httpOnly cookie with basic user info for client display
-    cookies.set('sb_user', JSON.stringify({ id: user?.id, email: user?.email }), {
-      httpOnly: false,
-      path: '/',
-      maxAge
-    });
+    try {
+      // fetch profile to include roles and a display name
+      const { data: profile, error: profileError } = await (supabase as any).from('profiles').select('userRole, username, avatar_url').eq('id', user?.id).maybeSingle();
+      if (profileError) console.warn('[api/auth/signin] profile fetch error', profileError);
 
-    return json({ user, session });
+      const sbUserPayload = {
+        id: user?.id,
+        email: user?.email,
+        username: profile?.username ?? null,
+        avatar_url: profile?.avatar_url ?? null,
+        userRole: profile?.userRole ?? []
+      };
+
+      cookies.set('sb_user', JSON.stringify(sbUserPayload), {
+        httpOnly: false,
+        path: '/',
+        maxAge
+      });
+    } catch (cookieErr) {
+      console.warn('[api/auth/signin] failed to fetch profile for cookie', cookieErr);
+      cookies.set('sb_user', JSON.stringify({ id: user?.id, email: user?.email }), { httpOnly: false, path: '/', maxAge });
+    }
+
+    // *** MODIFICATION: Return a redirect instead of a JSON success payload ***
+    // This signals the client to navigate to the root path (/), causing a full page refresh.
+    throw redirect(303, '/profile');
   } catch (err) {
+    // SvelteKit handles the redirect as a special type of error, so we only catch
+    // true unexpected errors here, or re-throw the redirect if it came from
+    // another module.
+    if ((err as any)?.status === 303) throw err; 
+    
     console.error('[api/auth/signin] unexpected error', err);
     return json({ error: (err as any)?.message ?? String(err) }, { status: 500 });
   }
