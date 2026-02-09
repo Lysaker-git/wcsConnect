@@ -73,7 +73,39 @@ export const load = async ({ cookies }) => {
   }
   console.log('[DEBUG myEvents] Final myEvents array:', myEvents);
 
-  return { user, profile, myEvents };
+  // Fetch user's registrations (event_participants) to show on profile
+  let myRegistrations = [];
+  if (user) {
+    try {
+      console.log('[DEBUG myRegistrations] Fetching registrations for user:', user.id);
+      const { data: regsData, error: regsError } = await supabase
+        .from('event_participants')
+        .select(`
+          id,
+          event_id,
+          status,
+          created_at,
+          events ( id, title, start_date )
+        `)
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      console.log('[DEBUG myRegistrations] data:', regsData, 'error:', regsError);
+      if (!regsError && regsData) {
+        myRegistrations = regsData.map(r => ({
+          id: r.id,
+          event_id: r.event_id,
+          status: r.status,
+          created_at: r.created_at,
+          event: r.events
+        }));
+      }
+    } catch (e) {
+      console.warn('[DEBUG myRegistrations] fetch exception:', e);
+    }
+  }
+
+  return { user, profile, myEvents, myRegistrations };
 };
 
 export const actions = {

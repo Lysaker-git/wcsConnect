@@ -1,4 +1,4 @@
-import { fail } from '@sveltejs/kit';
+import { fail, json } from '@sveltejs/kit';
 import { supabase } from '$lib/api/supabaseClient';
 
 export const load = async ({ params, cookies }) => {
@@ -25,23 +25,27 @@ export const load = async ({ params, cookies }) => {
 
     // Fetch products for this event
     try {
+        const now = new Date().toISOString();
         const { data, error } = await supabase
             .from('products')
             .select('*')
             .eq('event_id', eventID)
-            .eq('is_active', true);
-        
+            .eq('is_active', true)
+            .or(`sale_start.is.null,sale_start.lte.${now}`)
+            .or(`sale_end.is.null,sale_end.gte.${now}`);
         if (!error && data) {
-            products = data;
+            // Filter server-side: quantity_sold < quantity_total
+            products = data.filter(
+                p =>
+                    (typeof p.quantity_total === 'number' && typeof p.quantity_sold === 'number'
+                        ? p.quantity_sold < p.quantity_total
+                        : true)
+            );
         }
     } catch (pe) {
         console.warn('[registration load] products fetch error', pe);
     }
 
-    console.log('[registration load] user:', user);
-    console.log('[registration load] profile:', profile);
-    console.log('[registration load] products:', products);
-    
     return { user, profile, products };
 };
 
@@ -51,13 +55,17 @@ export const actions = {
             const formData = await request.formData();
             const eventID = params.eventID;
             
+            console.log('[registration] Starting registration for event:', eventID);
+            
             const sbUser = cookies.get('sb_user');
             if (!sbUser) {
+                console.warn('[registration] No authenticated user');
                 return fail(401, { message: 'Not authenticated' });
             }
 
             const user = JSON.parse(sbUser);
             const userID = user.id;
+            console.log('[registration] User ID:', userID);
 
             // Get form data
             const role = formData.get('role')?.toString();
@@ -80,14 +88,65 @@ export const actions = {
                 }
             });
 
+            console.log('[registration] Selected products:', selectedProducts);
+
             if (selectedProducts.length === 0) {
                 return fail(400, { message: 'Please select at least one product' });
+            }
+
+            // Fetch products to check availability
+            const productIDs = selectedProducts.map(p => p.productID);
+            console.log('[registration] Fetching products with IDs:', productIDs);
+            
+            const { data: productData, error: productError } = await supabase
+                .from('products')
+                .select('id, name, quantity_total, quantity_sold, currency_type, price')
+                .in('id', productIDs);
+
+            if (productError || !productData) {
+                console.error('[registration] products fetch error:', productError);
+                return fail(500, { message: 'Failed to fetch product information' });
+            }
+
+            console.log('[registration] Product data retrieved:', productData);
+
+            // Check if any products are sold out or insufficient quantity
+            const soldOutProducts = [];
+            const availableProducts = [];
+
+            for (const product of productData) {
+                const selectedQuantity = selectedProducts.find(p => p.productID === product.id)?.quantity || 0;
+                const remainingQuantity = product.quantity_total ? product.quantity_total - product.quantity_sold : Infinity;
+                
+                console.log(`[registration] Product ${product.name}: quantity_sold=${product.quantity_sold}, quantity_total=${product.quantity_total}, remaining=${remainingQuantity}, requested=${selectedQuantity}`);
+                
+                const isSoldOut = product.quantity_total && (product.quantity_sold + selectedQuantity) > product.quantity_total;
+                
+                if (isSoldOut) {
+                    console.log(`[registration] Product ${product.name} is sold out or insufficient quantity`);
+                    soldOutProducts.push(product.name);
+                } else {
+                    console.log(`[registration] Product ${product.name} is available`);
+                    availableProducts.push(product);
+                }
+            }
+
+            // If any products are sold out, return error with sold out info
+            if (soldOutProducts.length > 0) {
+                console.warn('[registration] Some products sold out:', soldOutProducts);
+                return fail(400, { 
+                    message: 'Some products are sold out',
+                    soldOutProducts,
+                    partial: true
+                });
             }
 
             // Determine status based on partner
             const status = partner ? 'pending_couples_registration' : 'pending_single_registration';
 
             // Create event_participants entry
+            console.log('[registration] Creating event_participants record');
+            
             const { data: participantData, error: participantError } = await supabase
                 .from('event_participants')
                 .insert({
@@ -110,61 +169,111 @@ export const actions = {
                 return fail(500, { message: 'Failed to create participant record' });
             }
 
-            // Fetch product prices for order calculation
-            const productIDs = selectedProducts.map(p => p.productID);
-            const { data: productData, error: productError } = await supabase
-                .from('products')
-                .select('id, price')
-                .in('id', productIDs);
+            console.log('[registration] event_participants created:', participantData.id);
 
-            if (productError || !productData) {
-                console.error('[registration] products fetch error:', productError);
-                return fail(500, { message: 'Failed to fetch product prices' });
+            // Create participant_products entries
+            console.log('[registration] Creating participant_products records');
+            const participantProductsToInsert = [];
+            
+            for (const selectedProduct of selectedProducts) {
+                const product = productData.find(p => p.id === selectedProduct.productID);
+                if (!product) {
+                    console.warn(`[registration] Product ${selectedProduct.productID} not found`);
+                    continue;
+                }
+
+                const subtotal = parseFloat(product.price.toString()) * selectedProduct.quantity;
+                
+                participantProductsToInsert.push({
+                    participant_id: participantData.id,
+                    product_id: product.id,
+                    product_name: product.name,
+                    product_type: product.product_type || 'Other',
+                    quantity_ordered: selectedProduct.quantity,
+                    unit_price: parseFloat(product.price.toString()),
+                    currency_type: product.currency_type,
+                    subtotal: subtotal,
+                    payment_status: 'pending',
+                    confirmation_status: 'pending'
+                });
+
+                console.log(`[registration] Queued participant_product: ${product.name} x${selectedProduct.quantity} = ${subtotal}`);
             }
 
-            // Calculate total
+            // Batch insert participant_products
+            if (participantProductsToInsert.length > 0) {
+                const { data: participantProductsData, error: participantProductsError } = await supabase
+                    .from('participant_products')
+                    .insert(participantProductsToInsert)
+                    .select();
+
+                if (participantProductsError) {
+                    console.error('[registration] participant_products insert error:', participantProductsError);
+                    return fail(500, { message: 'Failed to create participant products' });
+                }
+
+                console.log('[registration] participant_products created:', participantProductsData?.length, 'records');
+            }
+
+            // Update quantity_sold in products table
+            console.log('[registration] Updating quantity_sold in products');
+            for (const selectedProduct of selectedProducts) {
+                const product = productData.find(p => p.id === selectedProduct.productID);
+                if (!product) {
+                    console.warn(`[registration] Product ${selectedProduct.productID} not found in productData`);
+                    continue;
+                }
+
+                const newQuantitySold = (product.quantity_sold || 0) + selectedProduct.quantity;
+                console.log(`[registration] Attempting to update product:`, {
+                    productId: product.id,
+                    productName: product.name,
+                    currentQuantitySold: product.quantity_sold,
+                    quantityToAdd: selectedProduct.quantity,
+                    newQuantitySold: newQuantitySold
+                });
+
+                const { data: updateData, error: updateError } = await supabase
+                    .from('products')
+                    .update({ quantity_sold: newQuantitySold })
+                    .eq('id', product.id)
+                    .select();
+
+                console.log(`[registration] Update response for ${product.name}:`, {
+                    success: !updateError,
+                    error: updateError,
+                    data: updateData
+                });
+
+                if (updateError) {
+                    console.error(`[registration] Failed to update quantity_sold for product ${product.id}:`, updateError);
+                    return fail(500, { message: `Failed to update product quantity for ${product.name}` });
+                }
+
+                console.log(`[registration] Successfully updated quantity_sold for ${product.name}`);
+            }
+
+            // Calculate total for receipt
             let total = 0;
-            const priceMap = new Map(productData.map(p => [p.id, p.price]));
             selectedProducts.forEach(sp => {
-                const price = priceMap.get(sp.productID) || 0;
-                total += parseFloat(price.toString()) * sp.quantity;
+                const product = productData.find(p => p.id === sp.productID);
+                if (product) {
+                    total += parseFloat(product.price.toString()) * sp.quantity;
+                }
             });
 
-            // Create order
-            const { data: orderData, error: orderError } = await supabase
-                .from('orders')
-                .insert({
-                    user_id: userID,
-                    event_id: eventID,
-                    total,
-                    status: 'pending'
-                })
-                .select()
-                .single();
+            // Get currency from first product
+            const currency = productData[0]?.currency_type || 'EUR';
 
-            if (orderError) {
-                console.error('[registration] order insert error:', orderError);
-                return fail(500, { message: 'Failed to create order' });
-            }
-
-            // Create order_items entries
-            const orderItems = selectedProducts.map(sp => ({
-                order_id: orderData.id,
-                product_id: sp.productID,
-                quantity: sp.quantity,
-                price_at_purchase: priceMap.get(sp.productID) || 0
-            }));
-
-            const { error: orderItemsError } = await supabase
-                .from('order_items')
-                .insert(orderItems);
-
-            if (orderItemsError) {
-                console.error('[registration] order items insert error:', orderItemsError);
-                return fail(500, { message: 'Failed to create order items' });
-            }
-
-            return { success: true, orderId: orderData.id };
+            console.log('[registration] Registration completed successfully. Participant ID:', participantData.id);
+            
+            return { 
+                success: true, 
+                participantId: participantData.id, 
+                selectedProducts,
+                total,
+                currency
+            };
         } catch (err) {
             console.error('[registration action] error:', err);
             return fail(500, { message: (err as any)?.message ?? 'Registration failed' });

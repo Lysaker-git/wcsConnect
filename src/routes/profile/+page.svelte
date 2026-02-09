@@ -285,7 +285,7 @@ $: isProfileIncomplete = user && (!profile || (
                   <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500">{new Date(event.start_date).toLocaleDateString()}</td>
                   <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500">{new Date(event.end_date).toLocaleDateString()}</td>
                   <td class="px-4 py-2 whitespace-nowrap text-sm font-medium">
-                    <button class="text-blue-600 hover:text-blue-900 mr-4">View Registration</button>
+                    <!-- <button class="text-blue-600 hover:text-blue-900 mr-4">View Registration</button> -->
                     <a href="/admin/events/{event.id}" class="text-green-600 hover:text-green-900">Admin Portal</a>
                   </td>
                 </tr>
@@ -296,6 +296,58 @@ $: isProfileIncomplete = user && (!profile || (
       </section>
     {/if}
 
+      <!-- My Registrations Section -->
+      <section class="mb-8 p-6 rounded-lg bg-white shadow-xl border-t-4 border-indigo-500">
+        <h2 class="text-2xl font-bold mb-4">My Registrations</h2>
+        {#if data.myRegistrations && data.myRegistrations.length > 0}
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            {#each data.myRegistrations as reg}
+              <div class="relative bg-white rounded-2xl flex flex-col justify-between p-6 neomorph-card">
+                <style>
+                  .neomorph-card {
+                    box-shadow:
+                      8px 8px 24px #d1d5db, /* dark shadow */
+                      -8px -8px 24px #ffffff, /* light shadow */
+                      0 1.5px 4px 0 rgba(60,60,60,0.00);
+                    border-radius: 1.25rem;
+                    background: ##f9f9f9;
+                    border: none;
+                  }
+                </style>
+                <div>
+                  <div class="flex items-center justify-between mb-2">
+                    <div>
+                      <p class="text-sm text-gray-500">Event</p>
+                      <p class="font-semibold text-lg text-gray-900">{reg.event?.title || reg.event_id}</p>
+                      {#if reg.event?.start_date}
+                        <p class="text-xs text-gray-500">{new Date(reg.event.start_date).toLocaleDateString()}</p>
+                      {/if}
+                    </div>
+                    <!-- Status Icon -->
+                    <span class="ml-2">
+                      {#if reg.status === 'pending' || reg.status === 'pending_couples_registration'}
+                        <svg class="w-6 h-6 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z" /></svg>
+                      {:else if reg.status === 'approved'}
+                        <svg class="w-6 h-6 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+                      {:else if reg.status === 'rejected'}
+                        <svg class="w-6 h-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                      {:else}
+                        <svg class="w-6 h-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10" /></svg>
+                      {/if}
+                    </span>
+                  </div>
+                </div>
+                <div class="mt-6">
+                  <a href={`/profile/${reg.id}`} class="inline-block w-full px-3 py-2 bg-blue-600 text-white rounded-lg font-semibold text-center shadow hover:bg-blue-700 transition">Manage my registration</a>
+                </div>
+              </div>
+            {/each}
+          </div>
+        {:else}
+          <p class="text-sm text-gray-600">You have no registrations yet.</p>
+        {/if}
+      </section>
+
     <!-- Settings Dropdown -->
     <section class="mt-6 p-6 rounded-lg bg-white shadow relative">
       <button on:click={() => showDropdown = !showDropdown} class="px-4 py-2 bg-gray-600 text-white rounded-md flex items-center gap-2">
@@ -305,7 +357,7 @@ $: isProfileIncomplete = user && (!profile || (
         <div class="absolute top-full left-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-10">
           <button on:click={() => { showModal = true; showDropdown = false; }} class="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100">Edit Profile</button>
           {#if user && (profile?.userRole?.includes('Owner') || profile?.userRole?.includes('Superuser') || profile?.userRole?.includes('EventDirector'))}
-            <button on:click={() => { showEventModal = true; showDropdown = false; }} class="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100">Create Event</button>
+            <a href="/admin/events/createEvent" class="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100">Create Event</a>
           {/if}
         </div>
       {/if}
@@ -398,38 +450,7 @@ $: isProfileIncomplete = user && (!profile || (
       </div>
     {/if}
 
-    <!-- Event Creation Modal -->
-    {#if showEventModal}
-      <div class="fixed inset-0 bg-white/10 backdrop-blur-lg flex items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-lg shadow-lg max-w-lg w-full max-h-[90vh] overflow-hidden">
-          <div class="p-6 overflow-y-auto max-h-full">
-            <h3 class="text-xl font-semibold mb-4">Create Event</h3>
-            <form on:submit|preventDefault={onSubmit} class="space-y-4">
-              <div>
-                <label for="title-input" class="block text-sm font-medium text-gray-700">Event Title</label>
-                <input id="title-input" bind:value={title} type="text" name="title" required class="mt-1 block w-full rounded-md border-gray-200 shadow-sm" />
-              </div>
-
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label for="start-date-input" class="block text-sm font-medium text-gray-700">Start Date</label>
-                  <input id="start-date-input" bind:value={start_date} type="date" name="start_date" required class="mt-1 block w-full rounded-md border-gray-200 shadow-sm" />
-                </div>
-                <div>
-                  <label for="end-date-input" class="block text-sm font-medium text-gray-700">End Date</label>
-                  <input id="end-date-input" bind:value={end_date} type="date" name="end_date" required class="mt-1 block w-full rounded-md border-gray-200 shadow-sm" />
-                </div>
-              </div>
-
-              <div class="flex justify-end gap-2 pt-4">
-                <button type="button" on:click={() => showEventModal = false} class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md">Cancel</button>
-                <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md">Create Event</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
-    {/if}
+    <!-- Event Creation Modal removed; now handled in /admin/events/createEvent -->
 
     <!-- Signing In Modal -->
     {#if isSigningIn}

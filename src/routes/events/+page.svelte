@@ -1,58 +1,46 @@
 <script lang="ts">
   export let data;
   console.log('📅 [Events Page] Loaded events data:', data);
+
+  let query = '';
+  const events = data?.events ?? [];
+
+  $: filteredEvents = query
+    ? events.filter((e: any) => (e.title ?? '').toLowerCase().includes(query.toLowerCase()))
+    : events;
 </script>
 
-<div class="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 py-10">
-  <div class="max-w-2xl mx-auto">
-    <h1 class="text-4xl font-extrabold text-blue-700 mb-8 text-center drop-shadow">Events Overview</h1>
-    {#if data && data.events && data.events.length > 0}
-      <ul class="space-y-6">
-        {#each data.events as event}
-          <li class="relative">
-                <!-- Entire card is now a clickable link with enhanced styling -->
-                <a href={`/events/${event.id}`} 
-                    class="block p-6 rounded-xl border border-gray-200 bg-white shadow-xl transition-all duration-300 hover:shadow-2xl hover:border-blue-500 transform hover:-translate-y-0.5">
-                    
-                    <!-- Event Title -->
-                    <h2 class="text-2xl font-bold text-gray-800 mb-2 border-b pb-2 border-blue-500/20">{event.title}</h2>
-                    
-                    <!-- Event ID -->
-                    <p class="text-xs text-gray-500 mb-3 font-mono">ID: {event.id}</p>
-                    
-                    <!-- Date Range -->
-                    <div class="flex flex-wrap gap-4 text-sm">
-                        <!-- Start Date -->
-                        <div class="flex items-center gap-2 bg-blue-100 text-blue-700 px-3 py-1 rounded-full font-semibold">
-                            <!-- Calendar Icon (SVG for better control) -->
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd" />
-                            </svg>
-                            <span>Starts: {new Date(event.start_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
-                        </div>
-                        <!-- End Date -->
-                        <div class="flex items-center gap-2 bg-blue-100 text-blue-700 px-3 py-1 rounded-full font-semibold">
-                            <!-- Calendar Icon -->
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd" />
-                            </svg>
-                            <span>Ends: {new Date(event.end_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
-                        </div>
-                    </div>
-                    
-                    <!-- Subtle Call to action hint -->
-                    <p class="mt-4 text-sm text-blue-600 font-bold tracking-wider pt-2 border-t border-gray-100 flex items-center gap-2">
-                        Tap to View Event Details
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 10l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd" />
-                        </svg>
-                    </p>
-                </a>
+<div class="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 py-8">
+  <div class="max-w-6xl mx-auto px-4">
+    <div class="flex items-center justify-between mb-6">
+      <h1 class="text-2xl font-extrabold text-blue-700">Events Overview</h1>
+      <div class="w-full max-w-md ml-4">
+        <label for="search" class="sr-only">Search events</label>
+        <div class="relative">
+          <input id="search" type="search" bind:value={query} placeholder="Search events by title..." class="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 bg-white text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-blue-700)]/20" />
+          <svg class="absolute left-3 top-2.5 h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z" />
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    {#if filteredEvents && filteredEvents.length > 0}
+      <ul class="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+        {#each filteredEvents as event}
+          <li>
+            <a href={`/events/${event.id}`} class="block p-4 rounded-lg border border-gray-100 bg-white shadow-sm hover:shadow-md transition-transform transform hover:-translate-y-0.5">
+              <h2 class="text-lg font-semibold text-gray-800 truncate">{event.title}</h2>
+              <div class="mt-2 flex flex-wrap gap-2 text-xs">
+                <span class="inline-flex items-center gap-1 bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">Starts: {new Date(event.start_date).toLocaleDateString()}</span>
+                <span class="inline-flex items-center gap-1 bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">Ends: {new Date(event.end_date).toLocaleDateString()}</span>
+              </div>
+            </a>
           </li>
         {/each}
       </ul>
     {:else}
-      <p class="text-center text-gray-500 mt-12">No upcoming events available.</p>
+      <p class="text-center text-gray-500 mt-12">No events match your search.</p>
     {/if}
   </div>
 </div>

@@ -33,43 +33,36 @@
     let country = profile?.country ?? '';
     let age = calculatedAge;
     let partner = '';
+    let partnerWsdcID = '';
+    let partnerSuggestions: Array<{ username: string; wsdcID: string }> = [];
+    let showPartnerDropdown = false;
+    let partnerSearchTimeout: any = null;
+    let isPartnerSearching = false;
 
     // Product selection state
     let selectedProducts: Record<string, number> = {};
-    let selectedTicket = ''; // Single ticket selection (radio button)
+    let selectedIntensives: Record<string, boolean> = {};
+    let selectedTicket = '';
     let isSubmitting = false;
     let errorMessage = '';
+    let showSoldOutModal = false;
+    let soldOutProducts: string[] = [];
+    let isLoading = false;
 
     // Group products by type
-    $: productsByType = products.reduce((acc: Record<string, any[]>, product) => {
-        const type = product.product_type || 'Other';
-        if (!acc[type]) acc[type] = [];
-        acc[type].push(product);
-        return acc;
-    }, {});
+    $: productsByType = products
+        .filter(product => product.product_type !== 'accommodation')
+        .reduce((acc: Record<string, any[]>, product) => {
+            const type = product.product_type || 'Other';
+            if (!acc[type]) acc[type] = [];
+            acc[type].push(product);
+            return acc;
+        }, {});
 
-    // Calculate total
-    $: total = (() => {
-        let sum = 0;
-        // Add selected ticket
-        if (selectedTicket) {
-            const ticket = products.find(p => p.id === selectedTicket);
-            if (ticket) {
-                sum += parseFloat(ticket.price);
-            }
-        }
-        // Add other products
-        Object.entries(selectedProducts).forEach(([productId, quantity]) => {
-            const product = products.find(p => p.id === productId);
-            if (product && quantity > 0) {
-                sum += parseFloat(product.price) * quantity;
-            }
-        });
-        return sum;
-    })();
+
 
     // Count selected products
-    $: selectedCount = (selectedTicket ? 1 : 0) + Object.values(selectedProducts).filter(q => q > 0).length;
+    $: selectedCount = (selectedTicket ? 1 : 0) + Object.values(selectedProducts).filter(q => q > 0).length + Object.values(selectedIntensives).filter(s => s).length;
 
     async function goBack() {
         await goto('.');
@@ -77,13 +70,14 @@
 
     async function handleRegister(e: Event) {
         e.preventDefault();
-        
+
         if (selectedCount === 0) {
             errorMessage = 'Please select at least one product';
             return;
         }
 
         isSubmitting = true;
+        isLoading = true;
         errorMessage = '';
 
         try {
@@ -94,6 +88,7 @@
             formData.append('country', country);
             formData.append('age', age.toString());
             formData.append('partner', partner);
+            formData.append('partner_wsdcID', partnerWsdcID);
 
             // Add selected ticket
             if (selectedTicket) {
@@ -105,6 +100,12 @@
                     formData.append(`product_${productId}`, quantity.toString());
                 }
             });
+            // Add selected intensives
+            Object.entries(selectedIntensives).forEach(([productId, selected]) => {
+                if (selected) {
+                    formData.append(`product_${productId}`, '1');
+                }
+            });
 
             const res = await fetch('?/register', {
                 method: 'POST',
@@ -112,31 +113,125 @@
             });
 
             const result = await res.json();
+            console.log('Registration result:', result);
 
-            if (result.success) {
-                console.log('Registration successful! Order ID:', result.orderId);
-                await goto(`/events/${$page.params.eventID}`);
-            } else {
-                errorMessage = result.message || 'Registration failed';
+            const parsedData = JSON.parse(result.data);
+            const participantId = parsedData[2]
+            console.log('Extracted participant ID:', participantId);
+
+            if (parsedData?.partial) {
+                isLoading = false;
+                soldOutProducts = parsedData.soldOutProducts || [];
+                showSoldOutModal = true;
+            } else if (result.status === 200) {
+                await goto(`/events/${$page.params.eventID}/register/success?participantId=${participantId}`);
+            } else if (result.error) {
+                isLoading = false;
+                errorMessage = result.error.message || 'Registration failed';
             }
         } catch (err) {
             console.error('Registration error:', err);
+            isLoading = false;
             errorMessage = 'An error occurred during registration';
         } finally {
             isSubmitting = false;
         }
     }
 
+    async function searchPartnerProfiles(query: string) {
+        if (query.length < 3) {
+            partnerSuggestions = [];
+            showPartnerDropdown = false;
+            isPartnerSearching = false;
+            return;
+        }
+        // Debounce
+        if (partnerSearchTimeout) clearTimeout(partnerSearchTimeout);
+        isPartnerSearching = true;
+        partnerSearchTimeout = setTimeout(async () => {
+            try {
+                const res = await fetch(`/api/search-profiles?query=${encodeURIComponent(query)}`);
+                const result = await res.json();
+                partnerSuggestions = result.profiles || [];
+                showPartnerDropdown = partnerSuggestions.length > 0;
+            } catch (err) {
+                partnerSuggestions = [];
+                showPartnerDropdown = false;
+            } finally {
+                isPartnerSearching = false;
+            }
+        }, 300);
+    }
+    function handlePartnerInput(e: Event) {
+        partner = (e.target as HTMLInputElement).value;
+        partnerWsdcID = '';
+        searchPartnerProfiles(partner);
+    }
+    function selectPartnerSuggestion(suggestion: { username: string; wsdcID: string }) {
+        partner = suggestion.username;
+        partnerWsdcID = suggestion.wsdcID;
+        showPartnerDropdown = false;
+    }
+
+    function closeSoldOutModal() {
+        showSoldOutModal = false;
+    }
+
     const wsdcLevels = ['Newcomer', 'Novice', 'Intermediate', 'Advanced', 'All-Star', 'Champion'];
     const productTypeIcons: Record<string, string> = {
-        'Event Ticket': '🎟️',
-        'Intensives': '🎓',
+        'ticket': '🎟️',
+        'intensive': '🎓',
         'Merchandise': '👕',
         'Accommodation': '🏨',
         'Other': '📦'
     };
 
+
+
+
+
 </script>
+
+<!-- Loading Modal -->
+{#if isLoading}
+    <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl p-8 max-w-sm mx-4 text-center">
+            <div class="mb-4">
+                <div class="inline-block">
+                    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                </div>
+            </div>
+            <h3 class="text-lg font-semibold text-gray-800 mb-2">Processing Registration</h3>
+            <p class="text-gray-600">Please wait while we complete your registration...</p>
+        </div>
+    </div>
+{/if}
+
+<!-- Sold Out Modal -->
+{#if showSoldOutModal}
+    <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl p-8 max-w-md mx-4">
+            <h3 class="text-2xl font-bold text-red-600 mb-4">Products Sold Out</h3>
+            <p class="text-gray-700 mb-6">
+                The following products have reached their capacity and are no longer available:
+            </p>
+            <ul class="mb-6 space-y-2">
+                {#each soldOutProducts as product}
+                    <li class="flex items-center gap-2 text-gray-700">
+                        <span class="text-red-500">✕</span>
+                        <span>{product}</span>
+                    </li>
+                {/each}
+            </ul>
+            <button 
+                on:click={closeSoldOutModal}
+                class="w-full py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition"
+            >
+                Close
+            </button>
+        </div>
+    </div>
+{/if}
 
 <div class="min-h-screen bg-gray-50 py-12">
     <div class="max-w-2xl mx-auto px-6">
@@ -187,11 +282,38 @@
                         </select>
                     </div>
 
-                    <!-- Partner -->
-                    <div class="mb-4">
+                    <!-- Partner Autocomplete -->
+                    <div class="mb-4 relative">
                         <label for="partner" class="block text-sm font-medium text-gray-700">Partner (Optional)</label>
-                        <input id="partner" type="text" bind:value={partner} placeholder="Enter your partner's name or ID"
-                               class="mt-1 block w-full rounded-lg border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3" />
+                        <p class="text-xs text-gray-500 mb-1">You can search for a partner and connect your registrations if your partner has a profile on the site. Start typing their name to see suggestions.</p>
+                        <div class="flex items-center gap-2">
+                            <input id="partner" type="text" bind:value={partner} placeholder="Enter your partner's name or ID"
+                                   class="mt-1 block w-full rounded-lg border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3"
+                                   on:input={handlePartnerInput} autocomplete="off" />
+                            {#if isPartnerSearching}
+                                <span class="ml-1 animate-spin">
+                                    <svg class="w-5 h-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                </span>
+                            {/if}
+                        </div>
+                        {#if showPartnerDropdown}
+                            <ul class="absolute z-10 left-0 right-0 bg-white border border-gray-200 rounded-lg mt-1 shadow-lg">
+                                {#each partnerSuggestions as suggestion}
+                                    <li class="px-4 py-2 cursor-pointer hover:bg-blue-100 flex justify-between items-center"
+                                        on:click={() => selectPartnerSuggestion(suggestion)}>
+                                        <span>{suggestion.username}</span>
+                                        <span class="text-xs text-gray-500">WSDC ID: {suggestion.wsdcID}</span>
+                                    </li>
+                                {/each}
+                            </ul>
+                        {/if}
+                        <div class="mt-2">
+                            <label for="partnerWsdcID" class="block text-xs text-gray-500">Partner WSDC ID</label>
+                            <input id="partnerWsdcID" type="text" bind:value={partnerWsdcID} class="block w-full rounded-lg border border-gray-200 p-2 text-xs" placeholder="Enter or select WSDC ID" />
+                        </div>
                     </div>
 
                     <!-- WSDC Details Group -->
@@ -257,12 +379,12 @@
                                                 </div>
                                                 <div class="text-right ml-4">
                                                     <div class="text-lg font-bold text-blue-600">
-                                                        {parseFloat(product.price).toFixed(2)} {product.currency_type || 'NOK'}
+                                                        {parseFloat(product.price).toFixed(2)} {product.currency_type || 'EUR'}
                                                     </div>
                                                 </div>
                                             </div>
 
-                                            <!-- Radio Button for Tickets, Quantity Input for Others -->
+                                            <!-- Radio Button for Tickets, Checkbox for Intensives, Quantity Input for Others -->
                                             {#if type === 'ticket'}
                                                 <div class="flex items-center gap-3 mt-4">
                                                     <input 
@@ -277,6 +399,18 @@
                                                         Select this ticket
                                                     </label>
                                                 </div>
+                                            {:else if type === 'intensive'}
+                                                <div class="flex items-center gap-3 mt-4">
+                                                    <input 
+                                                        id="intensive-{product.id}"
+                                                        type="checkbox" 
+                                                        bind:checked={selectedIntensives[product.id]}
+                                                        class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                                    />
+                                                    <label for="intensive-{product.id}" class="text-sm font-medium text-gray-700 cursor-pointer">
+                                                        Include this intensive
+                                                    </label>
+                                                </div>
                                             {:else}
                                                 <div class="flex items-center gap-3 mt-4">
                                                     <label for="qty-{product.id}" class="text-sm font-medium text-gray-700">Qty:</label>
@@ -287,12 +421,6 @@
                                                         bind:value={selectedProducts[product.id]}
                                                         class="w-16 px-3 py-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-blue-500"
                                                     />
-                                                    
-                                                    {#if product.quantity_total && selectedProducts[product.id] > product.quantity_total}
-                                                        <span class="text-sm text-red-600">
-                                                            ({product.quantity_total} available)
-                                                        </span>
-                                                    {/if}
                                                 </div>
                                             {/if}
                                         </div>
@@ -303,17 +431,13 @@
                     {/if}
                 </div>
 
-                <!-- ORDER SUMMARY -->
+                <!-- PRODUCTS SELECTED SUMMARY
                 <div class="bg-blue-50 border border-blue-200 rounded-lg p-6">
-                    <div class="flex items-center justify-between mb-2">
-                        <span class="text-gray-700">Products Selected:</span>
-                        <span class="font-semibold">{selectedCount}</span>
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-700 text-lg font-medium">Products Selected:</span>
+                        <span class="font-semibold text-lg text-blue-600">{selectedCount}</span>
                     </div>
-                    <div class="flex items-center justify-between text-2xl font-bold">
-                        <span class="text-gray-800">Total:</span>
-                        <span class="text-blue-600">{total.toFixed(2)} EUR</span>
-                    </div>
-                </div>
+                </div> -->
 
                 <!-- Register Button -->
                 <div class="pt-6">

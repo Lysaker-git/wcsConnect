@@ -4,9 +4,13 @@
   import ParticipantsModal from '$lib/components/ParticipantsModal.svelte';
   export let data: { event: any; eventDetails: any; user: any; products: any[] };
 
+  console.log('Admin event page loaded with data:', data);
+
   // Event modals state
   let showEditEventModal = false;
   let showParticipantsModal = false;
+  // Actions dropdown state
+  let showActions = false;
 
   // Product modal state
   let showProductModal = false;
@@ -212,78 +216,113 @@
 
   <div class="bg-white shadow-lg rounded-lg p-6">
     <div class="flex justify-between items-center mb-4">
-      <h2 class="text-xl font-semibold">Event Details</h2>
-      <div class="flex space-x-2">
-        <button
-          on:click={openEditEventModal}
-          class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium text-sm"
-        >
-          Edit Details
-        </button>
-        <button
-          on:click={openParticipantsModal}
-          class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md font-medium text-sm"
-        >
-          View Participants
-        </button>
-      </div>
+        <h2 class="text-xl font-semibold">Event Details</h2>
+        <div class="relative">
+          <button on:click={() => showActions = !showActions} class="px-3 py-2 bg-gray-600 text-white rounded-md flex items-center gap-2">
+          <span>⚙️</span><span>Actions</span>
+          </button>
+          {#if showActions}
+            <div class="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-20">
+              <a href={`/admin/events/${data.event.id}/edit`} on:click={() => showActions = false} class="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-50">Edit Event</a>
+              <a href={`/admin/events/${data.event.id}/participants`} on:click={() => showActions = false} class="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-50">Participants</a>
+              <a href={`/admin/events/${data.event.id}/dashboard`} on:click={() => showActions = false} class="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-50">Dashboard</a>
+              <a href={`/admin/events/${data.event.id}/products`} on:click={() => showActions = false} class="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-50">Products</a>
+              <a href={`/admin/events/${data.event.id}/crew`} on:click={() => showActions = false} class="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-50">Permissions / Settings</a>
+            </div>
+          {/if}
+        </div>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div>
-        <label class="block text-sm font-medium text-gray-700">Title</label>
-        <p class="mt-1 text-lg">{data.event.title}</p>
+
+      <div class="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Title</label>
+            <p class="mt-1 text-lg font-semibold">{data.event.title}</p>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700">When</label>
+            <p class="mt-1">{new Date(data.event.start_date).toLocaleDateString()} — {new Date(data.event.end_date).toLocaleDateString()}</p>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Organizer</label>
+            <p class="mt-1">{data.eventDetails?.organizer_name || '—'}</p>
+            {#if data.eventDetails?.organizer_email}
+              <p class="text-sm text-gray-500">{data.eventDetails.organizer_email}</p>
+            {/if}
+            {#if data.eventDetails?.organizer_phone}
+              <p class="text-sm text-gray-500">{data.eventDetails.organizer_phone}</p>
+            {/if}
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Location</label>
+            <p class="mt-1">{data.eventDetails?.venue || data.eventDetails?.hotel || '—'}</p>
+            {#if data.eventDetails?.address}
+              <p class="text-sm text-gray-500">{data.eventDetails.address}</p>
+            {/if}
+            {#if data.eventDetails?.hotel}
+              <p class="text-sm text-gray-500">Hotel: {data.eventDetails.hotel}</p>
+            {/if}
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Capacity</label>
+            <p class="mt-1">{data.eventDetails?.max_participants ?? '—'}</p>
+          </div>
+        </div>
+
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Event Type</label>
+            <p class="mt-1">{data.eventDetails?.event_type || '—'}</p>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Languages</label>
+            <p class="mt-1">{data.eventDetails?.languages || '—'}</p>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Accessibility</label>
+            <p class="mt-1">{data.eventDetails?.accessibility || '—'}</p>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Media / Links</label>
+            <div class="mt-1 space-y-1">
+              {#if data.eventDetails?.banner_image_url}
+                <a class="text-sm text-blue-600 hover:underline block" href={data.eventDetails.banner_image_url} target="_blank" rel="noreferrer">Banner Image</a>
+              {/if}
+              {#if data.eventDetails?.schedule_image_url}
+                <a class="text-sm text-blue-600 hover:underline block" href={data.eventDetails.schedule_image_url} target="_blank" rel="noreferrer">Schedule Image</a>
+              {/if}
+              {#if data.eventDetails?.promo_video_url}
+                <a class="text-sm text-blue-600 hover:underline block" href={data.eventDetails.promo_video_url} target="_blank" rel="noreferrer">Promo Video</a>
+              {/if}
+              {#if !data.eventDetails?.banner_image_url && !data.eventDetails?.schedule_image_url && !data.eventDetails?.promo_video_url}
+                <p class="text-sm text-gray-500">No media links</p>
+              {/if}
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Tags</label>
+            <div class="mt-2 flex flex-wrap gap-2">
+              {#if Array.isArray(data.eventDetails?.tags) && data.eventDetails.tags.length > 0}
+                {#each data.eventDetails.tags as tag}
+                  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">{tag}</span>
+                {/each}
+              {:else}
+                <span class="text-sm text-gray-500">No tags</span>
+              {/if}
+            </div>
+          </div>
+        </div>
       </div>
-
-      <div>
-        <label class="block text-sm font-medium text-gray-700">ID</label>
-        <p class="mt-1 text-lg">{data.event.id}</p>
-      </div>
-
-      <div>
-        <label class="block text-sm font-medium text-gray-700">Start Date</label>
-        <p class="mt-1 text-lg">{new Date(data.event.start_date).toLocaleDateString()}</p>
-      </div>
-
-      <div>
-        <label class="block text-sm font-medium text-gray-700">End Date</label>
-        <p class="mt-1 text-lg">{new Date(data.event.end_date).toLocaleDateString()}</p>
-      </div>
-
-      {#if data.eventDetails?.description}
-        <div class="md:col-span-2">
-          <label class="block text-sm font-medium text-gray-700">Description</label>
-          <p class="mt-1">{data.eventDetails.description}</p>
-        </div>
-      {/if}
-
-      {#if data.eventDetails?.address}
-        <div class="md:col-span-2">
-          <label class="block text-sm font-medium text-gray-700">Address</label>
-          <p class="mt-1">{data.eventDetails.address}</p>
-        </div>
-      {/if}
-
-      {#if data.eventDetails?.venue}
-        <div>
-          <label class="block text-sm font-medium text-gray-700">Venue</label>
-          <p class="mt-1">{data.eventDetails.venue}</p>
-        </div>
-      {/if}
-
-      {#if data.eventDetails?.hotel}
-        <div>
-          <label class="block text-sm font-medium text-gray-700">Hotel</label>
-          <p class="mt-1">{data.eventDetails.hotel}</p>
-        </div>
-      {/if}
-
-      {#if data.eventDetails?.max_participants}
-        <div>
-          <label class="block text-sm font-medium text-gray-700">Max Participants</label>
-          <p class="mt-1">{data.eventDetails.max_participants}</p>
-        </div>
-      {/if}
     </div>
   </div>
 
