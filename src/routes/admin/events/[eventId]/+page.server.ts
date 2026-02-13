@@ -50,26 +50,27 @@ export const load = async ({ params, cookies }) => {
 
   // If no event_details record exists, create one
   let eventDetailsData = eventDetails;
-  if (detailsError && detailsError.code === 'PGRST116') {
-    const { data: newDetails, error: createError } = await supabase
-      .from('event_details')
-      .insert({
-        event_id: eventId,
-        description: null,
-        address: null,
-        hotel: null,
-        venue: null,
-        max_participants: null
-      })
-      .select()
-      .single();
+  
+  // if (detailsError && detailsError.code === 'PGRST116') {
+  //   const { data: newDetails, error: createError } = await supabase
+  //     .from('event_details')
+  //     .insert({
+  //       event_id: eventId,
+  //       description: null,
+  //       address: null,
+  //       hotel: null,
+  //       venue: null,
+  //       max_participants: null
+  //     })
+  //     .select()
+  //     .single();
 
-    if (createError) {
-      console.error('Error creating event details:', createError);
-    } else {
-      eventDetailsData = newDetails;
-    }
-  }
+  //   if (createError) {
+  //     console.error('Error creating event details:', createError);
+  //   } else {
+  //     eventDetailsData = newDetails;
+  //   }
+  // }
 
   // Load products for this event
   const { data: products, error: productsError } = await supabase
