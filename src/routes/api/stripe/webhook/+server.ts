@@ -5,7 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
-const stripe = new Stripe(STRIPE_SECRET_KEY);
+const stripe = new Stripe(STRIPE_SECRET_KEY, { apiVersion: '2026-01-28.clover' });
 
 export const POST: RequestHandler = async ({ request }) => {
   const body = await request.text();
@@ -21,7 +21,8 @@ export const POST: RequestHandler = async ({ request }) => {
   }
 
   // 2. Only handle successful checkouts
-  if (event.type === 'checkout.session.completed') {
+  if (event.type === 'checkout.session.completed' ||
+      event.type === 'checkout.session.async_payment_succeeded') {
     const session = event.data.object as Stripe.Checkout.Session;
     const { participant_id } = session.metadata ?? {};
 
@@ -48,6 +49,25 @@ export const POST: RequestHandler = async ({ request }) => {
     }
 
     console.log(`✅ Payment confirmed for participant ${participant_id}`);
+  }
+
+  if (event.type === 'checkout.session.async_payment_failed') {
+    const session = event.data.object as Stripe.Checkout.Session;
+    const { participant_id } = session.metadata ?? {};
+    
+    if (participant_id) {
+      const supabase = createClient(PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+      await supabase
+        .from('participant_products')
+        .update({
+          payment_status: 'cancelled',
+          updated_at: new Date().toISOString()
+        })
+        .eq('participant_id', participant_id)
+        .eq('payment_status', 'pending');
+      
+      console.log(`❌ Async payment failed for participant ${participant_id}`);
+    }
   }
 
   return json({ received: true });

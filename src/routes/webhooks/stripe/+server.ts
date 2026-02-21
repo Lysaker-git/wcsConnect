@@ -3,7 +3,7 @@ import { STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET } from '$env/static/private';
 import { supabase } from '$lib/api/supabaseClient';
 import { json } from '@sveltejs/kit';
 
-const stripe = new Stripe(STRIPE_SECRET_KEY, { apiVersion: '2022-11-15' });
+const stripe = new Stripe(STRIPE_SECRET_KEY, { apiVersion: '2026-01-28.clover' });
 
 export async function POST({ request }) {
     try {
