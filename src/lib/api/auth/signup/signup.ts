@@ -1,4 +1,6 @@
-import { supabase } from "$lib/server/supabaseServiceClient";
+import { supabase } from "$lib/server/supabaseServiceClient"; // service role — for DB writes
+import { createClient } from '@supabase/supabase-js';
+import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_API_KEY } from '$env/static/public';
 
 export async function signUpUser({ email, password, profile }: {
   email: string;
@@ -8,20 +10,23 @@ export async function signUpUser({ email, password, profile }: {
   if (!email || !password) throw new Error('Email and password are required');
   if (!profile?.username) throw new Error('Username is required');
 
-  // Use regular signUp — this sends the verification email automatically
-  const { data, error: signUpError } = await supabase.auth.signUp({
+  // Use anon client for auth.signUp — this is what sends the verification email
+  const anonClient = createClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_API_KEY);
+
+  const { data, error: signUpError } = await anonClient.auth.signUp({
     email,
     password,
     options: {
-      // This URL is where Supabase redirects after email confirmation
       emailRedirectTo: 'https://dancepoint.no/auth/confirm'
     }
   });
 
+  console.log('[signUpUser] signUp result:', { user: data?.user?.id, signUpError });
+
   if (signUpError) throw signUpError;
   if (!data.user) throw new Error('User creation failed');
 
-  // Insert profile row immediately — but account won't be usable until verified
+  // Use service role client for profile insert — bypasses RLS
   const profileRow = {
     id: data.user.id,
     username: profile.username,
@@ -29,6 +34,8 @@ export async function signUpUser({ email, password, profile }: {
     avatar_url: profile.avatar_url ?? null,
     userRole: ['member']
   };
+
+  console.log('[signUpUser] inserting profile:', profileRow);
 
   const { error: profileInsertError } = await supabase
     .from('profiles')
