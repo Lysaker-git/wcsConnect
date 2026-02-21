@@ -27,7 +27,13 @@
 
     try {
       const res = await fetch('?/signUp', { method: 'POST', body: form, credentials: 'include' });
-      
+      console.log('res.status:', res.status);
+      console.log('res.redirected:', res.redirected);
+      console.log('res.url:', res.url);
+      const text = await res.text();
+      console.log('res.body:', text);      
+
+
       if (res.redirected) {
         await goto(res.url);
         return;
@@ -90,9 +96,9 @@
       </div>
     </fieldset>
 
-    <div>
-      <button type="submit" class="px-4 py-2 bg-stone-600 text-white rounded-md">Sign Up</button>
-    </div>
+  <button type="submit" disabled={isSubmitting} class="px-4 py-2 bg-stone-600 text-white rounded-md disabled:opacity-50">
+    {isSubmitting ? 'Creating account...' : 'Sign Up'}
+  </button>
   </form>
   </div>
 </div>
