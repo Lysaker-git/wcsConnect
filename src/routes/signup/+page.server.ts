@@ -1,35 +1,29 @@
-import { fail } from '@sveltejs/kit';
+import { fail, redirect } from '@sveltejs/kit';
 import { signUpUser } from '$lib/api/auth/signup/signup';
 
 export const actions = {
-  default: async ({ request, cookies }) => {
+  default: async ({ request }) => {
     try {
       const form = await request.formData();
       const email = form.get('email')?.toString();
       const password = form.get('password')?.toString();
       const username = form.get('username')?.toString();
       const role = form.get('role')?.toString() ?? 'follower';
-      const avatar_url = form.get('avatar_url')?.toString() ?? 'avatar1';
+      const avatar_url = form.get('avatar_url')?.toString() ?? '';
 
       if (!email || !password) {
         return fail(400, { success: false, message: 'Missing email or password' });
       }
 
-      const user = await signUpUser({ email, password, profile: { username, role, avatar_url } });
-      console.log('[signup action] user created:', user);
+      await signUpUser({ email, password, profile: { username: username ?? email.split('@')[0], role, avatar_url } });
 
-      cookies.set('sb_user', JSON.stringify({
-        id: user.id,
-        email: user.email,
-        username: username ?? email.split('@')[0],
-        avatar_url: avatar_url ?? '',
-        userRole: ['member']
-      }), { httpOnly: false, path: '/' });
-
-      return { success: true, data: user };
-    } catch (err) {
-      console.error('[signup action] unexpected', err);
-      return fail(500, { success: false, message: (err as any)?.message ?? String(err) });
+      // Don't set cookie — they're not verified yet
+      // Redirect to check-your-email page
+      throw redirect(303, '/signup/verify-email');
+    } catch (err: any) {
+      if (err?.status === 303) throw err; // let redirect through
+      console.error('[signup action]', err);
+      return fail(500, { success: false, message: err?.message ?? String(err) });
     }
   }
 };

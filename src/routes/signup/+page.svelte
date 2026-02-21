@@ -1,8 +1,8 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   
-  const maleAvatar = '/images/avatar/male.png'
-  const femaleAvatar = '/images/avatar/female.png'
+  const maleAvatar = '/images/avatar/male.png';
+  const femaleAvatar = '/images/avatar/female.png';
 
   let email = '';
   let password = '';
@@ -10,9 +10,14 @@
   let role: 'follower' | 'leader' = 'follower';
   let avatar_url = maleAvatar;
   let message: string | null = null;
+  let isSubmitting = false;
 
   async function onSubmit(e: Event) {
     e.preventDefault();
+    if (isSubmitting) return;
+    isSubmitting = true;
+    message = null;
+
     const form = new FormData();
     form.set('email', email);
     form.set('password', password);
@@ -20,17 +25,22 @@
     form.set('role', role);
     form.set('avatar_url', avatar_url);
 
-  const res = await fetch('/signup', { method: 'POST', body: form, credentials: 'include' });
-    const json = await res.json();
+    try {
+      const res = await fetch('?/default', { method: 'POST', body: form, credentials: 'include' });
+      
+      if (res.redirected) {
+        await goto(res.url);
+        return;
+      }
 
-    if (res.ok) {
-      message = 'Signup successful! Check your email for confirmation (if required).';
-      email = '';
-      password = '';
-      username = '';
-      await goto('/profile');
-    } else {
-      message = 'Signup failed: ' + (json?.message ?? JSON.stringify(json));
+      const json = await res.json();
+      if (!res.ok) {
+        message = json?.message ?? 'Signup failed';
+      }
+    } catch (err) {
+      message = 'Something went wrong, please try again';
+    } finally {
+      isSubmitting = false;
     }
   }
 </script>
