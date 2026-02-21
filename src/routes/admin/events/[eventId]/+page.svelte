@@ -211,23 +211,23 @@
   }
 </script>
 
-<div class="max-w-4xl mx-auto py-12 px-6">
-  <h1 class="text-3xl font-bold mb-6">Event Admin: {data.event.title}</h1>
+<div class="max-w-4xl mx-auto py-12 px-6 neumorph-card">
+  <h1 class="text-3xl font-bold mb-6 text-stone-100">Event Admin: {data.event.title}</h1>
 
-  <div class="bg-white shadow-lg rounded-lg p-6">
+  <div class="bg-stone-800 shadow-lg rounded-lg p-6 neumorph-subcard">
     <div class="flex justify-between items-center mb-4">
-        <h2 class="text-xl font-semibold">Event Details</h2>
+        <h2 class="text-xl font-semibold text-stone-100">Event Details</h2>
         <div class="relative">
-          <button on:click={() => showActions = !showActions} class="px-3 py-2 bg-gray-600 text-white rounded-md flex items-center gap-2">
+          <button on:click={() => showActions = !showActions} class="px-3 py-2 bg-stone-700 text-stone-200 rounded-md flex items-center gap-2">
           <span>⚙️</span><span>Actions</span>
           </button>
           {#if showActions}
-            <div class="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-20">
-              <a href={`/admin/events/${data.event.id}/edit`} on:click={() => showActions = false} class="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-50">Edit Event</a>
-              <a href={`/admin/events/${data.event.id}/participants`} on:click={() => showActions = false} class="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-50">Participants</a>
-              <a href={`/admin/events/${data.event.id}/dashboard`} on:click={() => showActions = false} class="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-50">Dashboard</a>
-              <a href={`/admin/events/${data.event.id}/products`} on:click={() => showActions = false} class="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-50">Products</a>
-              <a href={`/admin/events/${data.event.id}/crew`} on:click={() => showActions = false} class="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-50">Permissions / Settings</a>
+            <div class="absolute right-0 mt-2 w-48 bg-stone-800 border border-stone-700 rounded-md shadow-lg z-20">
+              <a href={`/admin/events/${data.event.id}/edit`} on:click={() => showActions = false} class="block w-full text-left px-4 py-2 text-stone-100 hover:bg-stone-700">Edit Event</a>
+              <a href={`/admin/events/${data.event.id}/participants`} on:click={() => showActions = false} class="block w-full text-left px-4 py-2 text-stone-100 hover:bg-stone-700">Participants</a>
+              <a href={`/admin/events/${data.event.id}/dashboard`} on:click={() => showActions = false} class="block w-full text-left px-4 py-2 text-stone-100 hover:bg-stone-700">Dashboard</a>
+              <a href={`/admin/events/${data.event.id}/products`} on:click={() => showActions = false} class="block w-full text-left px-4 py-2 text-stone-100 hover:bg-stone-700">Products</a>
+              <a href={`/admin/events/${data.event.id}/crew`} on:click={() => showActions = false} class="block w-full text-left px-4 py-2 text-stone-100 hover:bg-stone-700">Permissions / Settings</a>
             </div>
           {/if}
         </div>
@@ -238,61 +238,61 @@
       <div class="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
         <div class="space-y-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700">Title</label>
-            <p class="mt-1 text-lg font-semibold">{data.event.title}</p>
+            <label class="block text-sm font-medium text-stone-400">Title</label>
+            <p class="mt-1 text-lg font-semibold text-stone-100">{data.event.title}</p>
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700">When</label>
-            <p class="mt-1">{new Date(data.event.start_date).toLocaleDateString()} — {new Date(data.event.end_date).toLocaleDateString()}</p>
+            <label class="block text-sm font-medium text-stone-400">When</label>
+            <p class="mt-1 text-stone-100">{new Date(data.event.start_date).toLocaleDateString()} — {new Date(data.event.end_date).toLocaleDateString()}</p>
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700">Organizer</label>
-            <p class="mt-1">{data.eventDetails?.organizer_name || '—'}</p>
+            <label class="block text-sm font-medium text-stone-400">Organizer</label>
+            <p class="mt-1 text-stone-100">{data.eventDetails?.organizer_name || '—'}</p>
             {#if data.eventDetails?.organizer_email}
-              <p class="text-sm text-gray-500">{data.eventDetails.organizer_email}</p>
+              <p class="text-sm text-stone-500">{data.eventDetails.organizer_email}</p>
             {/if}
             {#if data.eventDetails?.organizer_phone}
-              <p class="text-sm text-gray-500">{data.eventDetails.organizer_phone}</p>
+              <p class="text-sm text-stone-500">{data.eventDetails.organizer_phone}</p>
             {/if}
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700">Location</label>
-            <p class="mt-1">{data.eventDetails?.venue || data.eventDetails?.hotel || '—'}</p>
+            <label class="block text-sm font-medium text-stone-400">Location</label>
+            <p class="mt-1 text-stone-100">{data.eventDetails?.venue || data.eventDetails?.hotel || '—'}</p>
             {#if data.eventDetails?.address}
-              <p class="text-sm text-gray-500">{data.eventDetails.address}</p>
+              <p class="text-sm text-stone-500">{data.eventDetails.address}</p>
             {/if}
             {#if data.eventDetails?.hotel}
-              <p class="text-sm text-gray-500">Hotel: {data.eventDetails.hotel}</p>
+              <p class="text-sm text-stone-500">Hotel: {data.eventDetails.hotel}</p>
             {/if}
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700">Capacity</label>
-            <p class="mt-1">{data.eventDetails?.max_participants ?? '—'}</p>
+            <label class="block text-sm font-medium text-stone-400">Capacity</label>
+            <p class="mt-1 text-stone-100">{data.eventDetails?.max_participants ?? '—'}</p>
           </div>
         </div>
 
         <div class="space-y-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700">Event Type</label>
-            <p class="mt-1">{data.eventDetails?.event_type || '—'}</p>
+            <label class="block text-sm font-medium text-stone-400">Event Type</label>
+            <p class="mt-1 text-stone-100">{data.eventDetails?.event_type || '—'}</p>
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700">Languages</label>
-            <p class="mt-1">{data.eventDetails?.languages || '—'}</p>
+            <label class="block text-sm font-medium text-stone-400">Languages</label>
+            <p class="mt-1 text-stone-100">{data.eventDetails?.languages || '—'}</p>
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700">Accessibility</label>
-            <p class="mt-1">{data.eventDetails?.accessibility || '—'}</p>
+            <label class="block text-sm font-medium text-stone-400">Accessibility</label>
+            <p class="mt-1 text-stone-100">{data.eventDetails?.accessibility || '—'}</p>
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700">Media / Links</label>
+            <label class="block text-sm font-medium text-stone-400">Media / Links</label>
             <div class="mt-1 space-y-1">
               {#if data.eventDetails?.banner_image_url}
                 <a class="text-sm text-blue-600 hover:underline block" href={data.eventDetails.banner_image_url} target="_blank" rel="noreferrer">Banner Image</a>
@@ -304,20 +304,20 @@
                 <a class="text-sm text-blue-600 hover:underline block" href={data.eventDetails.promo_video_url} target="_blank" rel="noreferrer">Promo Video</a>
               {/if}
               {#if !data.eventDetails?.banner_image_url && !data.eventDetails?.schedule_image_url && !data.eventDetails?.promo_video_url}
-                <p class="text-sm text-gray-500">No media links</p>
+                <p class="text-sm text-stone-500">No media links</p>
               {/if}
             </div>
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700">Tags</label>
+            <label class="block text-sm font-medium text-stone-400">Tags</label>
             <div class="mt-2 flex flex-wrap gap-2">
               {#if Array.isArray(data.eventDetails?.tags) && data.eventDetails.tags.length > 0}
                 {#each data.eventDetails.tags as tag}
-                  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">{tag}</span>
+                  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-stone-600 text-stone-100">{tag}</span>
                 {/each}
               {:else}
-                <span class="text-sm text-gray-500">No tags</span>
+                <span class="text-sm text-stone-500">No tags</span>
               {/if}
             </div>
           </div>
@@ -327,51 +327,51 @@
   </div>
 
   <!-- Products Management Section -->
-  <div class="bg-white shadow-lg rounded-lg p-6 mt-8">
+  <div class="shadow-lg rounded-lg p-6 mt-8 neumorph-subcard bg-stone-800">
     <div class="flex justify-between items-center mb-6">
-      <h2 class="text-xl font-semibold">Event Store Products</h2>
+      <h2 class="text-xl font-semibold text-stone-100">Event Store Products</h2>
       <button 
         on:click={openProductModal}
-        class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium"
+        class="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-md font-medium transition duration-300"
       >
         Add Product
       </button>
     </div>
 
     {#if data.products.length === 0}
-      <p class="text-gray-500 text-center py-8">No products added yet. Click "Add Product" to get started.</p>
+      <p class="text-stone-500 text-center py-8">No products added yet. Click "Add Product" to get started.</p>
     {:else}
       <div class="overflow-x-auto">
         <table class="min-w-full table-auto">
           <thead>
-            <tr class="bg-gray-50">
-              <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
-              <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-              <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
-              <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role Limits</th>
-              <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-              <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sales</th>
-              <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+            <tr class="">
+              <th class="px-4 py-2 text-left text-xs font-medium text-stone-400 uppercase tracking-wider">Product</th>
+              <th class="px-4 py-2 text-left text-xs font-medium text-stone-400 uppercase tracking-wider">Type</th>
+              <th class="px-4 py-2 text-left text-xs font-medium text-stone-400 uppercase tracking-wider">Price</th>
+              <th class="px-4 py-2 text-left text-xs font-medium text-stone-400 uppercase tracking-wider">Role Limits</th>
+              <th class="px-4 py-2 text-left text-xs font-medium text-stone-400 uppercase tracking-wider">Status</th>
+              <th class="px-4 py-2 text-left text-xs font-medium text-stone-400 uppercase tracking-wider">Sales</th>
+              <th class="px-4 py-2 text-left text-xs font-medium text-stone-400 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
-          <tbody class="bg-white divide-y divide-gray-200">
+          <tbody class="divide-y divide-stone-700">
             {#each data.products as product}
               <tr>
                 <td class="px-4 py-2 whitespace-nowrap">
                   <div>
-                    <div class="text-sm font-medium text-gray-900">{product.name}</div>
+                    <div class="text-sm font-medium text-stone-100">{product.name}</div>
                     {#if product.description}
-                      <div class="text-sm text-gray-500">{product.description}</div>
+                      <div class="text-sm text-stone-400">{product.description}</div>
                     {/if}
                   </div>
                 </td>
-                <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500 capitalize">
+                <td class="px-4 py-2 whitespace-nowrap text-sm text-stone-400 capitalize">
                   {product.product_type}
                 </td>
-                <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
+                <td class="px-4 py-2 whitespace-nowrap text-sm text-stone-100">
                   {product.currency_type || 'USD'} ${product.price}
                 </td>
-                <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
+                <td class="px-4 py-2 whitespace-nowrap text-sm text-stone-400">
                   {#if product.leader_limit || product.follower_limit}
                     {#if product.leader_limit}L: {product.leader_limit}{/if}
                     {#if product.follower_limit}{#if product.leader_limit} / {/if}F: {product.follower_limit}{/if}
@@ -388,7 +388,7 @@
                     {product.is_active ? 'Active' : 'Inactive'}
                   </span>
                 </td>
-                <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
+                <td class="px-4 py-2 whitespace-nowrap text-sm text-stone-400">
                   {#if product.quantity_total}
                     {product.quantity_sold || 0} / {product.quantity_total}
                   {:else}
@@ -424,36 +424,36 @@
   <!-- Product Creation Modal -->
   {#if showProductModal}
     <div class="fixed inset-0 bg-white/10 backdrop-blur-lg flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-lg shadow-lg max-w-lg w-full max-h-[90vh] flex flex-col">
+      <div class="bg-stone-800 rounded-lg shadow-lg max-w-lg w-full max-h-[90vh] flex flex-col">
         <div class="p-6 flex-shrink-0">
-          <h3 class="text-xl font-semibold mb-4">Add New Product</h3>
+          <h3 class="text-xl font-semibold mb-4 text-stone-100">Add New Product</h3>
         </div>
         <div class="px-6 pb-6 overflow-y-auto flex-1">
           <form on:submit={handleProductSubmit} class="space-y-4">
             <div>
-              <label for="product-name" class="block text-sm font-medium text-gray-700">Product Name *</label>
+              <label for="product-name" class="block text-sm font-medium text-stone-100">Product Name *</label>
               <input 
                 id="product-name"
                 bind:value={productName} 
                 type="text" 
                 required 
-                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" 
+                class="mt-1 block w-full rounded-md border-stone-600 shadow-sm focus:border-stone-100 focus:ring-stone-100 bg-stone-800 text-stone-100" 
               />
             </div>
 
             <div>
-              <label for="product-description" class="block text-sm font-medium text-gray-700">Description</label>
+              <label for="product-description" class="block text-sm font-medium text-stone-100">Description</label>
               <textarea 
                 id="product-description"
                 bind:value={productDescription} 
                 rows="3"
-                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                class="mt-1 block w-full rounded-md border-stone-600 shadow-sm focus:border-stone-100 focus:ring-stone-100 bg-stone-800 text-stone-100"
               ></textarea>
             </div>
 
             <div class="grid grid-cols-2 gap-4">
               <div>
-                <label for="product-price" class="block text-sm font-medium text-gray-700">Price *</label>
+                <label for="product-price" class="block text-sm font-medium text-stone-100">Price *</label>
                 <input 
                   id="product-price"
                   bind:value={productPrice} 
@@ -461,16 +461,16 @@
                   step="0.01"
                   min="0"
                   required 
-                  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" 
+                  class="mt-1 block w-full rounded-md border-stone-600 shadow-sm focus:border-stone-100 focus:ring-stone-100 bg-stone-800 text-stone-100" 
                 />
               </div>
 
               <div>
-                <label for="currency-type" class="block text-sm font-medium text-gray-700">Currency</label>
+                <label for="currency-type" class="block text-sm font-medium text-stone-100">Currency</label>
                 <select 
                   id="currency-type"
                   bind:value={currencyType}
-                  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  class="mt-1 block w-full rounded-md border-stone-600 shadow-sm focus:border-stone-100 focus:ring-stone-100 bg-stone-800 text-stone-100"
                 >
                   <option selected value="EUR">EUR (€)</option>
                   <option value="USD">USD ($)</option>
@@ -482,12 +482,12 @@
             </div>
 
             <div>
-              <label for="product-type" class="block text-sm font-medium text-gray-700">Product Type *</label>
+              <label for="product-type" class="block text-sm font-medium text-stone-100">Product Type *</label>
               <select 
                 id="product-type"
                 bind:value={productType} 
                 required
-                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                class="mt-1 block w-full rounded-md border-stone-600 shadow-sm focus:border-stone-100 focus:ring-stone-100 bg-stone-800 text-stone-100"
               >
                 {#each productTypes as type}
                   <option value={type.value}>{type.label}</option>
@@ -497,29 +497,29 @@
 
             <!-- Role-based limits for WCS balance -->
             <div class="border-t pt-4">
-              <h4 class="text-sm font-medium text-gray-700 mb-2">Role Balance Limits (Optional)</h4>
-              <p class="text-xs text-gray-500 mb-3">Set limits to maintain leader/follower balance at your event</p>
+              <h4 class="text-sm font-medium text-stone-100 mb-2">Role Balance Limits (Optional)</h4>
+              <p class="text-xs text-stone-100 mb-3">Set limits to maintain leader/follower balance at your event</p>
               <div class="grid grid-cols-2 gap-4">
                 <div>
-                  <label for="leader-limit" class="block text-sm font-medium text-gray-700">Max Leaders</label>
+                  <label for="leader-limit" class="block text-sm font-medium text-stone-100">Max Leaders</label>
                   <input 
                     id="leader-limit"
                     bind:value={leaderLimit} 
                     type="number" 
                     min="1"
                     placeholder="e.g., 50"
-                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" 
+                    class="mt-1 block w-full rounded-md border-stone-600 shadow-sm focus:border-stone-100 focus:ring-stone-400 bg-stone-800 text-stone-100" 
                   />
                 </div>
                 <div>
-                  <label for="follower-limit" class="block text-sm font-medium text-gray-700">Max Followers</label>
+                  <label for="follower-limit" class="block text-sm font-medium text-stone-100">Max Followers</label>
                   <input 
                     id="follower-limit"
                     bind:value={followerLimit} 
                     type="number" 
                     min="1"
                     placeholder="e.g., 50"
-                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" 
+                    class="mt-1 block w-full rounded-md border-stone-600 shadow-sm focus:border-stone-100 focus:ring-stone-400 bg-stone-800 text-stone-100" 
                   />
                 </div>
               </div>
@@ -527,35 +527,35 @@
 
             <div class="grid grid-cols-2 gap-4">
               <div>
-                <label for="sale-start" class="block text-sm font-medium text-gray-700">Sale Start</label>
+                <label for="sale-start" class="block text-sm font-medium text-stone-100">Sale Start</label>
                 <input 
                   id="sale-start"
                   bind:value={saleStart} 
                   type="datetime-local"
-                  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" 
+                  class="mt-1 block w-full rounded-md border-stone-600 shadow-sm focus:border-stone-100 focus:ring-stone-400 bg-stone-800 text-stone-100" 
                 />
               </div>
               <div>
-                <label for="sale-end" class="block text-sm font-medium text-gray-700">Sale End</label>
+                <label for="sale-end" class="block text-sm font-medium text-stone-100">Sale End</label>
                 <input 
                   id="sale-end"
                   bind:value={saleEnd} 
                   type="datetime-local"
-                  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" 
+                  class="mt-1 block w-full rounded-md border-stone-600 shadow-sm focus:border-stone-100 focus:ring-stone-400 bg-stone-800 text-stone-100" 
                 />
               </div>
             </div>
 
             <div class="grid grid-cols-1 gap-4">
               <div>
-                <label for="quantity-total" class="block text-sm font-medium text-gray-700">Total Quantity</label>
+                <label for="quantity-total" class="block text-sm font-medium text-stone-100">Total Quantity</label>
                 <input 
                   id="quantity-total"
                   bind:value={quantityTotal} 
                   type="number" 
                   min="1"
                   placeholder="Leave empty for unlimited"
-                  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" 
+                  class="mt-1 block w-full rounded-md border-stone-600 shadow-sm focus:border-stone-100 focus:ring-stone-400 bg-stone-800 text-stone-100" 
                 />
               </div>
             </div>
@@ -564,13 +564,13 @@
               <button 
                 type="button" 
                 on:click={closeProductModal}
-                class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
+                class="px-4 py-2 bg-stone-600 text-stone-100 rounded-md hover:bg-stone-700 transition duration-300"
               >
                 Cancel
               </button>
               <button 
                 type="submit" 
-                class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                class="px-4 py-2 bg-amber-600 text-white rounded-md hover:bg-amber-700 transition duration-300"
               >
                 Create Product
               </button>
@@ -584,36 +584,36 @@
   <!-- Product Edit Modal -->
   {#if showEditModal}
     <div class="fixed inset-0 bg-white/10 backdrop-blur-lg flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-lg shadow-lg max-w-lg w-full max-h-[90vh] flex flex-col">
+      <div class="bg-stone-800 rounded-lg shadow-lg max-w-lg w-full max-h-[90vh] flex flex-col">
         <div class="p-6 flex-shrink-0">
           <h3 class="text-xl font-semibold mb-4">Edit Product</h3>
         </div>
         <div class="px-6 pb-6 overflow-y-auto flex-1">
           <form on:submit={handleEditSubmit} class="space-y-4">
             <div>
-              <label for="edit-product-name" class="block text-sm font-medium text-gray-700">Product Name *</label>
+              <label for="edit-product-name" class="block text-sm font-medium text-stone-100">Product Name *</label>
               <input 
                 id="edit-product-name"
                 bind:value={productName} 
                 type="text" 
                 required 
-                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" 
+                class="mt-1 block w-full rounded-md border-stone-600 shadow-sm focus:border-stone-100 focus:ring-stone-400 bg-stone-800 text-stone-100" 
               />
             </div>
 
             <div>
-              <label for="edit-product-description" class="block text-sm font-medium text-gray-700">Description</label>
+              <label for="edit-product-description" class="block text-sm font-medium text-stone-100">Description</label>
               <textarea 
                 id="edit-product-description"
                 bind:value={productDescription} 
                 rows="3"
-                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                class="mt-1 block w-full rounded-md border-stone-600 shadow-sm focus:border-stone-100 focus:ring-stone-400 bg-stone-800 text-stone-100"
               ></textarea>
             </div>
 
             <div class="grid grid-cols-2 gap-4">
               <div>
-                <label for="edit-product-price" class="block text-sm font-medium text-gray-700">Price *</label>
+                <label for="edit-product-price" class="block text-sm font-medium text-stone-100">Price *</label>
                 <input 
                   id="edit-product-price"
                   bind:value={productPrice} 
@@ -621,16 +621,16 @@
                   step="0.01"
                   min="0"
                   required 
-                  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" 
+                  class="mt-1 block w-full rounded-md border-stone-600 shadow-sm focus:border-stone-100 focus:ring-stone-400 bg-stone-800 text-stone-100" 
                 />
               </div>
 
               <div>
-                <label for="edit-currency-type" class="block text-sm font-medium text-gray-700">Currency</label>
+                <label for="edit-currency-type" class="block text-sm font-medium text-stone-100">Currency</label>
                 <select 
                   id="edit-currency-type"
                   bind:value={currencyType}
-                  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  class="mt-1 block w-full rounded-md border-stone-600 shadow-sm focus:border-stone-100 focus:ring-stone-400 bg-stone-800 text-stone-100"
                 >
                   <option value="USD">USD ($)</option>
                   <option value="EUR">EUR (€)</option>
@@ -642,12 +642,12 @@
             </div>
 
             <div>
-              <label for="edit-product-type" class="block text-sm font-medium text-gray-700">Product Type *</label>
+              <label for="edit-product-type" class="block text-sm font-medium text-stone-100">Product Type *</label>
               <select 
                 id="edit-product-type"
                 bind:value={productType} 
                 required
-                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                class="mt-1 block w-full rounded-md border-stone-600 shadow-sm focus:border-stone-100 focus:ring-stone-400 bg-stone-800 text-stone-100"
               >
                 {#each productTypes as type}
                   <option value={type.value}>{type.label}</option>
@@ -657,29 +657,29 @@
 
             <!-- Role-based limits for WCS balance -->
             <div class="border-t pt-4">
-              <h4 class="text-sm font-medium text-gray-700 mb-2">Role Balance Limits (Optional)</h4>
-              <p class="text-xs text-gray-500 mb-3">Set limits to maintain leader/follower balance at your event</p>
+              <h4 class="text-sm font-medium text-stone-100 mb-2">Role Balance Limits (Optional)</h4>
+              <p class="text-xs text-stone-100 mb-3">Set limits to maintain leader/follower balance at your event</p>
               <div class="grid grid-cols-2 gap-4">
                 <div>
-                  <label for="edit-leader-limit" class="block text-sm font-medium text-gray-700">Max Leaders</label>
+                  <label for="edit-leader-limit" class="block text-sm font-medium text-stone-100">Max Leaders</label>
                   <input 
                     id="edit-leader-limit"
                     bind:value={leaderLimit} 
                     type="number" 
                     min="1"
                     placeholder="e.g., 50"
-                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" 
+                    class="mt-1 block w-full rounded-md border-stone-600 shadow-sm focus:border-stone-100 focus:ring-stone-400 bg-stone-800 text-stone-100" 
                   />
                 </div>
                 <div>
-                  <label for="edit-follower-limit" class="block text-sm font-medium text-gray-700">Max Followers</label>
+                  <label for="edit-follower-limit" class="block text-sm font-medium text-stone-100">Max Followers</label>
                   <input 
                     id="edit-follower-limit"
                     bind:value={followerLimit} 
                     type="number" 
                     min="1"
                     placeholder="e.g., 50"
-                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" 
+                    class="mt-1 block w-full rounded-md border-stone-600 shadow-sm focus:border-stone-100 focus:ring-stone-400 bg-stone-800 text-stone-100" 
                   />
                 </div>
               </div>
@@ -687,35 +687,35 @@
 
             <div class="grid grid-cols-2 gap-4">
               <div>
-                <label for="edit-sale-start" class="block text-sm font-medium text-gray-700">Sale Start</label>
+                <label for="edit-sale-start" class="block text-sm font-medium text-stone-100">Sale Start</label>
                 <input 
                   id="edit-sale-start"
                   bind:value={saleStart} 
                   type="datetime-local"
-                  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" 
+                  class="mt-1 block w-full rounded-md border-stone-600 shadow-sm focus:border-stone-100 focus:ring-stone-400 bg-stone-800 text-stone-100" 
                 />
               </div>
               <div>
-                <label for="edit-sale-end" class="block text-sm font-medium text-gray-700">Sale End</label>
+                <label for="edit-sale-end" class="block text-sm font-medium text-stone-100">Sale End</label>
                 <input 
                   id="edit-sale-end"
                   bind:value={saleEnd} 
                   type="datetime-local"
-                  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" 
+                  class="mt-1 block w-full rounded-md border-stone-600 shadow-sm focus:border-stone-100 focus:ring-stone-400 bg-stone-800 text-stone-100" 
                 />
               </div>
             </div>
 
             <div class="grid grid-cols-2 gap-4">
               <div>
-                <label for="edit-quantity-total" class="block text-sm font-medium text-gray-700">Total Quantity</label>
+                <label for="edit-quantity-total" class="block text-sm font-medium text-stone-100">Total Quantity</label>
                 <input 
                   id="edit-quantity-total"
                   bind:value={quantityTotal} 
                   type="number" 
                   min="1"
                   placeholder="Leave empty for unlimited"
-                  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" 
+                  class="mt-1 block w-full rounded-md border-stone-600 shadow-sm focus:border-stone-100 focus:ring-stone-400 bg-stone-800 text-stone-100" 
                 />
               </div>
               <div class="flex items-center">
@@ -723,9 +723,9 @@
                   <input 
                     type="checkbox" 
                     bind:checked={isActive}
-                    class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    class="rounded border-stone-600 text-stone-100 shadow-sm focus:border-stone-100 focus:ring-stone-400"
                   />
-                  <span class="ml-2 text-sm font-medium text-gray-700">Active</span>
+                  <span class="ml-2 text-sm font-medium text-stone-100">Active</span>
                 </label>
               </div>
             </div>
@@ -734,13 +734,13 @@
               <button 
                 type="button" 
                 on:click={closeEditModal}
-                class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
+                class="px-4 py-2 bg-stone-600 text-stone-100 rounded-md hover:bg-stone-700 transition duration-300"
               >
                 Cancel
               </button>
               <button 
                 type="submit" 
-                class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                class="px-4 py-2 bg-amber-600 text-white rounded-md hover:bg-amber-700 transition duration-300"
               >
                 Update Product
               </button>
@@ -767,3 +767,33 @@
     on:close={closeParticipantsModal}
   />
 </div>
+
+<style>
+  	.neumorph-card {
+		box-shadow: 10px 10px 30px rgba(2,6,23,0.7), -8px -8px 20px rgba(255,255,255,0.02);
+		border-radius: 18px;
+		border: 1px solid rgba(255,255,255,0.03);
+	}
+	.neumorph-subcard {
+		background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(0,0,0,0.04));
+		box-shadow: inset 4px 4px 10px rgba(2,6,23,0.5), inset -4px -4px 8px rgba(255,255,255,0.02);
+		border-radius: 12px;
+	}
+	.neumorph-btn {
+		box-shadow: 6px 6px 16px rgba(2,6,23,0.6), -6px -6px 12px rgba(255,255,255,0.02);
+		border: 1px solid rgba(255,255,255,0.03);
+	}
+
+	input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active
+  {
+    /* The large inset box-shadow covers the browser's background */
+    -webkit-box-shadow: 0 0 0 1000px #1c1917bd inset !important;
+    /* Change the text color to match your design */
+    -webkit-text-fill-color: #F5F5F4 !important;
+    /* Optional: Add a smooth transition */
+    transition: background-color 5000s ease-in-out 0s;
+  }
+</style>

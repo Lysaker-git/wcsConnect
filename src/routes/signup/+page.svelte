@@ -35,38 +35,39 @@
   }
 </script>
 
-<div class="max-w-md mx-auto py-12 px-6">
-  <h1 class="text-2xl font-bold mb-4">Sign Up</h1>
+<div class="bg-stone-950/90 w-full">
+  <div class="max-w-md mx-auto py-12 px-6 w-full">
+    <h1 class="text-stone-100 text-2xl font-bold mb-4">Sign Up</h1>
   {#if message}
     <div class="mb-4 text-sm text-red-600">{message}</div>
   {/if}
 
   <form on:submit|preventDefault={onSubmit} class="space-y-4">
     <div>
-      <label for="signup-email" class="block text-sm font-medium text-gray-700">Email</label>
-      <input id="signup-email" bind:value={email} type="email" name="email" required class="mt-1 block w-full rounded-md border-gray-200 shadow-sm" />
+      <label for="signup-email" class="block text-sm font-medium text-stone-300">Email</label>
+      <input id="signup-email" bind:value={email} type="email" name="email" required class="mt-1 block w-full rounded-md border-stone-700 bg-stone-800 text-stone-100 shadow-sm" />
     </div>
 
     <div>
-      <label for="signup-password" class="block text-sm font-medium text-gray-700">Password</label>
-      <input id="signup-password" bind:value={password} type="password" name="password" required class="mt-1 block w-full rounded-md border-gray-200 shadow-sm" />
+      <label for="signup-password" class="block text-sm font-medium text-stone-300">Password</label>
+      <input id="signup-password" bind:value={password} type="password" name="password" required class="mt-1 block w-full rounded-md border-stone-700 bg-stone-800 text-stone-100 shadow-sm" />
     </div>
 
     <div>
-      <label for="signup-username" class="block text-sm font-medium text-gray-700">Username</label>
-      <input id="signup-username" bind:value={username} type="text" name="username" required class="mt-1 block w-full rounded-md border-gray-200 shadow-sm" />
+      <label for="signup-username" class="block text-sm font-medium text-stone-300">Username</label>
+      <input id="signup-username" bind:value={username} type="text" name="username" required class="mt-1 block w-full rounded-md border-stone-700 bg-stone-800 text-stone-100 shadow-sm" />
     </div>
 
     <div>
-      <label for="signup-role" class="block text-sm font-medium text-gray-700">Role</label>
-      <select id="signup-role" bind:value={role} name="role" class="mt-1 block w-full rounded-md border-gray-200 shadow-sm">
+      <label for="signup-role" class="block text-sm font-medium text-stone-300">Role</label>
+      <select id="signup-role" bind:value={role} name="role" class="mt-1 block w-full rounded-md border-stone-700 bg-stone-800 text-stone-100 shadow-sm">
         <option value="follower">Follower</option>
         <option value="leader">Leader</option>
       </select>
     </div>
 
     <fieldset class="mt-2">
-      <legend class="block text-sm font-medium text-gray-700">Choose an avatar</legend>
+      <legend class="block text-sm font-medium text-stone-300">Choose an avatar</legend>
       <div class="mt-2 flex gap-3">
         <label class="inline-flex items-center gap-2">
           <input id="signup-avatar-male" type="radio" bind:group={avatar_url} name="avatar_url" value={maleAvatar} checked />
@@ -80,7 +81,24 @@
     </fieldset>
 
     <div>
-      <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md">Sign Up</button>
+      <button type="submit" class="px-4 py-2 bg-stone-600 text-white rounded-md">Sign Up</button>
     </div>
   </form>
+  </div>
 </div>
+
+<style>
+    input:-webkit-autofill,
+    input:-webkit-autofill:hover,
+    input:-webkit-autofill:focus,
+    input:-webkit-autofill:active
+    {
+      /* The large inset box-shadow covers the browser's background */
+      -webkit-box-shadow: 0 0 0 1000px #1C1917 inset !important;
+      /* Change the text color to match your design */
+      -webkit-text-fill-color: #F5F5F4 !important;
+      /* Optional: Add a smooth transition */
+      transition: background-color 5000s ease-in-out 0s;
+    }
+  /* Add any additional styles if needed */
+</style>

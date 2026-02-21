@@ -60,9 +60,9 @@ export const actions = {
                 .from('events')
                 .update({ title, start_date, end_date })
                 .eq('id', eventId)
-                .select()
-                .single();
+                .select();
 
+            console.log('Updated event response, events:', { updatedEvent, eventError });
             if (eventError) {
                 return fail(500, { message: 'Failed to update event', error: eventError });
             }
@@ -70,24 +70,25 @@ export const actions = {
             // Prepare details payload
             const detailsPayload: any = {
                 event_id: eventId,
-                description,
-                address,
-                hotel,
-                venue,
-                max_participants,
-                organizer_name,
-                organizer_email,
-                organizer_phone,
+                description: description,
+                address: address,
+                hotel: hotel,
+                venue: venue,
+                max_participants: max_participants,
+                organizer_name: organizer_name,
+                organizer_email: organizer_email,
+                organizer_phone: organizer_phone,
                 social_links: social_links ? JSON.parse(social_links) : null,
-                schedule_image_url,
-                transportation,
-                event_type,
-                banner_image_url,
-                promo_video_url,
-                accessibility,
-                languages,
+                schedule_image_url: schedule_image_url,
+                transportation: transportation,
+                event_type: event_type,
+                banner_image_url: banner_image_url,
+                promo_video_url: promo_video_url,
+                accessibility: accessibility,
+                languages: languages,
                 tags: tags ? tags.split(',').map((t: string) => t.trim()) : null
             };
+            console.log('Prepared details payload:', detailsPayload);
 
             // Try updating existing details row
             const { data: updatedDetails, error: detailsError } = await supabase
@@ -96,6 +97,7 @@ export const actions = {
                 .eq('event_id', eventId)
                 .select();
 
+            console.log('Updated details response:', { updatedDetails, detailsError });    
             if (detailsError) {
                 return fail(500, { message: 'Failed to update event details', error: detailsError });
             }
@@ -109,6 +111,7 @@ export const actions = {
                     return fail(500, { message: 'Failed to insert event details', error: insertError });
                 }
             }
+            console.log('Event and details updated successfully');
 
             throw redirect(303, `/admin/events/${eventId}`);
         } catch (err) {

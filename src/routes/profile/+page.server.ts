@@ -27,20 +27,14 @@ export const load = async ({ cookies }) => {
   console.log('[DEBUG myEvents] User exists:', !!user);
   console.log('[DEBUG myEvents] Profile exists:', !!profile);
   if (user && profile) {
-    console.log('[DEBUG myEvents] User ID:', user.id);
     
     // First, let's check if user has ANY event_participants records
-    console.log('[DEBUG myEvents] Checking for ANY event_participants records for this user');
     const { data: allRecords, error: allError } = await supabase
       .from('event_participants')
       .select('*')
       .eq('user_id', user.id);
-    
-    console.log('[DEBUG myEvents] All user records:', allRecords);
-    console.log('[DEBUG myEvents] All records error:', allError);
-    
+        
     try {
-      console.log('[DEBUG myEvents] Executing Supabase query for event_participants with Event Director role');
       const { data, error } = await supabase
         .from('event_participants')
         .select(`
@@ -54,9 +48,6 @@ export const load = async ({ cookies }) => {
         `)
         .eq('user_id', user.id)
         .eq('event_role', 'Event Director');
-
-      console.log('[DEBUG myEvents] Query result - data:', data);
-      console.log('[DEBUG myEvents] Query result - error:', error);
 
       if (!error && data) {
         console.log('[DEBUG myEvents] Mapping data to events');
@@ -85,7 +76,7 @@ export const load = async ({ cookies }) => {
           event_id,
           status,
           created_at,
-          events ( id, title, start_date )
+          events ( id, title, start_date, end_date )
         `)
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });

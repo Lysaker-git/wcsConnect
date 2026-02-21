@@ -15,3 +15,12 @@ export async function selectAllFromSupabase(table: string, columns: string = '*'
     .select(columns);
   return { data, error };
 }
+
+export async function selectFromSupabaseDetailed(table: string, columns: string = '*', eventId: string, columnName: string) {
+  const { data, error } = await supabase
+    .from(table)
+    .select(columns)
+    .eq(columnName, eventId)
+    .single();
+  return { data, error };
+}

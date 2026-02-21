@@ -1,38 +1,54 @@
-import { selectFromSupabase } from '$lib/api/selectFromSupabase';
-import type { PageLoad } from './$types';
+import { selectFromSupabase, selectFromSupabaseDetailed } from '$lib/api/selectFromSupabase';
+import type { PageServerLoad } from './$types';
 
-// The load function receives the 'params' object which contains the dynamic segments of the URL.
-export const load: PageLoad = async ({ params }) => {
+// The server load receives the 'params' and can read cookies to determine auth state.
+export const load: PageServerLoad = async ({ params, cookies }) => {
     const eventId = params.eventID;
 
-    console.log('[Event Load] Received eventID param:', eventId);
+    // console.log('[Event Load] Received eventID param:', eventId);
 
-    console.log(`[Event Load] Attempting to fetch event with ID: ${eventId}`);
+    // Parse sb_user cookie to determine auth state
+    let user = null;
+    try {
+        const sbUser = cookies.get('sb_user');
+        if (sbUser) {
+            const parsed = JSON.parse(sbUser);
+            if (parsed && parsed.id) user = parsed;
+        }
+    } catch (e) {
+        console.warn('[Event Load] Failed to parse sb_user cookie', e);
+        user = null;
+    }
 
-    // Assuming selectFromSupabase supports filtering using a structure like:
-    // { column: 'id', operator: 'eq', value: eventId }
-    // This fetches the row where the 'id' column equals the eventId.
+    // console.log(`[Event Load] Attempting to fetch event with ID: ${eventId}`);
+
     const { data: events, error } = await selectFromSupabase(
         'events',
         '*',
         eventId // Select all columns
-        
     );
     console.log('[Event Load] Supabase response - data:', events);
 
+    const { data: eventDetails } = await selectFromSupabaseDetailed(
+        'event_details',
+        '*',
+        eventId, // Select all columns
+        'event_id' // Column name to match
+    );
+    console.log('[Event Load] Supabase response for event_details - data:', eventDetails); 
+
     if (error) {
         console.error(`[Event Load] Database Error: ${error.message}`);
-        return { event: null, error: error.message };
+        return { event: null, error: error.message, user, isAuthenticated: !!user };
     }
     
-    // Supabase returns the object directly (not an array)
     const event = events ?? null;
 
     if (!event) {
         console.warn(`[Event Load] Event not found for ID: ${eventId}`);
-        return { event: null, error: 'Event not found' };
+        return { event: null, error: 'Event not found', user, isAuthenticated: !!user };
     }
     
-    // Return the single event object
-    return { event };
+    // Return the single event object and authentication flag
+    return { event, user, isAuthenticated: !!user, eventDetails };
 }

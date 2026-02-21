@@ -33,6 +33,8 @@ export const load = async ({ params, cookies }) => {
             .eq('is_active', true)
             .or(`sale_start.is.null,sale_start.lte.${now}`)
             .or(`sale_end.is.null,sale_end.gte.${now}`);
+
+
         if (!error && data) {
             // Filter server-side: quantity_sold < quantity_total
             products = data.filter(
@@ -42,11 +44,28 @@ export const load = async ({ params, cookies }) => {
                         : true)
             );
         }
+
+        
+        
+        
     } catch (pe) {
         console.warn('[registration load] products fetch error', pe);
     }
 
-    return { user, profile, products };
+            // Fetch event fee model
+    const { data: eventFeeData } = await supabase
+        .from('events')
+        .select('stripe_fee_model')
+        .eq('id', params.eventID)
+        .single();
+
+    
+    return { 
+        user, 
+        profile, 
+        products,
+        stripe_fee_model: eventFeeData?.stripe_fee_model ?? 'on_top'
+    };
 };
 
 export const actions = {

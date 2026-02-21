@@ -35,7 +35,7 @@ export const load = async ({ params }) => {
 				// Fetch event info
 				const { data: eventData, error: eventError } = await supabase
 					.from('events')
-					.select('id, title')
+					.select('id, title, stripe_fee_model')
 					.eq('id', participant.event_id)
 					.single();
 				if (!eventError && eventData) event = eventData;
@@ -79,6 +79,7 @@ export const load = async ({ params }) => {
 		participantUsername,
 		participantProducts,
 		total,
-		hasAccommodationProduct
+		hasAccommodationProduct,
+		stripe_fee_model: event?.stripe_fee_model ?? 'on_top'
 	};
 };

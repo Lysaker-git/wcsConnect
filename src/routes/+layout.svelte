@@ -9,5 +9,5 @@
 </script>
 
 <Header user={data?.user ?? null} />
-{@render children()}
+	{@render children()}
 <Footer />
