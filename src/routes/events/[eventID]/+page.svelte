@@ -183,7 +183,7 @@
                     <div class="mt-12 pt-6">
                         {#if isAuthenticated}
                             <a href={`/events/${event.id}/register`}
-                               class="block text-center w-full py-4 bg-blue-600 text-white text-xl font-bold rounded-xl shadow-xl hover:bg-blue-700 transition duration-300"
+                               class="block text-center w-full py-4 bg-amber-600 text-white text-xl font-bold rounded-xl shadow-xl hover:bg-amber-700 transition duration-300"
                                role="button"
                             >
                                 Register for {event.title}

@@ -1,6 +1,6 @@
 import { createEvent } from '$lib/api/createEvent';
 import { fail } from '@sveltejs/kit';
-import { supabase } from '$lib/api/supabaseClient';
+import { supabase } from "$lib/server/supabaseServiceClient";
 
 export const load = async ({ cookies }) => {
   const sbUser = cookies.get('sb_user');

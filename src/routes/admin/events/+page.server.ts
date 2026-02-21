@@ -1,5 +1,5 @@
 import type { PageServerLoad } from './$types';
-import { supabase } from '$lib/api/supabaseClient';
+import { supabase } from "$lib/server/supabaseServiceClient";
 
 export const load: PageServerLoad = async ({ cookies }) => {
   let myEvents: Array<{ id: string; title: string; start_date?: string; end_date?: string }> = [];

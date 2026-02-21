@@ -1,4 +1,4 @@
-import { supabase } from '$lib/api/supabaseClient';
+import { supabase } from "$lib/server/supabaseServiceClient";
 import { json, redirect } from '@sveltejs/kit'; // <-- Added redirect
 
 export async function POST({ request, cookies }) {
