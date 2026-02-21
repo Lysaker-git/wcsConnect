@@ -26,7 +26,7 @@
     form.set('avatar_url', avatar_url);
 
     try {
-      const res = await fetch('?/default', { method: 'POST', body: form, credentials: 'include' });
+      const res = await fetch('?/signUp', { method: 'POST', body: form, credentials: 'include' });
       
       if (res.redirected) {
         await goto(res.url);
