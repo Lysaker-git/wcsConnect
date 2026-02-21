@@ -78,7 +78,9 @@ export const actions = {
                 organizer_name: organizer_name,
                 organizer_email: organizer_email,
                 organizer_phone: organizer_phone,
-                social_links: social_links ? JSON.parse(social_links) : null,
+                social_links: social_links 
+                ? social_links.split(',').map((s: string) => s.trim()).filter(Boolean)
+                : null,
                 schedule_image_url: schedule_image_url,
                 transportation: transportation,
                 event_type: event_type,

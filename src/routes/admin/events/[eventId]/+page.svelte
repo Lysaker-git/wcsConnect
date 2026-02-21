@@ -1,5 +1,6 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
+  import { SiFacebook, SiInstagram, SiTiktok } from "@icons-pack/svelte-simple-icons";
   import EditEventDetailsModal from '$lib/components/EditEventDetailsModal.svelte';
   import ParticipantsModal from '$lib/components/ParticipantsModal.svelte';
   export let data: { event: any; eventDetails: any; user: any; products: any[] };
@@ -287,15 +288,31 @@
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-stone-400">Accessibility</label>
-            <p class="mt-1 text-stone-100">{data.eventDetails?.accessibility || '—'}</p>
+            <label class="block text-sm font-medium text-stone-400">Social Links</label>
+            <div class="mt-2 flex items-center space-x-3">
+              {#each data.eventDetails?.social_links || [] as link}
+                {#if link.includes('facebook.com')}
+                  <a href={link} target="_blank" rel="noreferrer" aria-label="Facebook" class="inline-block text-blue-500">
+                    <SiFacebook class="w-6 h-6"/>
+                  </a>
+                {:else if link.includes('instagram.com')}
+                  <a href={link} target="_blank" rel="noreferrer" aria-label="Instagram" class="inline-block text-pink-500">
+                    <SiInstagram class="w-6 h-6"/>
+                  </a>
+                {:else if link.includes('tiktok.com')}
+                  <a href={link} target="_blank" rel="noreferrer" aria-label="TikTok" class="inline-block text-black">
+                    <SiTiktok class="w-6 h-6"/>
+                  </a>
+                {/if}
+              {/each}
+            </div>
           </div>
 
           <div>
             <label class="block text-sm font-medium text-stone-400">Media / Links</label>
             <div class="mt-1 space-y-1">
               {#if data.eventDetails?.banner_image_url}
-                <a class="text-sm text-blue-600 hover:underline block" href={data.eventDetails.banner_image_url} target="_blank" rel="noreferrer">Banner Image</a>
+                <img src='{data.eventDetails.banner_image_url}' alt="Banner" class="mt-2 rounded-md border border-stone-700" />
               {/if}
               {#if data.eventDetails?.schedule_image_url}
                 <a class="text-sm text-blue-600 hover:underline block" href={data.eventDetails.schedule_image_url} target="_blank" rel="noreferrer">Schedule Image</a>

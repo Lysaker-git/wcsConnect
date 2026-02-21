@@ -1,6 +1,9 @@
 <script lang="ts">
   import eventImage from '$lib/images/placeholders/eventPlaceholder.jpg';
   import eventImageTwo from '$lib/images/placeholders/eventPlaceholderTwo.jpg';
+  import SiFacebook from '@icons-pack/svelte-simple-icons/icons/SiFacebook';
+  import SiInstagram from '@icons-pack/svelte-simple-icons/icons/SiInstagram';
+  import SiTiktok from '@icons-pack/svelte-simple-icons/icons/SiTiktok';
   export let data;
 
   let query = '';
@@ -156,7 +159,19 @@
                       {#if socials.length}
                         <div class="flex gap-2 mt-1">
                           {#each socials as s}
-                            <a href={s.url} class="text-xs text-blue-200 hover:underline" rel="noopener noreferrer" target="_blank">{truncate(s.label, 18)}</a>
+                            {#if s.label.toLowerCase().includes('facebook')}
+                              <a href={s.url} class="text-blue-500 hover:underline" rel="noopener noreferrer" target="_blank" aria-label="Facebook">
+                                <SiFacebook class="w-6 h-6"/>
+                              </a>
+                            {:else if s.label.toLowerCase().includes('instagram')}
+                              <a href={s.url} class="text-pink-500 hover:underline" rel="noopener noreferrer" target="_blank" aria-label="Instagram">
+                                <SiInstagram class="w-6 h-6"/>
+                              </a>
+                            {:else if s.label.toLowerCase().includes('tiktok')}
+                              <a href={s.url} class="text-black hover:underline" rel="noopener noreferrer" target="_blank" aria-label="TikTok">
+                                <SiTiktok class="w-6 h-6"/>
+                              </a>
+                            {/if}
                           {/each}
                         </div>
                       {/if}

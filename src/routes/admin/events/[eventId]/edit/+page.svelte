@@ -18,7 +18,11 @@
   let organizer_name = eventDetails?.organizer_name ?? '';
   let organizer_email = eventDetails?.organizer_email ?? '';
   let organizer_phone = eventDetails?.organizer_phone ?? '';
-  let social_links = eventDetails?.social_links ? JSON.stringify(eventDetails.social_links) : '';
+  let social_links = eventDetails?.social_links 
+    ? (Array.isArray(eventDetails.social_links) 
+      ? eventDetails.social_links.join(', ') 
+      : JSON.stringify(eventDetails.social_links))
+    : '';
   let schedule_image_url = eventDetails?.schedule_image_url ?? '';
   let transportation = eventDetails?.transportation ?? '';
   let event_type = eventDetails?.event_type ?? '';
@@ -189,8 +193,9 @@
           </div>
 
           <div>
-            <label for="social_links" class="block text-sm font-medium text-gray-600 mb-1.5">Social Media Links (JSON)</label>
+            <label for="social_links" class="block text-sm font-medium text-gray-600 mb-1.5">Social Media Links</label>
             <input id="social_links" type="text" bind:value={social_links} class="neumorph-input w-full px-4 py-2.5 rounded-xl text-gray-700 outline-none transition-all focus:ring-2 focus:ring-[var(--color-blue-700)]/20" />
+            <p class="text-xs text-gray-400 mt-1">Separate multiple links with a comma and a space (i.e., link1, link2, link3)</p>
           </div>
 
           <div>
@@ -211,6 +216,7 @@
             <div>
               <label for="languages" class="block text-sm font-medium text-gray-600 mb-1.5">Languages</label>
               <input id="languages" type="text" bind:value={languages} class="neumorph-input w-full px-4 py-2.5 rounded-xl text-gray-700 outline-none transition-all focus:ring-2 focus:ring-[var(--color-blue-700)]/20" placeholder="English, Norwegian" />
+              <p class="text-xs text-gray-400 mt-1">Separate multiple languages with a comma and a space (i.e., English, Norwegian, Spanish)</p>
             </div>
           </div>
 
