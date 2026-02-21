@@ -2,7 +2,7 @@ import { fail, redirect } from '@sveltejs/kit';
 import { signUpUser } from '$lib/api/auth/signup/signup';
 
 export const actions = {
-  default: async ({ request }) => {
+  signUp: async ({ request }) => {
     try {
       const form = await request.formData();
       const email = form.get('email')?.toString();
