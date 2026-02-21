@@ -324,7 +324,7 @@ $: isProfileIncomplete = user && (!profile || (
             <p class="italic">Stripe account connected.</p>
           </div>
             {:else}
-          <a href="/api/stripe/connect" class="block mt-4 px-4 py-2 bg-amber-600 text-white rounded-md font-semibold text-center shadow hover:bg-amber-700 transition">
+          <a href="/api/stripe/connect" class="block mt-4 mb-2 px-4 py-2 bg-amber-600 text-white rounded-md font-semibold text-center shadow hover:bg-amber-700 transition">
                 Connect with Stripe to sell tickets
           </a>
         {/if}
