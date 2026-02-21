@@ -1,4 +1,4 @@
-import { supabase } from '$lib/api/supabaseClient';
+import { supabase } from "$lib/server/supabaseServiceClient";
 import { error as svelteError } from '@sveltejs/kit';
 
 export const load = async ({ params, cookies }) => {

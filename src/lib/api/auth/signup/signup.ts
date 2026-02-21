@@ -1,4 +1,4 @@
-import { supabase } from '../../../server/supabaseServiceClient';
+import { supabase } from "$lib/server/supabaseServiceClient";
 
 
 export async function signUpUser(

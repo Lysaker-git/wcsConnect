@@ -1,4 +1,4 @@
-import { supabase } from '$lib/api/supabaseClient';
+import { supabase } from "$lib/server/supabaseServiceClient";
 
 export const load = async ({ params, url }) => {
     const participantId = url.searchParams.get('participantId');

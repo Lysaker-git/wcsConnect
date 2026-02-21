@@ -1,5 +1,5 @@
 import { fail, redirect } from '@sveltejs/kit';
-import { supabase } from '$lib/api/supabaseClient';
+import { supabase } from "$lib/server/supabaseServiceClient";
 
 export const actions = {
 	default: async ({ request, locals }) => {
