@@ -7,6 +7,8 @@
   // Accordion state
   let openSection = 'events';
 
+  let stripe_fee_model: 'on_top' | 'included' = 'on_top';
+
   // Events table fields
   let title = '';
   let start_date = '';
@@ -72,6 +74,7 @@
       form.append('accessibility', accessibility);
       form.append('languages', languages);
       form.append('tags', tags);
+      form.append('stripe_fee_model', stripe_fee_model);
 
       // encode crew as JSON string for server-side parsing
       form.append('crew', JSON.stringify(crew));
@@ -153,6 +156,44 @@
               <label for="end_date" class="block text-sm font-medium text-gray-600 mb-1.5">End Date</label>
               <input id="end_date" type="date" bind:value={end_date} class="neumorph-input w-full px-4 py-2.5 rounded-xl text-gray-700 outline-none transition-all focus:ring-2 focus:ring-[var(--color-blue-700)]/20" required />
             </div>
+          </div>
+          <div class="mt-4">
+            <p class="block text-sm font-medium text-gray-600 mb-2">Stripe Payment Fee (3.5%)</p>
+            <div class="flex gap-3">
+              <button
+                type="button"
+                class="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all border"
+                class:bg-blue-600={stripe_fee_model === 'on_top'}
+                class:text-white={stripe_fee_model === 'on_top'}
+                class:border-blue-600={stripe_fee_model === 'on_top'}
+                class:bg-white={stripe_fee_model === 'included'}
+                class:text-gray-600={stripe_fee_model === 'included'}
+                class:border-gray-200={stripe_fee_model === 'included'}
+                on:click={() => stripe_fee_model = 'on_top'}
+              >
+                Add on top of ticket price
+              </button>
+              <button
+                type="button"
+                class="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all border"
+                class:bg-blue-600={stripe_fee_model === 'included'}
+                class:text-white={stripe_fee_model === 'included'}
+                class:border-blue-600={stripe_fee_model === 'included'}
+                class:bg-white={stripe_fee_model === 'on_top'}
+                class:text-gray-600={stripe_fee_model === 'on_top'}
+                class:border-gray-200={stripe_fee_model === 'on_top'}
+                on:click={() => stripe_fee_model = 'included'}
+              >
+                Include in ticket price
+              </button>
+            </div>
+            <p class="text-xs text-gray-400 mt-2">
+              {#if stripe_fee_model === 'on_top'}
+                Buyers will see a 3.5% payment handling fee added to their total.
+              {:else}
+                You've already factored the 3.5% Stripe fee into your ticket prices.
+              {/if}
+            </p>
           </div>
         </div>
       {/if}

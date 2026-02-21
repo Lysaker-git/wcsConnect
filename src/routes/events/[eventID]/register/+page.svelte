@@ -1,9 +1,10 @@
 <script lang="ts">
+    // Route for /events/[eventID]/register showing the registration form and handling submission
     import { goto } from '$app/navigation';
     import { page } from '$app/stores';
 
-    export let data: { user?: { id?: string; email?: string } | null; profile?: any; products?: any[] };
-    let { profile, products = [] } = data;
+    export let data: { user?: { id?: string; email?: string } | null; profile?: any; products?: any[]; stripe_fee_model?: string };
+    let { profile, products = [], stripe_fee_model = 'on_top' } = data;
 
     // --- Age Calculation Helper ---
     function calculateAge(birthDate: string | undefined): number | string {
@@ -63,6 +64,19 @@
 
     // Count selected products
     $: selectedCount = (selectedTicket ? 1 : 0) + Object.values(selectedProducts).filter(q => q > 0).length + Object.values(selectedIntensives).filter(s => s).length;
+
+    $: cartSubtotal = [
+        ...(selectedTicket ? products.filter(p => p.id === selectedTicket) : []),
+        ...products.filter(p => selectedIntensives[p.id]),
+        ...products.filter(p => selectedProducts[p.id] > 0).map(p => ({
+            ...p,
+            price: p.price * (selectedProducts[p.id] || 0)
+        }))
+    ].reduce((sum, p) => sum + parseFloat(p.price), 0);
+
+    $: stripeFeePreview = stripe_fee_model === 'on_top' ? cartSubtotal * 0.035 : 0;
+    $: previewServiceFee = cartSubtotal * 0.01;
+    $: previewTotal = cartSubtotal + stripeFeePreview + previewServiceFee;
 
     async function goBack() {
         await goto('.');
@@ -431,13 +445,37 @@
                     {/if}
                 </div>
 
-                <!-- PRODUCTS SELECTED SUMMARY
-                <div class="bg-blue-50 border border-blue-200 rounded-lg p-6">
-                    <div class="flex items-center justify-between">
-                        <span class="text-gray-700 text-lg font-medium">Products Selected:</span>
-                        <span class="font-semibold text-lg text-blue-600">{selectedCount}</span>
+                {#if selectedCount > 0}
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-2">
+                        <p class="text-sm font-semibold text-gray-700 mb-2">Order Summary</p>
+                        <div class="flex justify-between text-sm text-gray-600">
+                            <span>Tickets subtotal</span>
+                            <span>{cartSubtotal.toFixed(2)} {products[0]?.currency_type || 'EUR'}</span>
+                        </div>
+                        {#if stripe_fee_model === 'on_top'}
+                            <div class="flex justify-between text-sm text-gray-600">
+                                <span>Payment handling fee (3.5%)</span>
+                                <span>{stripeFeePreview.toFixed(2)} {products[0]?.currency_type || 'EUR'}</span>
+                            </div>
+                        {/if}
+                        <div class="flex justify-between text-sm text-gray-600">
+                            <span>Service fee (1%)</span>
+                            <span>{previewServiceFee.toFixed(2)} {products[0]?.currency_type || 'EUR'}</span>
+                        </div>
+                        <div class="flex justify-between border-t pt-2 font-semibold text-gray-800">
+                            <span>Estimated total</span>
+                            <span class="text-blue-600">{previewTotal.toFixed(2)} {products[0]?.currency_type || 'EUR'}</span>
+                        </div>
+                        <p class="text-xs text-gray-400">
+                            {#if stripe_fee_model === 'on_top'}
+                                3.5% covers card processing costs · 1% platform service fee
+                            {:else}
+                                Payment handling is included in ticket prices · 1% platform service fee
+                            {/if}
+                        </p>
+                        <p class="text-xs text-gray-400">Final amount charged at payment after approval</p>
                     </div>
-                </div> -->
+                {/if}
 
                 <!-- Register Button -->
                 <div class="pt-6">

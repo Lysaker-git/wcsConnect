@@ -28,6 +28,7 @@ export const actions = {
 			const accessibility = form.get('accessibility')?.toString();
 			const languages = form.get('languages')?.toString();
 			const tags = form.get('tags')?.toString();
+			const stripe_fee_model = form.get('stripe_fee_model')?.toString() === 'included' ? 'included' : 'on_top';
 
 			// Parse crew members (expecting JSON stringified array)
 			const crewRaw = form.get('crew')?.toString();
@@ -37,7 +38,7 @@ export const actions = {
 			// Insert into events table
 			const { data: eventData, error: eventError } = await supabase
 				.from('events')
-				.insert({ title, start_date, end_date })
+				.insert({ title, start_date, end_date, stripe_fee_model })
 				.select()
 				.single();
 			if (eventError || !eventData) {

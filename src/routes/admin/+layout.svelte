@@ -2,8 +2,8 @@
   // simple admin layout with internal navigation
 </script>
 
-<div class="min-h-screen bg-gray-50">
-  <nav class="bg-white border-b">
+<div class="min-h-screen bg-stone-900">
+  <nav class="bg-stone-800 border-b border-stone-700">
     <div class="max-w-5xl mx-auto px-4 py-3 flex gap-4">
       <a href="/admin/events" class="text-sm font-medium text-gray-600">Events</a>
     </div>

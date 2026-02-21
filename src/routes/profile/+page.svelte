@@ -2,14 +2,17 @@
   import { invalidate } from '$app/navigation';
   import { enhance } from '$app/forms';
   import * as Icon from 'svelte-flag-icons';
+  
+  export let data: { user?: { id?: string; email?: string } | null; profile?: any; myEvents?: any[] };
+  
+  $: isSuperUser = (data.profile?.userRole ?? []).includes('Super User');
+  $: stripeConnected = data.profile?.stripe_onboarding_complete === true;
 
   // Use static public URLs (moved to static/images/avatar/)
   const maleAvatar = '/images/avatar/male.png';
   const femaleAvatar = '/images/avatar/female.png';
 
-  export let data: { user?: { id?: string; email?: string } | null; profile?: any; myEvents?: any[] };
 
-  console.log('🔗 [profile +page.svelte] Loaded data:', data);
   let user = data?.user ?? null;
   let profile = data?.profile ?? null;
 
@@ -54,7 +57,6 @@
 $: isProfileIncomplete = user && (!profile || (
     !profile.description ||
     !profile.avatar_url ||
-    !profile.wsdcID ||
     !profile.wsdcLevel ||
     !profile.country ||
     !profile.age
@@ -124,36 +126,6 @@ $: isProfileIncomplete = user && (!profile || (
     isSigningIn = false;
   }
 
-  async function onSubmit(e: Event) {
-    e.preventDefault();
-    const form = new FormData();
-    form.set('title', title);
-    form.set('start_date', start_date);
-    form.set('end_date', end_date);
-
-    const res = await fetch('/profile?/createEvent', { method: 'POST', body: form, credentials: 'include' });
-
-    let json: any = null;
-    try {
-      json = await res.json();
-    } catch (err) {
-      console.error('[profile page] failed to parse json from response', err);
-      console.error('Server error: ' + String(err));
-      return;
-    }
-
-    if (res.ok) {
-      title = '';
-      start_date = '';
-      end_date = '';
-      showEventModal = false;
-      await invalidate('/events');
-    } else {
-      console.error('[profile page] server returned error:', json);
-      console.error('Error creating event: ' + (json?.message ?? JSON.stringify(json)));
-    }
-  }
-
   async function handleProfileSubmit(e: Event) {
     e.preventDefault();
     const form = e.target as HTMLFormElement;
@@ -171,59 +143,67 @@ $: isProfileIncomplete = user && (!profile || (
       console.log('Profile update response:', res);
       const result = await res.json();
       console.log('Profile update result:', result);
-      if (result.success) {
+      if (result.status === 200) {
         showModal = false;
         isSavingProfile = false;
         // Wait 2 seconds for database to sync before refreshing
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        console.log('Wating for database sync...');
+        await new Promise(resolve => setTimeout(resolve, 5000));
         // Refresh all data
-        await invalidate('/profile');
+        location.reload();
       } else {
         isSavingProfile = false;
         alert('Failed to update profile: ' + (result.message || 'Unknown error'));
+        location.reload();
       }
     } catch (err) {
       isSavingProfile = false;
       console.error('Profile update fetch error:', err);
       alert('Network error during profile update');
+      location.reload();
     }
   }
 </script>
 
-<div class="max-w-3xl mx-auto py-12 px-6">
+<div class="bg-stone-900 text-stone-100">
+  <div class="max-w-3xl mx-auto py-12 px-6">
   {#if user}
     {#if isProfileIncomplete}
-      <div class="mb-6 p-4 bg-yellow-100 border border-yellow-400 text-yellow-700 rounded-lg">
+      <div class="mb-6 p-4 bg-amber-900/20 border border-amber-700 text-amber-200 rounded-lg">
         <p class="font-semibold">Finish your profile</p>
         <p>Complete your profile to get the most out of the platform.</p>
+        <button on:click={() => showModal = true} class="mt-3 px-4 py-2 bg-amber-600 text-white rounded-md font-semibold hover:bg-amber-700 transition">
+          Complete my profile
+        </button>
       </div>
     {/if}
 
+
     <!-- UPDATED PROFILE SECTION -->
-    <section class="mb-8 p-6 rounded-lg bg-white shadow-xl border-t-4 border-blue-500">
+    <section class="neomorph-card mb-8 p-6 rounded-lg bg-stone-800 shadow-xl">
       <div class="flex items-start gap-6">
         <!-- Avatar -->
-        <img src={profile?.avatar_url ?? editAvatar} alt="avatar" class="w-20 h-20 rounded-full object-cover shadow-md ring-4 ring-blue-100" />
+        <img src={profile?.avatar_url ?? editAvatar} alt="avatar" class="w-20 h-20 rounded-full object-cover shadow-md ring-4 ring-amber-500" />
         
         <!-- Main Info -->
         <div>
-          <h2 class="text-3xl font-extrabold text-gray-800 mb-1 leading-tight">
+          <h2 class="text-3xl font-extrabold text-stone-100 mb-1 leading-tight">
             {profile?.username ?? user.email}
           </h2>
-          <p class="text-sm text-gray-500 font-mono">WSDC ID: {profile?.wsdcID ?? 'N/A'}</p>
+          <p class="text-sm text-stone-100 font-mono">WSDC ID: {profile?.wsdcID ?? 'N/A'}</p>
 
           <!-- Status Badges -->
           <div class="mt-3 flex flex-wrap items-center gap-3">
             <!-- WSDC Level Badge -->
             {#if profile?.wsdcLevel}
-              <span class="inline-flex items-center px-3 py-1 bg-indigo-500 text-white text-xs font-semibold rounded-full shadow-md">
+              <span class="inline-flex items-center px-3 py-1 bg-amber-700 text-amber-100 text-xs font-semibold rounded-full shadow-md">
                 Level: {profile.wsdcLevel}
               </span>
             {/if}
 
             <!-- Leader/Follower Role Badge (Original) -->
             {#if profile?.role}
-              <span class="inline-flex items-center px-3 py-1 text-xs font-medium rounded-full {profile.role === 'leader' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}">
+              <span class="inline-flex items-center px-3 py-1 text-xs font-medium rounded-full {profile.role === 'leader' ? 'bg-amber-800 text-amber-100' : 'bg-stone-700 text-stone-100'}">
                 {profile.role.charAt(0).toUpperCase() + profile.role.slice(1)}
               </span>
             {/if}
@@ -232,7 +212,7 @@ $: isProfileIncomplete = user && (!profile || (
       </div>
 
       <!-- Country and Age Details -->
-      <div class="mt-4 pt-4 border-t border-gray-100 flex flex-wrap gap-4 text-sm text-gray-700">
+      <div class="mt-4 pt-4 border-t border-stone-700 flex flex-wrap gap-4 text-sm text-stone-300">
         
         {#if profile?.country}
           <div class="flex items-center gap-1 font-medium">
@@ -241,8 +221,8 @@ $: isProfileIncomplete = user && (!profile || (
         {/if}
         
         {#if userAge !== null}
-          <div class="text-gray-500">
-            <span class="font-medium text-gray-700">{userAge}</span> years old
+          <div class="text-stone-300">
+            <span class="font-medium text-stone-100 font-black">{userAge}</span> years old
           </div>
         {/if}
       </div>
@@ -250,43 +230,42 @@ $: isProfileIncomplete = user && (!profile || (
 
       <!-- Custom User Roles (Original) -->
       {#if profile?.userRole && profile.userRole.length}
-        <div class="mt-4 flex flex-wrap gap-2 pt-4 border-t border-gray-100">
+        <div class="mt-4 flex flex-wrap gap-2 pt-4 border-t border-stone-700">
           {#each profile.userRole as r}
-            <span class="inline-flex items-center rounded-md bg-gray-400/10 px-2 py-1 text-xs font-medium text-gray-600 ring-1 ring-inset ring-gray-400/20">{r}</span>
+            <span class="inline-flex items-center rounded-md bg-stone-700/40 px-2 py-1 text-xs font-medium text-stone-100 ring-1 ring-inset ring-stone-600/30">{r}</span>
           {/each}
         </div>
       {/if}
 
       <!-- Profile Description -->
       {#if profile?.description}
-        <p class="mt-4 text-gray-600 text-sm italic border-l-4 border-gray-200 pl-3">"{profile.description}"</p>
+        <p class="mt-4 text-stone-300 text-sm italic border-l-4 border-stone-700 pl-3">"{profile.description}"</p>
       {/if}
     </section>
     <!-- END UPDATED PROFILE SECTION -->
 
     <!-- My Events Section -->
     {#if data.myEvents && data.myEvents.length > 0}
-      <section class="mb-8 p-6 rounded-lg bg-white shadow-xl border-t-4 border-green-500">
+      <section class="mb-8 p-6 rounded-lg bg-stone-800 shadow-xl neomorph-card" >
         <h2 class="text-2xl font-bold mb-4">My Events</h2>
         <div class="overflow-x-auto">
           <table class="min-w-full table-auto">
             <thead>
-              <tr class="bg-gray-50">
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Event</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Start Date</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">End Date</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              <tr class="bg-stone-800 border-b-3 border-stone-700">
+                <th class="px-4 py-2 text-left text-xs font-medium text-stone-300 uppercase tracking-wider">Event</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-stone-300 uppercase tracking-wider">Start Date</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-stone-300 uppercase tracking-wider">End Date</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-stone-300 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
+            <tbody class="bg-stone-800 divide-y divide-stone-700">
               {#each data.myEvents as event}
                 <tr>
-                  <td class="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900">{event.title}</td>
-                  <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500">{new Date(event.start_date).toLocaleDateString()}</td>
-                  <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500">{new Date(event.end_date).toLocaleDateString()}</td>
+                  <td class="px-4 py-2 whitespace-nowrap text-sm font-medium text-stone-100">{event.title}</td>
+                  <td class="px-4 py-2 whitespace-nowrap text-sm text-stone-300">{new Date(event.start_date).toLocaleDateString()}</td>
+                  <td class="px-4 py-2 whitespace-nowrap text-sm text-stone-300">{new Date(event.end_date).toLocaleDateString()}</td>
                   <td class="px-4 py-2 whitespace-nowrap text-sm font-medium">
-                    <!-- <button class="text-blue-600 hover:text-blue-900 mr-4">View Registration</button> -->
-                    <a href="/admin/events/{event.id}" class="text-green-600 hover:text-green-900">Admin Portal</a>
+                    <a href="/admin/events/{event.id}" class="text-amber-400 hover:text-amber-300">Admin Portal</a>
                   </td>
                 </tr>
               {/each}
@@ -297,30 +276,19 @@ $: isProfileIncomplete = user && (!profile || (
     {/if}
 
       <!-- My Registrations Section -->
-      <section class="mb-8 p-6 rounded-lg bg-white shadow-xl border-t-4 border-indigo-500">
-        <h2 class="text-2xl font-bold mb-4">My Registrations</h2>
+      <section class="mb-8 p-6 rounded-lg bg-stone-800 shadow-xl neomorph-card">
+        <h2 class="text-2xl font-light mb-4">My Registrations</h2>
         {#if data.myRegistrations && data.myRegistrations.length > 0}
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
             {#each data.myRegistrations as reg}
-              <div class="relative bg-white rounded-2xl flex flex-col justify-between p-6 neomorph-card">
-                <style>
-                  .neomorph-card {
-                    box-shadow:
-                      8px 8px 24px #d1d5db, /* dark shadow */
-                      -8px -8px 24px #ffffff, /* light shadow */
-                      0 1.5px 4px 0 rgba(60,60,60,0.00);
-                    border-radius: 1.25rem;
-                    background: ##f9f9f9;
-                    border: none;
-                  }
-                </style>
+              <div class="relative bg-stone-800 rounded-2xl flex flex-col justify-between p-6 neomorph-card">
                 <div>
                   <div class="flex items-center justify-between mb-2">
                     <div>
-                      <p class="text-sm text-gray-500">Event</p>
-                      <p class="font-semibold text-lg text-gray-900">{reg.event?.title || reg.event_id}</p>
+                      <p class="text-sm text-stone-300">Event</p>
+                      <p class="font-semibold text-lg text-stone-100">{reg.event?.title || reg.event_id}</p>
                       {#if reg.event?.start_date}
-                        <p class="text-xs text-gray-500">{new Date(reg.event.start_date).toLocaleDateString()}</p>
+                        <p class="text-xs text-stone-300">{new Date(reg.event.start_date).toLocaleDateString()} - {new Date(reg.event.end_date).toLocaleDateString()}</p>
                       {/if}
                     </div>
                     <!-- Status Icon -->
@@ -338,82 +306,94 @@ $: isProfileIncomplete = user && (!profile || (
                   </div>
                 </div>
                 <div class="mt-6">
-                  <a href={`/profile/${reg.id}`} class="inline-block w-full px-3 py-2 bg-blue-600 text-white rounded-lg font-semibold text-center shadow hover:bg-blue-700 transition">Manage my registration</a>
+                    <a href={`/profile/${reg.id}`} class="inline-block w-full px-3 py-3 bg-amber-600 text-white rounded-lg font-semibold text-center shadow hover:bg-amber-700 transition">Manage my registration</a>
                 </div>
               </div>
             {/each}
           </div>
         {:else}
-          <p class="text-sm text-gray-600">You have no registrations yet.</p>
+          <p class="text-sm text-stone-300">You have no registrations yet.</p>
         {/if}
       </section>
 
     <!-- Settings Dropdown -->
-    <section class="mt-6 p-6 rounded-lg bg-white shadow relative">
-      <button on:click={() => showDropdown = !showDropdown} class="px-4 py-2 bg-gray-600 text-white rounded-md flex items-center gap-2">
+    <section class="mt-6 p-6 rounded-lg bg-stone-800 shadow relative neomorph-card">
+      {#if isSuperUser}
+        {#if stripeConnected}
+          <div class="stripe-connect-banner p-2 mb-4 bg-stone-900/90 rounded-md text-sm text-center">
+            <p class="italic">Stripe account connected.</p>
+          </div>
+            {:else}
+          <a href="/api/stripe/connect" class="block mt-4 px-4 py-2 bg-amber-600 text-white rounded-md font-semibold text-center shadow hover:bg-amber-700 transition">
+                Connect with Stripe to sell tickets
+          </a>
+        {/if}
+      {/if}
+      <button on:click={() => showDropdown = !showDropdown} class="px-4 py-2 bg-stone-700 text-stone-100 rounded-md flex items-center gap-2">
         <span>⚙️</span> Actions
       </button>
       {#if showDropdown}
-        <div class="absolute top-full left-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-10">
-          <button on:click={() => { showModal = true; showDropdown = false; }} class="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100">Edit Profile</button>
+        <div class="absolute left-6 w-48 bg-stone-800 border border-stone-700 rounded-md shadow-lg z-10 overflow-hidden">
+          <button on:click={() => { showModal = true; showDropdown = false; }} class="block w-full text-left px-4 py-2 text-stone-100 hover:bg-stone-900">Edit Profile</button>
           {#if user && (profile?.userRole?.includes('Owner') || profile?.userRole?.includes('Superuser') || profile?.userRole?.includes('EventDirector'))}
-            <a href="/admin/events/createEvent" class="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100">Create Event</a>
+            <a href="/admin/events/createEvent" class="block w-full text-left px-4 py-2 text-stone-100 hover:bg-stone-700">Create Event</a>
           {/if}
         </div>
       {/if}
+
     </section>
 
     <!-- Modal -->
     {#if showModal}
-      <div class="fixed inset-0 bg-white/10 backdrop-blur-lg flex items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-lg shadow-lg max-w-lg w-full max-h-[90vh] overflow-hidden">
+      <div class="fixed inset-0 bg-black/30 backdrop-blur-lg flex items-center justify-center z-50 p-4">
+        <div class="bg-stone-800 rounded-lg shadow-lg max-w-lg w-full max-h-[90vh] overflow-hidden">
           <div class="p-6 overflow-y-auto max-h-full">
-            <h3 class="text-xl font-semibold mb-4">Edit Profile</h3>
+            <h3 class="text-xl font-semibold mb-4 text-stone-100">Edit Profile</h3>
             <form on:submit|preventDefault={handleProfileSubmit} class="space-y-4">
               <div>
-                <label for="edit-username" class="block text-sm font-medium text-gray-700">Username</label>
-                <input id="edit-username" bind:value={editUsername} type="text" name="username" required class="mt-1 block w-full rounded-md border-gray-200 shadow-sm" />
+                <label for="edit-username" class="block text-sm font-medium text-stone-100">Username</label>
+                <input id="edit-username" bind:value={editUsername} type="text" name="username" required class="mt-1 block w-full rounded-md border-gray-200 shadow-sm bg-stone-700 text-stone-100" />
               </div>
 
               <div>
-                <label for="edit-role" class="block text-sm font-medium text-gray-700">Role</label>
-                <select id="edit-role" bind:value={editRole} name="role" class="mt-1 block w-full rounded-md border-gray-200 shadow-sm">
+                <label for="edit-role" class="block text-sm font-medium text-stone-100">Role</label>
+                <select id="edit-role" bind:value={editRole} name="role" class="mt-1 block w-full rounded-md border-gray-200 shadow-sm bg-stone-700 text-stone-100">
                   <option value="follower">Follower</option>
                   <option value="leader">Leader</option>
                 </select>
               </div>
 
               <div>
-                <label for="edit-description" class="block text-sm font-medium text-gray-700">Description</label>
-                <textarea id="edit-description" bind:value={editDescription} name="description" class="mt-1 block w-full rounded-md border-gray-200 shadow-sm" rows="3"></textarea>
+                <label for="edit-description" class="block text-sm font-medium text-stone-100">Description</label>
+                <textarea id="edit-description" bind:value={editDescription} name="description" class="mt-1 block w-full rounded-md border-gray-200 shadow-sm bg-stone-700 text-stone-100" rows="3"></textarea>
               </div>
 
               <div class="grid grid-cols-2 gap-4">
                 <div>
-                  <label for="edit-wsdcID" class="block text-sm font-medium text-gray-700">WSDC ID</label>
-                  <input id="edit-wsdcID" bind:value={editWsdcID} type="number" name="wsdcID" class="mt-1 block w-full rounded-md border-gray-200 shadow-sm" maxlength="5" />
+                  <label for="edit-wsdcID" class="block text-sm font-medium text-stone-100">WSDC ID</label>
+                  <input id="edit-wsdcID" bind:value={editWsdcID} type="number" name="wsdcID" class="mt-1 block w-full rounded-md border-gray-200 shadow-sm bg-stone-700 text-stone-100" maxlength="5" />
                 </div>
 
                 <div>
-                  <label for="edit-wsdcLevel" class="block text-sm font-medium text-gray-700">WSDC Level</label>
-                  <input id="edit-wsdcLevel" bind:value={editWsdcLevel} type="text" name="wsdcLevel" class="mt-1 block w-full rounded-md border-gray-200 shadow-sm" />
+                  <label for="edit-wsdcLevel" class="block text-sm font-medium text-stone-100">WSDC Level</label>
+                  <input id="edit-wsdcLevel" bind:value={editWsdcLevel} type="text" name="wsdcLevel" class="mt-1 block w-full rounded-md border-gray-200 shadow-sm bg-stone-700 text-stone-100" />
                 </div>
               </div>
 
               <div class="grid grid-cols-2 gap-4">
                 <div>
-                  <label for="edit-country" class="block text-sm font-medium text-gray-700">Country</label>
-                  <input id="edit-country" bind:value={editCountry} type="text" name="country" class="mt-1 block w-full rounded-md border-gray-200 shadow-sm" />
+                  <label for="edit-country" class="block text-sm font-medium text-stone-100">Country</label>
+                  <input id="edit-country" bind:value={editCountry} type="text" name="country" class="mt-1 block w-full rounded-md border-gray-200 shadow-sm bg-stone-700 text-stone-100" />
                 </div>
 
                 <div>
-                  <label for="edit-age" class="block text-sm font-medium text-gray-700">Age (Birthdate)</label>
-                  <input id="edit-age" bind:value={editAge} type="date" name="age" class="mt-1 block w-full rounded-md border-gray-200 shadow-sm" />
+                  <label for="edit-age" class="block text-sm font-medium text-stone-100">Age (Birthdate)</label>
+                  <input id="edit-age" bind:value={editAge} type="date" name="age" class="mt-1 block w-full rounded-md border-gray-200 shadow-sm bg-stone-700 text-stone-100" />
                 </div>
               </div>
 
               <fieldset class="mt-2">
-                <legend class="block text-sm font-medium text-gray-700">Avatar</legend>
+                <legend class="block text-sm font-medium text-stone-100">Avatar</legend>
                 <div class="mt-2 flex items-center gap-4">
                   <label class="inline-flex items-center gap-2">
                     <input id="edit-avatar-male" type="radio" bind:group={editAvatar} name="avatar" value="/images/avatar/male.png" />
@@ -427,11 +407,11 @@ $: isProfileIncomplete = user && (!profile || (
               </fieldset>
 
               <div class="flex justify-end gap-2 pt-4">
-                <button type="button" on:click={() => showModal = false} class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md">Cancel</button>
+                <button type="button" on:click={() => showModal = false} class="px-4 py-2 bg-stone-700 text-stone-100 rounded-md">Cancel</button>
                 <button 
                   type="submit" 
                   disabled={isSavingProfile}
-                  class="px-4 py-2 bg-green-600 text-white rounded-md transition-all duration-200 font-semibold {isSavingProfile ? 'bg-green-500 cursor-not-allowed flex items-center gap-2' : 'hover:bg-green-700 active:scale-95'}"
+                  class="px-4 py-2 bg-amber-600 text-white rounded-md transition-all duration-200 font-semibold {isSavingProfile ? 'bg-amber-500 cursor-not-allowed flex items-center gap-2' : 'hover:bg-amber-700 active:scale-95'}"
                 >
                   {#if isSavingProfile}
                     <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -454,12 +434,12 @@ $: isProfileIncomplete = user && (!profile || (
 
     <!-- Signing In Modal -->
     {#if isSigningIn}
-      <div class="fixed inset-0 bg-white/10 backdrop-blur-lg flex items-center justify-center z-50 p-4 animate-fade-in">
-        <div class="bg-white rounded-lg shadow-lg p-8 animate-bounce-in max-w-sm w-full">
+      <div class="fixed inset-0 bg-black/30 backdrop-blur-lg flex items-center justify-center z-50 p-4 animate-fade-in">
+        <div class="bg-stone-800 rounded-lg shadow-lg p-8 animate-bounce-in max-w-sm w-full">
           <div class="flex flex-col items-center gap-4">
-            <div class="animate-spin rounded-full h-12 w-12 border-4 border-blue-200 border-t-blue-600"></div>
-            <p class="text-lg font-medium text-gray-700">Signing you in...</p>
-            <p class="text-sm text-gray-500">Please wait while we authenticate your account.</p>
+            <div class="animate-spin rounded-full h-12 w-12 border-4 border-amber-200 border-t-amber-600"></div>
+            <p class="text-lg font-medium text-stone-100">Signing you in...</p>
+            <p class="text-sm text-stone-300">Please wait while we authenticate your account.</p>
           </div>
         </div>
       </div>
@@ -479,25 +459,25 @@ $: isProfileIncomplete = user && (!profile || (
     {/if}
 
   {:else}
-    <section class="mb-8 p-6 rounded-lg bg-white shadow">
+    <section class="mb-8 p-6 rounded-lg bg-stone-900 neomorph-card">
       <h2 class="text-2xl font-bold mb-2">Sign In</h2>
       {#if signinMessage}
-        <div class="mb-4 text-sm text-red-600">{signinMessage}</div>
+        <div class="mb-4 text-sm text-rose-400">{signinMessage}</div>
       {/if}
       <form on:submit|preventDefault={signIn} class="space-y-4">
         <div>
-          <label for="signin-email-input" class="block text-sm font-medium text-gray-700">Email</label>
-          <input id="signin-email-input" bind:value={signinEmail} type="email" name="email" required class="mt-1 block w-full rounded-md border-gray-200 shadow-sm" />
+          <label for="signin-email-input" class="block text-sm font-medium text-stone-100">Email</label>
+          <input id="signin-email-input" bind:value={signinEmail} type="email" name="email" required class="mt-1 block w-full rounded-md border-stone-700 bg-stone-800 text-stone-100 shadow-sm" />
         </div>
         <div>
-          <label for="signin-password-input" class="block text-sm font-medium text-gray-700">Password</label>
-          <input id="signin-password-input" bind:value={signinPassword} type="password" name="password" required class="mt-1 block w-full rounded-md border-gray-200 shadow-sm" />
+          <label for="signin-password-input" class="block text-sm font-medium text-stone-100">Password</label>
+          <input id="signin-password-input" bind:value={signinPassword} type="password" name="password" required class="mt-1 block w-full rounded-md border-stone-700 bg-stone-800 text-stone-100 shadow-sm" />
         </div>
         <div class="pt-4">
           <button 
             type="submit" 
             disabled={isSigningIn}
-            class="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-md transition-all duration-200 font-semibold {isSigningIn ? 'bg-blue-500 cursor-not-allowed' : 'hover:bg-blue-700 active:scale-95'}" 
+            class="inline-flex items-center px-6 py-3 bg-amber-600 text-white rounded-md transition-all duration-200 font-semibold {isSigningIn ? 'bg-amber-500 cursor-not-allowed' : 'hover:bg-amber-700 active:scale-95'}" 
             on:mousedown={() => !isSigningIn && (buttonPressed = true)} 
             on:mouseup={() => buttonPressed = false} 
             on:mouseleave={() => buttonPressed = false}
@@ -516,6 +496,7 @@ $: isProfileIncomplete = user && (!profile || (
       </form>
     </section>
   {/if}
+  </div>
 </div>
 
 <style>
@@ -525,6 +506,28 @@ $: isProfileIncomplete = user && (!profile || (
 
   .animate-bounce-in {
     animation: bounceIn 0.5s ease-out;
+  }
+
+  .neomorph-card {
+    box-shadow:
+      5px 5px 18px rgba(2,6,23,0.5),
+      -5px -5px 12px rgba(255,255,255,0.08);
+    border-radius: 1.25rem;
+    border: none;
+    border: 2px solid rgba(255,255,255,0.02);
+  }
+
+	input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active
+  {
+    /* The large inset box-shadow covers the browser's background */
+    -webkit-box-shadow: 0 0 0 1000px #1c1917bd inset !important;
+    /* Change the text color to match your design */
+    -webkit-text-fill-color: #F5F5F4 !important;
+    /* Optional: Add a smooth transition */
+    transition: background-color 5000s ease-in-out 0s;
   }
 
   @keyframes fadeIn {
