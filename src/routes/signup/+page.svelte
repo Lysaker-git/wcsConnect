@@ -25,7 +25,7 @@
 
     <form 
       method="POST" 
-      action="?/signup"
+      action="?/signUp"
       use:enhance={() => {
         isSubmitting = true;
         return async ({ result, update }) => {
