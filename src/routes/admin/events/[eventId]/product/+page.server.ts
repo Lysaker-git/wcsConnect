@@ -1,0 +1,159 @@
+import { supabase } from '$lib/server/supabaseServiceClient';
+import { error as svelteError, fail } from '@sveltejs/kit';
+import type { PageServerLoad, Actions } from './$types';
+
+async function verifyED(eventId: string, userId: string) {
+  const { data } = await supabase
+    .from('event_participants')
+    .select('event_role')
+    .eq('event_id', eventId)
+    .eq('user_id', userId)
+    .eq('event_role', 'Event Director')
+    .single();
+  return !!data;
+}
+
+export const load: PageServerLoad = async ({ params, cookies }) => {
+  const { eventId } = params;
+
+  const sbUser = cookies.get('sb_user');
+  if (!sbUser) throw svelteError(401, 'Not authenticated');
+
+  let user: any;
+  try { user = JSON.parse(sbUser); } catch { throw svelteError(401, 'Invalid session'); }
+
+  if (!(await verifyED(eventId, user.id))) {
+    throw svelteError(403, 'Access denied');
+  }
+
+  const { data: event } = await supabase
+    .from('events')
+    .select('id, title')
+    .eq('id', eventId)
+    .single();
+
+  const { data: products, error: productsError } = await supabase
+    .from('products')
+    .select('*')
+    .eq('event_id', eventId)
+    .order('product_type', { ascending: true })
+    .order('created_at', { ascending: true });
+
+  if (productsError) throw svelteError(500, 'Failed to load products');
+
+  return { event, products: products ?? [] };
+};
+
+export const actions: Actions = {
+  createProduct: async ({ request, params, cookies }) => {
+    const { eventId } = params;
+    const sbUser = cookies.get('sb_user');
+    if (!sbUser) return fail(401, { message: 'Not authenticated' });
+
+    let user: any;
+    try { user = JSON.parse(sbUser); } catch { return fail(401, { message: 'Invalid session' }); }
+    if (!(await verifyED(eventId, user.id))) return fail(403, { message: 'Access denied' });
+
+    const form = await request.formData();
+    const name = form.get('name')?.toString();
+    const description = form.get('description')?.toString() || null;
+    const price = parseFloat(form.get('price')?.toString() || '0');
+    const product_type = form.get('product_type')?.toString();
+    const currency_type = form.get('currency_type')?.toString() || 'EUR';
+    const sale_start = form.get('sale_start')?.toString() || null;
+    const sale_end = form.get('sale_end')?.toString() || null;
+    const quantity_total = form.get('quantity_total')?.toString() ? parseInt(form.get('quantity_total')!.toString()) : null;
+    const leader_limit = form.get('leader_limit')?.toString() ? parseInt(form.get('leader_limit')!.toString()) : null;
+    const follower_limit = form.get('follower_limit')?.toString() ? parseInt(form.get('follower_limit')!.toString()) : null;
+    const is_active = form.get('is_active') === 'on';
+    const max_per_user = form.get('max_per_user')?.toString() ? parseInt(form.get('max_per_user')!.toString()) : null;
+
+    if (!name || !product_type || price < 0) return fail(400, { message: 'Missing required fields' });
+
+    const { error } = await supabase
+      .from('products')
+      .insert({
+        event_id: eventId,
+        name,
+        description,
+        price,
+        product_type,
+        currency_type,
+        sale_start,
+        sale_end,
+        quantity_total,
+        quantity_sold: 0,
+        leader_limit,
+        follower_limit,
+        is_active,
+        max_per_user
+      });
+
+    if (error) return fail(500, { message: error.message });
+    return { success: true };
+  },
+
+  updateProduct: async ({ request, params, cookies }) => {
+    const { eventId } = params;
+    const sbUser = cookies.get('sb_user');
+    if (!sbUser) return fail(401, { message: 'Not authenticated' });
+
+    let user: any;
+    try { user = JSON.parse(sbUser); } catch { return fail(401, { message: 'Invalid session' }); }
+    if (!(await verifyED(eventId, user.id))) return fail(403, { message: 'Access denied' });
+
+    const form = await request.formData();
+    const productId = form.get('productId')?.toString();
+    const name = form.get('name')?.toString();
+    const description = form.get('description')?.toString() || null;
+    const price = parseFloat(form.get('price')?.toString() || '0');
+    const product_type = form.get('product_type')?.toString();
+    const currency_type = form.get('currency_type')?.toString() || 'EUR';
+    const sale_start = form.get('sale_start')?.toString() || null;
+    const sale_end = form.get('sale_end')?.toString() || null;
+    const quantity_total = form.get('quantity_total')?.toString() ? parseInt(form.get('quantity_total')!.toString()) : null;
+    const leader_limit = form.get('leader_limit')?.toString() ? parseInt(form.get('leader_limit')!.toString()) : null;
+    const follower_limit = form.get('follower_limit')?.toString() ? parseInt(form.get('follower_limit')!.toString()) : null;
+    const is_active = form.get('is_active') === 'on';
+    const max_per_user = form.get('max_per_user')?.toString() ? parseInt(form.get('max_per_user')!.toString()) : null;
+
+    if (!productId || !name || !product_type) return fail(400, { message: 'Missing required fields' });
+
+    const { error } = await supabase
+      .from('products')
+      .update({
+        name, description, price, product_type, currency_type,
+        sale_start, sale_end, quantity_total, leader_limit,
+        follower_limit, is_active, max_per_user,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', productId)
+      .eq('event_id', eventId);
+
+    if (error) return fail(500, { message: error.message });
+    return { success: true };
+  },
+
+  deleteProduct: async ({ request, params, cookies }) => {
+    const { eventId } = params;
+    const sbUser = cookies.get('sb_user');
+    if (!sbUser) return fail(401, { message: 'Not authenticated' });
+
+    let user: any;
+    try { user = JSON.parse(sbUser); } catch { return fail(401, { message: 'Invalid session' }); }
+    if (!(await verifyED(eventId, user.id))) return fail(403, { message: 'Access denied' });
+
+    const form = await request.formData();
+    const productId = form.get('productId')?.toString();
+    if (!productId) return fail(400, { message: 'Missing product ID' });
+
+    const { error } = await supabase
+      .from('products')
+      .delete()
+      .eq('id', productId)
+      .eq('event_id', eventId);
+
+    if (error) return fail(500, { message: error.message });
+    return { success: true };
+  }
+};

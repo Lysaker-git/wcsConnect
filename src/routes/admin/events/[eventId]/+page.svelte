@@ -1,4 +1,5 @@
 <script lang="ts">
+  // route admin/events/[eventId]/+page.svelte - main event admin page with details and product management
   import { enhance } from '$app/forms';
   import { SiFacebook, SiInstagram, SiTiktok } from "@icons-pack/svelte-simple-icons";
   import EditEventDetailsModal from '$lib/components/EditEventDetailsModal.svelte';
@@ -223,6 +224,7 @@
           method="POST"
           action="?/togglePublish"
           use:enhance={() => {
+
             return async ({ result, update }) => {
               if (result.type === 'success') {
                 isPublished = result.data?.is_published ?? !isPublished;
@@ -366,446 +368,38 @@
     </div>
   </div>
 
-  <!-- Products Management Section -->
-  <div class="shadow-lg rounded-lg p-6 mt-8 neumorph-subcard bg-stone-800">
-    <div class="flex justify-between items-center mb-6">
-      <h2 class="text-xl font-semibold text-stone-100">Event Store Products</h2>
-      <button 
-        on:click={openProductModal}
-        class="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-md font-medium transition duration-300"
-      >
-        Add Product
-      </button>
+<!-- Products Summary -->
+<div class="shadow-lg rounded-lg p-6 mt-8 neumorph-subcard bg-stone-800">
+  <div class="flex justify-between items-center">
+    <div>
+      <h2 class="text-xl font-semibold text-stone-100">Products</h2>
+      <p class="text-stone-400 text-sm mt-1">
+        {data.products.length} product{data.products.length === 1 ? '' : 's'} ·
+        {data.products.filter(p => p.is_active).length} active
+      </p>
     </div>
-
-    {#if data.products.length === 0}
-      <p class="text-stone-500 text-center py-8">No products added yet. Click "Add Product" to get started.</p>
-    {:else}
-      <div class="overflow-x-auto">
-        <table class="min-w-full table-auto">
-          <thead>
-            <tr class="">
-              <th class="px-4 py-2 text-left text-xs font-medium text-stone-400 uppercase tracking-wider">Product</th>
-              <th class="px-4 py-2 text-left text-xs font-medium text-stone-400 uppercase tracking-wider">Type</th>
-              <th class="px-4 py-2 text-left text-xs font-medium text-stone-400 uppercase tracking-wider">Price</th>
-              <th class="px-4 py-2 text-left text-xs font-medium text-stone-400 uppercase tracking-wider">Role Limits</th>
-              <th class="px-4 py-2 text-left text-xs font-medium text-stone-400 uppercase tracking-wider">Status</th>
-              <th class="px-4 py-2 text-left text-xs font-medium text-stone-400 uppercase tracking-wider">Sales</th>
-              <th class="px-4 py-2 text-left text-xs font-medium text-stone-400 uppercase tracking-wider">Actions</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-stone-700">
-            {#each data.products as product}
-              <tr>
-                <td class="px-4 py-2 whitespace-nowrap">
-                  <div>
-                    <div class="text-sm font-medium text-stone-100">{product.name}</div>
-                    {#if product.description}
-                      <div class="text-sm text-stone-400">{product.description}</div>
-                    {/if}
-                  </div>
-                </td>
-                <td class="px-4 py-2 whitespace-nowrap text-sm text-stone-400 capitalize">
-                  {product.product_type}
-                </td>
-                <td class="px-4 py-2 whitespace-nowrap text-sm text-stone-100">
-                  {product.currency_type || 'USD'} ${product.price}
-                </td>
-                <td class="px-4 py-2 whitespace-nowrap text-sm text-stone-400">
-                  {#if product.leader_limit || product.follower_limit}
-                    {#if product.leader_limit}L: {product.leader_limit}{/if}
-                    {#if product.follower_limit}{#if product.leader_limit} / {/if}F: {product.follower_limit}{/if}
-                  {:else}
-                    No limits
-                  {/if}
-                </td>
-                <td class="px-4 py-2 whitespace-nowrap">
-                  <span class={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                    product.is_active 
-                      ? 'bg-green-100 text-green-800' 
-                      : 'bg-red-100 text-red-800'
-                  }`}>
-                    {product.is_active ? 'Active' : 'Inactive'}
-                  </span>
-                </td>
-                <td class="px-4 py-2 whitespace-nowrap text-sm text-stone-400">
-                  {#if product.quantity_total}
-                    {product.quantity_sold || 0} / {product.quantity_total}
-                  {:else}
-                    Unlimited
-                  {/if}
-                </td>
-                <td class="px-4 py-2 whitespace-nowrap text-sm font-medium">
-                  <div class="flex space-x-2">
-                    <button 
-                      on:click={() => openEditModal(product)}
-                      class="text-blue-600 hover:text-blue-900"
-                      title="Edit product"
-                    >
-                      ✏️
-                    </button>
-                    <button 
-                      on:click={() => deleteProduct(product.id)}
-                      class="text-red-600 hover:text-red-900"
-                      title="Delete product"
-                    >
-                      🗑️
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            {/each}
-          </tbody>
-        </table>
-      </div>
-    {/if}
+    <a
+      href="/admin/events/{data.event.id}/product"
+      class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-xl transition"
+    >
+      Manage Products →
+    </a>
   </div>
-
-  <!-- Product Creation Modal -->
-  {#if showProductModal}
-    <div class="fixed inset-0 bg-white/10 backdrop-blur-lg flex items-center justify-center z-50 p-4">
-      <div class="bg-stone-800 rounded-lg shadow-lg max-w-lg w-full max-h-[90vh] flex flex-col">
-        <div class="p-6 flex-shrink-0">
-          <h3 class="text-xl font-semibold mb-4 text-stone-100">Add New Product</h3>
-        </div>
-        <div class="px-6 pb-6 overflow-y-auto flex-1">
-          <form on:submit={handleProductSubmit} class="space-y-4">
-            <div>
-              <label for="product-name" class="block text-sm font-medium text-stone-100">Product Name *</label>
-              <input 
-                id="product-name"
-                bind:value={productName} 
-                type="text" 
-                required 
-                class="mt-1 block w-full rounded-md border-stone-600 shadow-sm focus:border-stone-100 focus:ring-stone-100 bg-stone-800 text-stone-100" 
-              />
-            </div>
-
-            <div>
-              <label for="product-description" class="block text-sm font-medium text-stone-100">Description</label>
-              <textarea 
-                id="product-description"
-                bind:value={productDescription} 
-                rows="3"
-                class="mt-1 block w-full rounded-md border-stone-600 shadow-sm focus:border-stone-100 focus:ring-stone-100 bg-stone-800 text-stone-100"
-              ></textarea>
-            </div>
-
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <label for="product-price" class="block text-sm font-medium text-stone-100">Price *</label>
-                <input 
-                  id="product-price"
-                  bind:value={productPrice} 
-                  type="number" 
-                  step="0.01"
-                  min="0"
-                  required 
-                  class="mt-1 block w-full rounded-md border-stone-600 shadow-sm focus:border-stone-100 focus:ring-stone-100 bg-stone-800 text-stone-100" 
-                />
-              </div>
-
-              <div>
-                <label for="currency-type" class="block text-sm font-medium text-stone-100">Currency</label>
-                <select 
-                  id="currency-type"
-                  bind:value={currencyType}
-                  class="mt-1 block w-full rounded-md border-stone-600 shadow-sm focus:border-stone-100 focus:ring-stone-100 bg-stone-800 text-stone-100"
-                >
-                  <option selected value="EUR">EUR (€)</option>
-                  <option value="USD">USD ($)</option>
-                  <option value="NOK">NOK (kr)</option>
-                  <option value="GBP">GBP (£)</option>
-                  <option value="CAD">CAD (C$)</option>
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label for="product-type" class="block text-sm font-medium text-stone-100">Product Type *</label>
-              <select 
-                id="product-type"
-                bind:value={productType} 
-                required
-                class="mt-1 block w-full rounded-md border-stone-600 shadow-sm focus:border-stone-100 focus:ring-stone-100 bg-stone-800 text-stone-100"
-              >
-                {#each productTypes as type}
-                  <option value={type.value}>{type.label}</option>
-                {/each}
-              </select>
-            </div>
-
-            <!-- Role-based limits for WCS balance -->
-            <div class="border-t pt-4">
-              <h4 class="text-sm font-medium text-stone-100 mb-2">Role Balance Limits (Optional)</h4>
-              <p class="text-xs text-stone-100 mb-3">Set limits to maintain leader/follower balance at your event</p>
-              <div class="grid grid-cols-2 gap-4">
-                <div>
-                  <label for="leader-limit" class="block text-sm font-medium text-stone-100">Max Leaders</label>
-                  <input 
-                    id="leader-limit"
-                    bind:value={leaderLimit} 
-                    type="number" 
-                    min="1"
-                    placeholder="e.g., 50"
-                    class="mt-1 block w-full rounded-md border-stone-600 shadow-sm focus:border-stone-100 focus:ring-stone-400 bg-stone-800 text-stone-100" 
-                  />
-                </div>
-                <div>
-                  <label for="follower-limit" class="block text-sm font-medium text-stone-100">Max Followers</label>
-                  <input 
-                    id="follower-limit"
-                    bind:value={followerLimit} 
-                    type="number" 
-                    min="1"
-                    placeholder="e.g., 50"
-                    class="mt-1 block w-full rounded-md border-stone-600 shadow-sm focus:border-stone-100 focus:ring-stone-400 bg-stone-800 text-stone-100" 
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <label for="sale-start" class="block text-sm font-medium text-stone-100">Sale Start</label>
-                <input 
-                  id="sale-start"
-                  bind:value={saleStart} 
-                  type="datetime-local"
-                  class="mt-1 block w-full rounded-md border-stone-600 shadow-sm focus:border-stone-100 focus:ring-stone-400 bg-stone-800 text-stone-100" 
-                />
-              </div>
-              <div>
-                <label for="sale-end" class="block text-sm font-medium text-stone-100">Sale End</label>
-                <input 
-                  id="sale-end"
-                  bind:value={saleEnd} 
-                  type="datetime-local"
-                  class="mt-1 block w-full rounded-md border-stone-600 shadow-sm focus:border-stone-100 focus:ring-stone-400 bg-stone-800 text-stone-100" 
-                />
-              </div>
-            </div>
-
-            <div class="grid grid-cols-1 gap-4">
-              <div>
-                <label for="quantity-total" class="block text-sm font-medium text-stone-100">Total Quantity</label>
-                <input 
-                  id="quantity-total"
-                  bind:value={quantityTotal} 
-                  type="number" 
-                  min="1"
-                  placeholder="Leave empty for unlimited"
-                  class="mt-1 block w-full rounded-md border-stone-600 shadow-sm focus:border-stone-100 focus:ring-stone-400 bg-stone-800 text-stone-100" 
-                />
-              </div>
-            </div>
-
-            <div class="flex justify-end gap-2 pt-4">
-              <button 
-                type="button" 
-                on:click={closeProductModal}
-                class="px-4 py-2 bg-stone-600 text-stone-100 rounded-md hover:bg-stone-700 transition duration-300"
-              >
-                Cancel
-              </button>
-              <button 
-                type="submit" 
-                class="px-4 py-2 bg-amber-600 text-white rounded-md hover:bg-amber-700 transition duration-300"
-              >
-                Create Product
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
+  {#if data.products.length > 0}
+    <div class="mt-4 flex flex-wrap gap-2">
+      {#each ['ticket', 'intensive', 'merchandise', 'accommodation', 'other'] as type}
+        {@const count = data.products.filter(p => p.product_type === type).length}
+        {#if count > 0}
+          <span class="px-3 py-1 bg-stone-700 text-stone-300 rounded-full text-xs capitalize">
+            {type}: {count}
+          </span>
+        {/if}
+      {/each}
     </div>
   {/if}
+</div>
 
-  <!-- Product Edit Modal -->
-  {#if showEditModal}
-    <div class="fixed inset-0 bg-white/10 backdrop-blur-lg flex items-center justify-center z-50 p-4">
-      <div class="bg-stone-800 rounded-lg shadow-lg max-w-lg w-full max-h-[90vh] flex flex-col">
-        <div class="p-6 flex-shrink-0">
-          <h3 class="text-xl font-semibold mb-4">Edit Product</h3>
-        </div>
-        <div class="px-6 pb-6 overflow-y-auto flex-1">
-          <form on:submit={handleEditSubmit} class="space-y-4">
-            <div>
-              <label for="edit-product-name" class="block text-sm font-medium text-stone-100">Product Name *</label>
-              <input 
-                id="edit-product-name"
-                bind:value={productName} 
-                type="text" 
-                required 
-                class="mt-1 block w-full rounded-md border-stone-600 shadow-sm focus:border-stone-100 focus:ring-stone-400 bg-stone-800 text-stone-100" 
-              />
-            </div>
 
-            <div>
-              <label for="edit-product-description" class="block text-sm font-medium text-stone-100">Description</label>
-              <textarea 
-                id="edit-product-description"
-                bind:value={productDescription} 
-                rows="3"
-                class="mt-1 block w-full rounded-md border-stone-600 shadow-sm focus:border-stone-100 focus:ring-stone-400 bg-stone-800 text-stone-100"
-              ></textarea>
-            </div>
-
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <label for="edit-product-price" class="block text-sm font-medium text-stone-100">Price *</label>
-                <input 
-                  id="edit-product-price"
-                  bind:value={productPrice} 
-                  type="number" 
-                  step="0.01"
-                  min="0"
-                  required 
-                  class="mt-1 block w-full rounded-md border-stone-600 shadow-sm focus:border-stone-100 focus:ring-stone-400 bg-stone-800 text-stone-100" 
-                />
-              </div>
-
-              <div>
-                <label for="edit-currency-type" class="block text-sm font-medium text-stone-100">Currency</label>
-                <select 
-                  id="edit-currency-type"
-                  bind:value={currencyType}
-                  class="mt-1 block w-full rounded-md border-stone-600 shadow-sm focus:border-stone-100 focus:ring-stone-400 bg-stone-800 text-stone-100"
-                >
-                  <option value="USD">USD ($)</option>
-                  <option value="EUR">EUR (€)</option>
-                  <option value="NOK">NOK (kr)</option>
-                  <option value="GBP">GBP (£)</option>
-                  <option value="CAD">CAD (C$)</option>
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label for="edit-product-type" class="block text-sm font-medium text-stone-100">Product Type *</label>
-              <select 
-                id="edit-product-type"
-                bind:value={productType} 
-                required
-                class="mt-1 block w-full rounded-md border-stone-600 shadow-sm focus:border-stone-100 focus:ring-stone-400 bg-stone-800 text-stone-100"
-              >
-                {#each productTypes as type}
-                  <option value={type.value}>{type.label}</option>
-                {/each}
-              </select>
-            </div>
-
-            <!-- Role-based limits for WCS balance -->
-            <div class="border-t pt-4">
-              <h4 class="text-sm font-medium text-stone-100 mb-2">Role Balance Limits (Optional)</h4>
-              <p class="text-xs text-stone-100 mb-3">Set limits to maintain leader/follower balance at your event</p>
-              <div class="grid grid-cols-2 gap-4">
-                <div>
-                  <label for="edit-leader-limit" class="block text-sm font-medium text-stone-100">Max Leaders</label>
-                  <input 
-                    id="edit-leader-limit"
-                    bind:value={leaderLimit} 
-                    type="number" 
-                    min="1"
-                    placeholder="e.g., 50"
-                    class="mt-1 block w-full rounded-md border-stone-600 shadow-sm focus:border-stone-100 focus:ring-stone-400 bg-stone-800 text-stone-100" 
-                  />
-                </div>
-                <div>
-                  <label for="edit-follower-limit" class="block text-sm font-medium text-stone-100">Max Followers</label>
-                  <input 
-                    id="edit-follower-limit"
-                    bind:value={followerLimit} 
-                    type="number" 
-                    min="1"
-                    placeholder="e.g., 50"
-                    class="mt-1 block w-full rounded-md border-stone-600 shadow-sm focus:border-stone-100 focus:ring-stone-400 bg-stone-800 text-stone-100" 
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <label for="edit-sale-start" class="block text-sm font-medium text-stone-100">Sale Start</label>
-                <input 
-                  id="edit-sale-start"
-                  bind:value={saleStart} 
-                  type="datetime-local"
-                  class="mt-1 block w-full rounded-md border-stone-600 shadow-sm focus:border-stone-100 focus:ring-stone-400 bg-stone-800 text-stone-100" 
-                />
-              </div>
-              <div>
-                <label for="edit-sale-end" class="block text-sm font-medium text-stone-100">Sale End</label>
-                <input 
-                  id="edit-sale-end"
-                  bind:value={saleEnd} 
-                  type="datetime-local"
-                  class="mt-1 block w-full rounded-md border-stone-600 shadow-sm focus:border-stone-100 focus:ring-stone-400 bg-stone-800 text-stone-100" 
-                />
-              </div>
-            </div>
-
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <label for="edit-quantity-total" class="block text-sm font-medium text-stone-100">Total Quantity</label>
-                <input 
-                  id="edit-quantity-total"
-                  bind:value={quantityTotal} 
-                  type="number" 
-                  min="1"
-                  placeholder="Leave empty for unlimited"
-                  class="mt-1 block w-full rounded-md border-stone-600 shadow-sm focus:border-stone-100 focus:ring-stone-400 bg-stone-800 text-stone-100" 
-                />
-              </div>
-              <div class="flex items-center">
-                <label class="flex items-center">
-                  <input 
-                    type="checkbox" 
-                    bind:checked={isActive}
-                    class="rounded border-stone-600 text-stone-100 shadow-sm focus:border-stone-100 focus:ring-stone-400"
-                  />
-                  <span class="ml-2 text-sm font-medium text-stone-100">Active</span>
-                </label>
-              </div>
-            </div>
-
-            <div class="flex justify-end gap-2 pt-4">
-              <button 
-                type="button" 
-                on:click={closeEditModal}
-                class="px-4 py-2 bg-stone-600 text-stone-100 rounded-md hover:bg-stone-700 transition duration-300"
-              >
-                Cancel
-              </button>
-              <button 
-                type="submit" 
-                class="px-4 py-2 bg-amber-600 text-white rounded-md hover:bg-amber-700 transition duration-300"
-              >
-                Update Product
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-  {/if}
-
-  <!-- Event Edit Modal -->
-  <EditEventDetailsModal
-    bind:showModal={showEditEventModal}
-    eventData={data.event}
-    eventDetailsData={data.eventDetails}
-    on:success={handleEventUpdateSuccess}
-    on:close={closeEditEventModal}
-  />
-
-  <!-- Participants Modal -->
-  <ParticipantsModal
-    eventId={data.event.id}
-    bind:showModal={showParticipantsModal}
-    on:close={closeParticipantsModal}
-  />
 </div>
 
 <style>
