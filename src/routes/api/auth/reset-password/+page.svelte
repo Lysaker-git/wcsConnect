@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { createClient } from '@supabase/supabase-js';
-  import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
+  import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_API_KEY } from '$env/static/public';
 
   let password = '';
   let passwordConfirm = '';
@@ -38,7 +38,7 @@
     error = '';
 
     try {
-      const supabaseClient = createClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY);
+      const supabaseClient = createClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_API_KEY);
 
       // Set the session from the reset link tokens
       const { error: sessionError } = await supabaseClient.auth.setSession({
