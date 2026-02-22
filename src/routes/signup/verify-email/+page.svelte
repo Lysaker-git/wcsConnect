@@ -8,7 +8,7 @@
         Click the link in the email to activate your account.
       </p>
       <p class="text-stone-400 text-sm mb-8">
-        Can't find it? Check your spam folder. The link expires after 24 hours.
+        Can't find it? Check your spam folder. The link expires after 1 hour.
       </p>
       <a href="/signin" class="inline-block px-6 py-3 bg-stone-600 text-white rounded-lg hover:bg-stone-500 transition">
         Back to Sign In

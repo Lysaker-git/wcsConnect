@@ -210,6 +210,7 @@
       alert('Error updating product');
     }
   }
+  $: isPublished = data.event?.is_published ?? false;
 </script>
 
 <div class="max-w-4xl mx-auto py-12 px-6 neumorph-card">
@@ -218,6 +219,28 @@
   <div class="bg-stone-800 shadow-lg rounded-lg p-6 neumorph-subcard">
     <div class="flex justify-between items-center mb-4">
         <h2 class="text-xl font-semibold text-stone-100">Event Details</h2>
+        <form
+          method="POST"
+          action="?/togglePublish"
+          use:enhance={() => {
+            return async ({ result, update }) => {
+              if (result.type === 'success') {
+                isPublished = result.data?.is_published ?? !isPublished;
+              }
+              await update({ reset: false });
+            };
+          }}
+          >
+          <button
+            type="submit"
+            class="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold transition-all {isPublished
+              ? 'bg-green-900 text-green-300 hover:bg-green-800'
+              : 'bg-stone-700 text-stone-400 hover:bg-stone-600'}"
+          >
+            <span class="w-2 h-2 rounded-full {isPublished ? 'bg-green-400' : 'bg-stone-500'}"></span>
+            {isPublished ? 'Published' : 'Unpublished'}
+          </button>
+        </form>
         <div class="relative">
           <button on:click={() => showActions = !showActions} class="px-3 py-2 bg-stone-700 text-stone-200 rounded-md flex items-center gap-2">
           <span>⚙️</span><span>Actions</span>

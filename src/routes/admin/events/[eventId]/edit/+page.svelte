@@ -5,6 +5,9 @@
 
   // Prefill form fields using loaded data
   let openSection = 'events';
+  let registration_opens = event?.registration_opens 
+    ? new Date(event.registration_opens).toISOString().slice(0, 16)
+    : '';
 
   let title = event?.title ?? '';
   let start_date = event?.start_date ?? '';
@@ -43,6 +46,7 @@
       form.append('title', title);
       form.append('start_date', start_date);
       form.append('end_date', end_date);
+      form.append('registration_opens', registration_opens);
 
       form.append('description', description);
       form.append('address', address);
@@ -131,6 +135,20 @@
               <label for="end_date" class="block text-sm font-medium text-gray-600 mb-1.5">End Date</label>
               <input id="end_date" type="date" bind:value={end_date} class="neumorph-input w-full px-4 py-2.5 rounded-xl text-gray-700 outline-none transition-all focus:ring-2 focus:ring-[var(--color-blue-700)]/20" required />
             </div>
+          </div>
+          <div>
+            <label for="registration_opens" class="block text-sm font-medium text-gray-600 mb-1.5">
+              Registration Opens
+            </label>
+            <input 
+              id="registration_opens" 
+              type="datetime-local" 
+              bind:value={registration_opens}
+              class="neumorph-input w-full px-4 py-2.5 rounded-xl text-gray-700 outline-none transition-all focus:ring-2 focus:ring-[var(--color-blue-700)]/20"
+            />
+            <p class="text-xs text-gray-400 mt-1">
+              Leave empty to allow registration immediately when published.
+            </p>
           </div>
         </div>
       {/if}
