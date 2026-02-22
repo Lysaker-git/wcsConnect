@@ -50,6 +50,9 @@
     let soldOutProducts: string[] = [];
     let isLoading = false;
 
+    const wsdcDisabled = wsdcID === '' ? false : true;
+    const ageDisabled = typeof age === 'number' ? true : false;
+    
     // Group products by type
     $: productsByType = products
         .filter(product => product.product_type !== 'accommodation')
@@ -247,12 +250,12 @@
     </div>
 {/if}
 
-<div class="min-h-screen bg-gray-50 py-12">
+<div class="min-h-screen bg-stone-800 py-12">
     <div class="max-w-2xl mx-auto px-6">
-        <h1 class="text-4xl font-extrabold text-gray-900 mb-8 text-center drop-shadow">Event Registration</h1>
+        <h1 class="text-4xl font-extrabold text-stone-100 mb-8 text-center drop-shadow">Event Registration</h1>
         
         <!-- Registration Card -->
-        <div class="bg-white rounded-3xl shadow-2xl overflow-hidden p-8 sm:p-10 border-t-8 border-blue-500 relative">
+        <div class="bg-stone-700 rounded-3xl shadow-2xl overflow-hidden p-8 sm:p-10 border-t-8 border-blue-500 relative neomorph-card">
             
             <!-- Go Back Button -->
             <button on:click={goBack} 
@@ -264,8 +267,8 @@
                 </svg>
             </button>
 
-            <h2 class="text-3xl font-bold text-blue-800 mb-6">Confirm Your Details</h2>
-            <p class="text-gray-600 mb-8">Please review your information and select the products you'd like to register for.</p>
+            <h2 class="text-3xl font-bold text-stone-300 mb-6">Confirm Your Details</h2>
+            <p class="text-stone-400 mb-8">Please review your information and select the products you'd like to register for.</p>
 
             {#if errorMessage}
                 <div class="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
@@ -276,21 +279,21 @@
             <form on:submit={handleRegister} class="space-y-8">
 
                 <!-- PARTICIPANT DETAILS SECTION -->
-                <div class="border-b pb-6">
-                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Your Details</h3>
+                <div class="pb-6">
+                    <h3 class="text-lg font-semibold text-stone-300 mb-4">Your Details</h3>
 
                     <!-- Username -->
                     <div class="mb-4">
-                        <label for="username" class="block text-sm font-medium text-gray-700">Username</label>
+                        <label for="username" class="block text-sm font-medium text-stone-300">Username</label>
                         <input id="username" type="text" bind:value={username} required 
-                               class="mt-1 block w-full rounded-lg border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3" />
+                               class="mt-1 block w-full rounded-lg border border-stone-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3 bg-stone-800 text-stone-100" />
                     </div>
 
                     <!-- Role (Leader/Follower Select) -->
                     <div class="mb-4">
-                        <label for="role" class="block text-sm font-medium text-gray-700">Role</label>
+                        <label for="role" class="block text-sm font-medium text-stone-300">Role</label>
                         <select id="role" bind:value={role} required
-                                class="mt-1 block w-full rounded-lg border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3 bg-white">
+                                class="mt-1 block w-full rounded-lg border border-stone-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3 bg-stone-800 text-stone-100">
                             <option value="leader">Leader</option>
                             <option value="follower">Follower</option>
                         </select>
@@ -298,15 +301,15 @@
 
                     <!-- Partner Autocomplete -->
                     <div class="mb-4 relative">
-                        <label for="partner" class="block text-sm font-medium text-gray-700">Partner (Optional)</label>
-                        <p class="text-xs text-gray-500 mb-1">You can search for a partner and connect your registrations if your partner has a profile on the site. Start typing their name to see suggestions.</p>
+                        <label for="partner" class="block text-sm font-medium text-stone-300">Partner (Optional)</label>
+                        <p class="text-xs text-stone-500 mb-1">You can search for a partner and connect your registrations if your partner has a profile on the site. Start typing their name to see suggestions.</p>
                         <div class="flex items-center gap-2">
-                            <input id="partner" type="text" bind:value={partner} placeholder="Enter your partner's name or ID"
-                                   class="mt-1 block w-full rounded-lg border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3"
+                            <input id="partner" type="text" bind:value={partner} placeholder="Enter your partner's name"
+                                   class="mt-1 block w-full rounded-lg border border-stone-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3 bg-stone-800 text-stone-100"
                                    on:input={handlePartnerInput} autocomplete="off" />
                             {#if isPartnerSearching}
                                 <span class="ml-1 animate-spin">
-                                    <svg class="w-5 h-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <svg class="w-5 h-5 text-stone-100" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                     </svg>
@@ -314,34 +317,34 @@
                             {/if}
                         </div>
                         {#if showPartnerDropdown}
-                            <ul class="absolute z-10 left-0 right-0 bg-white border border-gray-200 rounded-lg mt-1 shadow-lg">
-                                {#each partnerSuggestions as suggestion}
-                                    <li class="px-4 py-2 cursor-pointer hover:bg-blue-100 flex justify-between items-center"
-                                        on:click={() => selectPartnerSuggestion(suggestion)}>
-                                        <span>{suggestion.username}</span>
-                                        <span class="text-xs text-gray-500">WSDC ID: {suggestion.wsdcID}</span>
-                                    </li>
-                                {/each}
+                            <ul class="absolute z-10 left-0 right-0 bg-stone-800 border border-stone-600 rounded-lg mt-1 shadow-lg">
+                                    {#each partnerSuggestions as suggestion}
+                                        <li class="px-4 py-2 cursor-pointer hover:bg-stone-700 flex justify-between items-center"
+                                            on:click={() => selectPartnerSuggestion(suggestion)}>
+                                            <span class="text-stone-100">{suggestion.username}</span>
+                                            <span class="text-xs text-stone-300">WSDC ID: {suggestion.wsdcID}</span>
+                                        </li>
+                                    {/each}
                             </ul>
                         {/if}
                         <div class="mt-2">
-                            <label for="partnerWsdcID" class="block text-xs text-gray-500">Partner WSDC ID</label>
-                            <input id="partnerWsdcID" type="text" bind:value={partnerWsdcID} class="block w-full rounded-lg border border-gray-200 p-2 text-xs" placeholder="Enter or select WSDC ID" />
+                            <label for="partnerWsdcID" class="block text-xs text-stone-500">Partner WSDC ID</label>
+                            <input id="partnerWsdcID" type="text" bind:value={partnerWsdcID} class="block w-full rounded-lg border border-stone-600 p-2 text-xs bg-stone-800 text-stone-100" placeholder="Enter WSDC ID" />
                         </div>
                     </div>
 
                     <!-- WSDC Details Group -->
                     <div class="grid grid-cols-2 gap-4 mb-4">
                         <div>
-                            <label for="wsdcID" class="block text-sm font-medium text-gray-700">WSDC ID</label>
-                            <input id="wsdcID" type="text" bind:value={wsdcID} disabled 
-                                   class="mt-1 block w-full rounded-lg border border-gray-300 shadow-sm bg-gray-100 text-gray-500 p-3" />
+                            <label for="wsdcID" class="block text-sm font-medium text-stone-300">WSDC ID</label>
+                            <input id="wsdcID" type="text" bind:value={wsdcID} disabled={wsdcDisabled}
+                                   class="mt-1 block w-full rounded-lg border border-stone-600 shadow-sm bg-stone-800 text-stone-300 p-3" />
                         </div>
 
                         <div>
-                            <label for="wsdcLevel" class="block text-sm font-medium text-gray-700">WSDC Level</label>
+                            <label for="wsdcLevel" class="block text-sm font-medium text-stone-300">WSDC Level</label>
                             <select id="wsdcLevel" bind:value={wsdcLevel}
-                                    class="mt-1 block w-full rounded-lg border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3 bg-white">
+                                    class="mt-1 block w-full rounded-lg border border-stone-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3 bg-stone-800 text-stone-100">
                                 {#each wsdcLevels as level}
                                     <option value={level}>{level}</option>
                                 {/each}
@@ -352,22 +355,22 @@
                     <!-- Country & Age Group -->
                     <div class="grid grid-cols-2 gap-4">
                         <div>
-                            <label for="country" class="block text-sm font-medium text-gray-700">Country</label>
+                            <label for="country" class="block text-sm font-medium text-stone-300">Country</label>
                             <input id="country" type="text" bind:value={country} required 
-                                   class="mt-1 block w-full rounded-lg border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3" />
+                                   class="mt-1 block w-full rounded-lg border border-stone-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3 bg-stone-800 text-stone-100" />
                         </div>
 
                         <div>
-                            <label for="age" class="block text-sm font-medium text-gray-700">Age</label>
-                            <input id="age" type="text" bind:value={age} disabled 
-                                   class="mt-1 block w-full rounded-lg border border-gray-300 shadow-sm bg-gray-100 text-gray-500 p-3" />
+                            <label for="age" class="block text-sm font-medium text-stone-300">Age</label>
+                            <input id="age" type="text" bind:value={age} disabled={ageDisabled}
+                                   class="mt-1 block w-full rounded-lg border border-stone-600 shadow-sm bg-stone-800 text-stone-500 p-3" />
                         </div>
                     </div>
                 </div>
 
                 <!-- PRODUCTS SECTION -->
-                <div class="border-b pb-6">
-                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Select Products</h3>
+                <div class=" pb-3">
+                    <h3 class="text-lg font-semibold text-stone-300 mb-4">Select Products</h3>
                     
                     {#if products.length === 0}
                         <div class="p-4 bg-yellow-50 border border-yellow-200 text-yellow-700 rounded-lg">
@@ -376,23 +379,23 @@
                     {:else}
                         {#each Object.entries(productsByType) as [type, typeProducts]}
                             <div class="mb-6">
-                                <h4 class="text-base font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                                <h4 class="text-base font-semibold text-stone-300 mb-3 flex items-center gap-2 capitalize">
                                     <span>{productTypeIcons[type] || '📦'}</span>
                                     {type}
                                 </h4>
                                 
                                 <div class="space-y-3">
                                     {#each typeProducts as product}
-                                        <div class="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition">
+                                        <div class="border border-stone-600 rounded-lg p-4 hover:bg-stone-700 transition">
                                             <div class="flex items-start justify-between mb-2">
                                                 <div class="flex-1">
-                                                    <h5 class="font-semibold text-gray-800">{product.name}</h5>
+                                                    <h5 class="font-semibold text-stone-300">{product.name}</h5>
                                                     {#if product.description}
-                                                        <p class="text-sm text-gray-600 mt-1">{product.description}</p>
+                                                        <p class="text-sm text-stone-400 mt-1">{product.description}</p>
                                                     {/if}
                                                 </div>
                                                 <div class="text-right ml-4">
-                                                    <div class="text-lg font-bold text-blue-600">
+                                                    <div class="text-lg font-bold text-stone-200">
                                                         {parseFloat(product.price).toFixed(2)} {product.currency_type || 'EUR'}
                                                     </div>
                                                 </div>
@@ -407,9 +410,9 @@
                                                         name="ticket"
                                                         value={product.id}
                                                         bind:group={selectedTicket}
-                                                        class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                                                        class="w-4 h-4 text-blue-600 border-stone-600 focus:ring-blue-500"
                                                     />
-                                                    <label for="ticket-{product.id}" class="text-sm font-medium text-gray-700 cursor-pointer">
+                                                    <label for="ticket-{product.id}" class="text-sm font-medium text-stone-300 cursor-pointer">
                                                         Select this ticket
                                                     </label>
                                                 </div>
@@ -419,21 +422,21 @@
                                                         id="intensive-{product.id}"
                                                         type="checkbox" 
                                                         bind:checked={selectedIntensives[product.id]}
-                                                        class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                                        class="w-4 h-4 text-blue-600 border-stone-600 rounded focus:ring-blue-500"
                                                     />
-                                                    <label for="intensive-{product.id}" class="text-sm font-medium text-gray-700 cursor-pointer">
+                                                    <label for="intensive-{product.id}" class="text-sm font-medium text-stone-300 cursor-pointer">
                                                         Include this intensive
                                                     </label>
                                                 </div>
                                             {:else}
                                                 <div class="flex items-center gap-3 mt-4">
-                                                    <label for="qty-{product.id}" class="text-sm font-medium text-gray-700">Qty:</label>
+                                                    <label for="qty-{product.id}" class="text-sm font-medium text-stone-300">Qty:</label>
                                                     <input 
                                                         id="qty-{product.id}"
                                                         type="number" 
                                                         min="0" 
                                                         bind:value={selectedProducts[product.id]}
-                                                        class="w-16 px-3 py-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-blue-500"
+                                                        class="w-16 px-3 py-2 border border-stone-600 rounded-lg focus:border-blue-500 focus:ring-blue-500"
                                                     />
                                                 </div>
                                             {/if}
@@ -446,34 +449,34 @@
                 </div>
 
                 {#if selectedCount > 0}
-                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-2">
-                        <p class="text-sm font-semibold text-gray-700 mb-2">Order Summary</p>
-                        <div class="flex justify-between text-sm text-gray-600">
+                    <div class="bg-stone-800 border border-stone-600 rounded-lg p-4 space-y-2">
+                        <p class="text-sm font-semibold text-stone-300 mb-2">Order Summary</p>
+                        <div class="flex justify-between text-sm text-stone-400">
                             <span>Tickets subtotal</span>
                             <span>{cartSubtotal.toFixed(2)} {products[0]?.currency_type || 'EUR'}</span>
                         </div>
                         {#if stripe_fee_model === 'on_top'}
-                            <div class="flex justify-between text-sm text-gray-600">
+                            <div class="flex justify-between text-sm text-stone-400">
                                 <span>Payment handling fee (3.5%)</span>
                                 <span>{stripeFeePreview.toFixed(2)} {products[0]?.currency_type || 'EUR'}</span>
                             </div>
                         {/if}
-                        <div class="flex justify-between text-sm text-gray-600">
+                        <div class="flex justify-between text-sm text-stone-400">
                             <span>Service fee (1%)</span>
                             <span>{previewServiceFee.toFixed(2)} {products[0]?.currency_type || 'EUR'}</span>
                         </div>
-                        <div class="flex justify-between border-t pt-2 font-semibold text-gray-800">
+                        <div class="flex justify-between border-t pt-2 font-semibold text-stone-300">
                             <span>Estimated total</span>
                             <span class="text-blue-600">{previewTotal.toFixed(2)} {products[0]?.currency_type || 'EUR'}</span>
                         </div>
-                        <p class="text-xs text-gray-400">
+                        <p class="text-xs text-stone-400">
                             {#if stripe_fee_model === 'on_top'}
                                 3.5% covers card processing costs · 1% platform service fee
                             {:else}
                                 Payment handling is included in ticket prices · 1% platform service fee
                             {/if}
                         </p>
-                        <p class="text-xs text-gray-400">Final amount charged at payment after approval</p>
+                        <p class="text-xs text-stone-400">Final amount charged at payment after approval</p>
                     </div>
                 {/if}
 
@@ -491,3 +494,19 @@
         </div>
     </div>
 </div>
+
+<style>
+        .neomorph-card {
+        background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(2,6,23,0.06));
+        box-shadow: 8px 8px 24px rgba(2,6,23,0.6), -8px -8px 18px rgba(255,255,255,0.03);
+        border-radius: 1.25rem;
+        border: 1px solid rgba(255,255,255,0.03);
+    }
+
+    /* Inset/pressed neomorph for About section */
+    .neomorph-inset {
+        background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(0,0,0,0.03));
+        box-shadow: inset 6px 6px 16px rgba(2,6,23,0.5), inset -6px -6px 12px rgba(255,255,255,0.03);
+        border: 1px solid rgba(255,255,255,0.02);
+    }
+</style>

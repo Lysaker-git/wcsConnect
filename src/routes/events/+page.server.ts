@@ -1,7 +1,12 @@
 import { selectAllFromSupabase } from '$lib/api/selectFromSupabase';
+import { supabase } from '$lib/server/supabaseServiceClient';
 
 export async function load() {
-  const { data: events, error } = await selectAllFromSupabase('events', '*');
+  const { data: events, error } = await supabase
+    .from('events')
+    .select('*')
+    .eq('is_published', true)
+    .order('start_date', { ascending: true });
   const { data: eventDetails, error: eventDetailserror } = await selectAllFromSupabase('event_details', '*');
 
   // Build a lookup of details by their event foreign key. We attempt common key names.

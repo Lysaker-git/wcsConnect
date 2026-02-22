@@ -1,6 +1,7 @@
 <script lang="ts">
     import Roadmap from "$lib/components/roadmap.svelte";
     export let data;
+    console.log('Home page data:', data);
 
     // Define the data for the four feature cards (neumorphism styling applied below)
     const featureCards = [
@@ -31,20 +32,25 @@
     ];
 
     // Map server-provided events into items for the table
-    $: upcomingItems = data?.events
-        ? data.events.map((e: any) => ({
-              type: e.event_details?.event_type ?? 'Event',
-              title: e.title ?? 'Untitled',
-              date:
-                  e.start_date && e.end_date
-                      ? `${new Date(e.start_date).toLocaleDateString()} - ${new Date(e.end_date).toLocaleDateString()}`
-                      : e.start_date
-                      ? new Date(e.start_date).toLocaleDateString()
-                      : '',
-              location: e.location ?? e.venue ?? e.city ?? '',
-              link: `/events/${e.id}`
-          }))
-        : [];
+    // Support both array responses and a single-event object (e.g. when data.events.statusLive === false)
+    $: upcomingItems = (() => {
+        if (!data?.events) return [];
+        const eventsArray = Array.isArray(data.events) ? data.events : [data.events];
+        // Only show events explicitly marked live
+        const liveEvents = eventsArray.filter((e: any) => e?.is_published === true);
+        return liveEvents.map((e: any) => ({
+            type: e.event_details?.event_type ?? 'Event',
+            title: e.title ?? 'Untitled',
+            date:
+                e.start_date && e.end_date
+                    ? `${new Date(e.start_date).toLocaleDateString()} - ${new Date(e.end_date).toLocaleDateString()}`
+                    : e.start_date
+                    ? new Date(e.start_date).toLocaleDateString()
+                    : '',
+            location: e.location ?? e.venue ?? e.city ?? '',
+            link: `/events/${e.id}`
+        }));
+    })();
 
     function getTypeColor(type: string): string {
         switch (type) {

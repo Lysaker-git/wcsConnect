@@ -1,32 +1,72 @@
 <script lang="ts">
-    import { page } from '$app/stores';
+  import { page } from '$app/stores';
+  import SiFacebook from '@icons-pack/svelte-simple-icons/icons/SiFacebook';
+  import SiInstagram from '@icons-pack/svelte-simple-icons/icons/SiInstagram';
+  import SiTiktok from '@icons-pack/svelte-simple-icons/icons/SiTiktok';
+  import { onMount, onDestroy } from 'svelte';
 
-    // The data object comes from the server load (src/routes/events/[eventID]/+page.server.ts)
-    export let data;
+  export let data;
 
-    console.log('🎉 [Event Detail Page] Loaded event data:', data);
+  const event = data.event;
+  const error = data.error;
+  const user = data.user ?? null;
+  const isAuthenticated = data.isAuthenticated ?? false;
+  const eventDetails = data.eventDetails ?? null;
 
-    const event = data.event;
-    const error = data.error;
-    const user = data.user ?? null;
-    const isAuthenticated = data.isAuthenticated ?? false;
-    const eventDetails = data.eventDetails ?? null;
+  function formatDate(dateString: string | undefined): string {
+    if (!dateString) return 'N/A';
+    try {
+      return new Date(dateString).toLocaleDateString('en-US', {
+        year: 'numeric', month: 'long', day: 'numeric'
+      });
+    } catch { return dateString; }
+  }
 
-    console.log('🎉 [Event Detail Page] Loaded event data:', event, 'user:', user, 'isAuthenticated:', isAuthenticated);
+  // Countdown logic
+  const registrationOpens: Date | null = event?.registration_opens
+    ? new Date(event.registration_opens)
+    : null;
 
-    // Helper function for consistent date formatting
-    function formatDate(dateString: string | undefined): string {
-        if (!dateString) return 'N/A';
-        try {
-            return new Date(dateString).toLocaleDateString('en-US', { 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
-            });
-        } catch {
-            return dateString;
-        }
+  let now = new Date();
+  let interval: ReturnType<typeof setInterval>;
+
+  $: registrationOpen = !registrationOpens || now >= registrationOpens;
+
+  $: timeLeft = (() => {
+    if (!registrationOpens || registrationOpen) return null;
+    const diff = registrationOpens.getTime() - now.getTime();
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+    return { days, hours, minutes, seconds };
+  })();
+
+  onMount(() => {
+    if (registrationOpens && !registrationOpen) {
+      interval = setInterval(() => { now = new Date(); }, 1000);
     }
+  });
+
+  onDestroy(() => { if (interval) clearInterval(interval); });
+
+  function normalizeSocialLinks(sl: any) {
+    if (!sl) return [];
+    if (Array.isArray(sl)) return sl.filter(Boolean).map((u) => ({ url: u, label: u }));
+    if (typeof sl === 'string') {
+      try {
+        const parsed = JSON.parse(sl);
+        if (Array.isArray(parsed)) return parsed.map((u: any) => ({ url: u, label: u }));
+        if (typeof parsed === 'object') return Object.values(parsed).map((u: any) => ({ url: u, label: u }));
+      } catch (e) {
+        // not JSON — fall back to comma-split
+        return sl.split(',').map((u) => ({ url: u.trim(), label: u.trim() })).filter((x) => x.url);
+      }
+    }
+    if (typeof sl === 'object') return Object.values(sl).map((u: any) => ({ url: u, label: u }));
+    return [];
+  }
+
 </script>
 
 <div class="min-h-screen bg-stone-900 py-16">
@@ -119,11 +159,27 @@
                                 {#if eventDetails?.organizer_phone}
                                     <p class="mt-2 text-stone-200">Phone: <a href={`tel:${eventDetails.organizer_phone}`} class="text-blue-400">{eventDetails.organizer_phone}</a></p>
                                 {/if}
-                                {#if eventDetails?.social_links}
-                                    <div class="mt-3">
-                                        <p class="text-xs text-stone-400">Social</p>
-                                        <p class="text-sm text-blue-400">{eventDetails.social_links}</p>
+                                {#if event.social_links || eventDetails.social_links}
+                                {@const socials = normalizeSocialLinks(event.social_links ?? eventDetails.social_links)}
+                                {#if socials.length}
+                                    <div class="flex gap-2 mt-1">
+                                    {#each socials as s}
+                                        {#if s.label.toLowerCase().includes('facebook')}
+                                        <a href={s.url} class="text-blue-500 hover:underline" rel="noopener noreferrer" target="_blank" aria-label="Facebook">
+                                            <SiFacebook class="w-6 h-6"/>
+                                        </a>
+                                        {:else if s.label.toLowerCase().includes('instagram')}
+                                        <a href={s.url} class="text-pink-500 hover:underline" rel="noopener noreferrer" target="_blank" aria-label="Instagram">
+                                            <SiInstagram class="w-6 h-6"/>
+                                        </a>
+                                        {:else if s.label.toLowerCase().includes('tiktok')}
+                                        <a href={s.url} class="text-black hover:underline" rel="noopener noreferrer" target="_blank" aria-label="TikTok">
+                                            <SiTiktok class="w-6 h-6"/>
+                                        </a>
+                                        {/if}
+                                    {/each}
                                     </div>
+                                {/if}
                                 {/if}
                             </div>
 
@@ -179,21 +235,47 @@
                         </div>
                     </div>
 
-                        <!-- Main Call to Action -->
+                    <!-- Main Call to Action -->
                     <div class="mt-12 pt-6">
-                        {#if isAuthenticated}
-                            <a href={`/events/${event.id}/register`}
-                               class="block text-center w-full py-4 bg-amber-600 text-white text-xl font-bold rounded-xl shadow-xl hover:bg-amber-700 transition duration-300"
-                               role="button"
-                            >
-                                Register for {event.title}
-                            </a>
-                        {:else}
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                <a href="/profile" class="block text-center w-full py-3 bg-amber-600 text-stone-900 text-lg font-bold rounded-xl shadow hover:bg-amber-700 transition duration-300">Sign In</a>
-                                <a href="/signup" class="block text-center w-full py-3 border border-stone-700 text-stone-700 text-lg font-bold rounded-xl shadow hover:bg-stone-700 hover:text-stone-300 transition duration-300">Sign Up</a>
+                    {#if !registrationOpen && timeLeft}
+                        <!-- Countdown -->
+                        <div class="p-6 bg-stone-800 rounded-xl border border-stone-600 text-center neomorph-inset">
+                        <p class="text-stone-400 text-sm uppercase tracking-widest mb-4">Registration opens in</p>
+                        <div class="grid grid-cols-4 gap-3 mb-4">
+                            {#each [
+                            { value: timeLeft.days, label: 'Days' },
+                            { value: timeLeft.hours, label: 'Hours' },
+                            { value: timeLeft.minutes, label: 'Minutes' },
+                            { value: timeLeft.seconds, label: 'Seconds' }
+                            ] as unit}
+                            <div class="bg-stone-800 rounded-xl p-3 neomorph-card">
+                                <p class="text-3xl font-extrabold text-amber-400 tabular-nums">
+                                {String(unit.value).padStart(2, '0')}
+                                </p>
+                                <p class="text-xs text-stone-500 mt-1">{unit.label}</p>
                             </div>
-                        {/if}
+                            {/each}
+                        </div>
+                        <p class="text-stone-500 text-xs">
+                            Opens {registrationOpens?.toLocaleDateString('en-US', { 
+                            year: 'numeric', month: 'long', day: 'numeric', 
+                            hour: '2-digit', minute: '2-digit' 
+                            })}
+                        </p>
+                        </div>
+                    {:else if isAuthenticated}
+                        <a href={`/events/${event.id}/register`}
+                        class="block text-center w-full py-4 bg-amber-600 text-white text-xl font-bold rounded-xl shadow-xl hover:bg-amber-700 transition duration-300"
+                        role="button"
+                        >
+                        Register for {event.title}
+                        </a>
+                    {:else}
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <a href="/profile" class="block text-center w-full py-3 bg-amber-600 text-stone-900 text-lg font-bold rounded-xl shadow hover:bg-amber-700 transition duration-300">Sign In</a>
+                        <a href="/signup" class="block text-center w-full py-3 border border-stone-700 text-stone-700 text-lg font-bold rounded-xl shadow hover:bg-stone-700 hover:text-stone-300 transition duration-300">Sign Up</a>
+                        </div>
+                    {/if}
                     </div>
                 </div>
             </div>

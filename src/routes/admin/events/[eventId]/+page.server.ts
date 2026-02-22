@@ -455,5 +455,48 @@ export const actions = {
     }
 
     return data;
+  },
+  togglePublish: async ({ params, cookies }) => {
+    const { eventId } = params;
+
+    const sbUser = cookies.get('sb_user');
+    if (!sbUser) throw svelteError(401, 'Not authenticated');
+    console.log('[togglePublish] sb_user cookie:', sbUser);
+
+    let user: any;
+    try { user = JSON.parse(sbUser); } catch { throw svelteError(401, 'Invalid session'); }
+
+    // Verify Event Director
+    const { data: participant } = await supabase
+      .from('event_participants')
+      .select('event_role')
+      .eq('event_id', eventId)
+      .eq('user_id', user.id)
+      .eq('event_role', 'Event Director')
+      .single();
+
+    console.log('[togglePublish] Event participant record:', participant);
+    
+    if (!participant) throw svelteError(403, 'Access denied');
+
+    // Get current published state
+    const { data: event } = await supabase
+      .from('events')
+      .select('is_published')
+      .eq('id', eventId)
+      .single();
+
+    console.log('[togglePublish] Event record:', event);
+
+    // Flip it
+    const { error: updateError } = await supabase
+      .from('events')
+      .update({ is_published: !event?.is_published })
+      .eq('id', eventId);
+
+    console.log('[togglePublish] Update result:', { updateError });
+    if (updateError) throw svelteError(500, 'Failed to update visibility');
+
+    return { success: true, is_published: !event?.is_published };
   }
 };

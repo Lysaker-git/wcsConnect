@@ -54,13 +54,17 @@ export const actions = {
             const accessibility = form.get('accessibility')?.toString() ?? null;
             const languages = form.get('languages')?.toString() ?? null;
             const tags = form.get('tags')?.toString() ?? null;
+            const registration_opens = form.get('registration_opens')?.toString() || null;
 
-            // Update events table
             const { data: updatedEvent, error: eventError } = await supabase
                 .from('events')
-                .update({ title, start_date, end_date })
+                .update({ 
+                title, 
+                start_date, 
+                end_date,
+                registration_opens: registration_opens || null
+                })
                 .eq('id', eventId)
-                .select();
 
             console.log('Updated event response, events:', { updatedEvent, eventError });
             if (eventError) {
