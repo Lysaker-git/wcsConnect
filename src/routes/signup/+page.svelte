@@ -1,54 +1,19 @@
 <script lang="ts">
-  import { goto } from '$app/navigation';
-  
+  import { enhance } from '$app/forms';
+
   const maleAvatar = '/images/avatar/male.png';
   const femaleAvatar = '/images/avatar/female.png';
 
   let email = '';
   let password = '';
+  let passwordConfirm = '';
   let username = '';
   let role: 'follower' | 'leader' = 'follower';
   let avatar_url = maleAvatar;
   let message: string | null = null;
   let isSubmitting = false;
 
-  async function onSubmit(e: Event) {
-    e.preventDefault();
-    if (isSubmitting) return;
-    isSubmitting = true;
-    message = null;
-
-    const form = new FormData();
-    form.set('email', email);
-    form.set('password', password);
-    form.set('username', username);
-    form.set('role', role);
-    form.set('avatar_url', avatar_url);
-
-    try {
-      const res = await fetch('?/signUp', { method: 'POST', body: form, credentials: 'include' });
-      console.log('res.status:', res.status);
-      console.log('res.redirected:', res.redirected);
-      console.log('res.url:', res.url);
-      const text = await res.text();
-      console.log('res.body:', text);      
-
-
-      if (res.redirected) {
-        await goto(res.url);
-        return;
-      }
-
-      const json = await res.json();
-      if (!res.ok) {
-        message = json?.message ?? 'Signup failed';
-      }
-    } catch (err) {
-      message = 'Something went wrong, please try again';
-    } finally {
-      isSubmitting = false;
-    }
-  }
+  $: passwordMismatch = passwordConfirm.length > 0 && password !== passwordConfirm;
 </script>
 
 <div class="bg-stone-950/90 w-full">
@@ -58,7 +23,25 @@
     <div class="mb-4 text-sm text-red-600">{message}</div>
   {/if}
 
-  <form on:submit|preventDefault={onSubmit} class="space-y-4">
+    <form 
+      method="POST" 
+      action="?/signup"
+      use:enhance={() => {
+        isSubmitting = true;
+        return async ({ result, update }) => {
+          isSubmitting = false;
+          if (result.type === 'redirect') {
+            window.location.href = result.location;
+            return;
+          }
+          if (result.type === 'failure') {
+            message = result.data?.message as string ?? 'Signup failed';
+          }
+          await update();
+        };
+      }}
+      class="space-y-4"
+    >
     <div>
       <label for="signup-email" class="block text-sm font-medium text-stone-300">Email</label>
       <input id="signup-email" bind:value={email} type="email" name="email" required class="mt-1 block w-full rounded-md border-stone-700 bg-stone-800 text-stone-100 shadow-sm" />
@@ -69,6 +52,22 @@
       <input id="signup-password" bind:value={password} type="password" name="password" required class="mt-1 block w-full rounded-md border-stone-700 bg-stone-800 text-stone-100 shadow-sm" />
     </div>
 
+    <div>
+      <label for="signup-password-confirm" class="block text-sm font-medium text-stone-300">
+        Confirm Password
+      </label>
+      <input 
+        id="signup-password-confirm" 
+        bind:value={passwordConfirm} 
+        type="password" 
+        required 
+        class="mt-1 block w-full rounded-md border-stone-700 bg-stone-800 text-stone-100 shadow-sm" 
+      />
+      {#if passwordMismatch}
+        <p class="text-red-400 text-xs mt-1">Passwords do not match</p>
+      {/if}
+    </div>
+    
     <div>
       <label for="signup-username" class="block text-sm font-medium text-stone-300">Username</label>
       <input id="signup-username" bind:value={username} type="text" name="username" required class="mt-1 block w-full rounded-md border-stone-700 bg-stone-800 text-stone-100 shadow-sm" />
@@ -96,9 +95,13 @@
       </div>
     </fieldset>
 
-  <button type="submit" disabled={isSubmitting} class="px-4 py-2 bg-stone-600 text-white rounded-md disabled:opacity-50">
-    {isSubmitting ? 'Creating account...' : 'Sign Up'}
-  </button>
+    <button 
+      type="submit" 
+      disabled={isSubmitting || passwordMismatch || password !== passwordConfirm}
+      class="px-4 py-2 bg-stone-600 text-white rounded-md disabled:opacity-50"
+    >
+      {isSubmitting ? 'Creating account...' : 'Sign Up'}
+    </button>
   </form>
   </div>
 </div>
