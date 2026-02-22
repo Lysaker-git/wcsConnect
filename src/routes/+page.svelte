@@ -32,7 +32,7 @@
     ];
 
     // Map server-provided events into items for the table
-    // Support both array responses and a single-event object (e.g. when data.events.statusLive === false)
+    // Support both array responses and a single-event object (e.g. when data.events.is_published === false)
     $: upcomingItems = (() => {
         if (!data?.events) return [];
         const eventsArray = Array.isArray(data.events) ? data.events : [data.events];
@@ -101,9 +101,19 @@
                     <a href={card.href} class="no-underline">
                         <div class="p-6 h-full rounded-xl transition-transform transform hover:-translate-y-1" style="background: linear-gradient(180deg,#101410 0%, #0f1212 100%); border-radius:12px; box-shadow: 6px 6px 14px rgba(2,6,23,0.7), -5px -5px 10px rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.02);">
                             <div class="mb-4 w-12 h-12 flex items-center justify-center rounded-full text-white" style="background:linear-gradient(180deg,#3b2a0b,#b78f2e);">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d={card.icon} />
-                                </svg>
+                                {#if card.title === 'Global Events'}
+                                    <span class="text-2xl">🌍</span>
+                                {:else if card.title === 'Local Classes'}
+                                    <span class="text-2xl">💡</span>
+                                {:else if card.title === 'Mock Competitions'}
+                                    <span class="text-2xl">🎯</span>
+                                {:else if card.title === 'Learning Portal'}
+                                    <span class="text-2xl">🧠</span>
+                                {:else}
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d={card.icon} />
+                                    </svg>
+                                {/if}
                             </div>
 
                             <h3 class="text-xl font-bold text-stone-100 mb-2">

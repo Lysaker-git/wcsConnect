@@ -41,7 +41,7 @@
           <h4 class="text-sm font-semibold text-stone-100 mb-3">Resources</h4>
           <ul class="space-y-2 text-sm text-stone-300">
             <li><a href="/about" class="hover:text-amber-300">About the project</a></li>
-            <li><a href="/profile" class="hover:text-amber-300">Sign in / Profile</a></li>
+            <li><a href="/signin" class="hover:text-amber-300">Sign in / Profile</a></li>
             <li><a href="/signup" class="hover:text-amber-300">Sign up</a></li>
             <li><a href="/contact" class="hover:text-amber-300">Contact</a></li>
           </ul>

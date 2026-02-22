@@ -1,6 +1,7 @@
 import { supabase } from '$lib/server/supabaseServiceClient';
 import { error as svelteError, fail } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
+import { sendRegistrationApprovedEmail } from '$lib/server/email';
 
 export const load: PageServerLoad = async ({ params, cookies }) => {
   const { eventId } = params;
@@ -56,6 +57,7 @@ export const load: PageServerLoad = async ({ params, cookies }) => {
       .select('participant_id, product_name, product_type, quantity_ordered, unit_price, subtotal, currency_type, payment_status')
       .in('participant_id', participantIds);
 
+    console.log('[participants] products fetch result:', products, participantIds);
     participantProducts = products ?? [];
   }
 
@@ -93,12 +95,44 @@ export const actions: Actions = {
     if (!participant_id) return fail(400, { message: 'Missing participant_id' });
 
     const { error } = await supabase
-      .from('event_participants')
-      .update({ status: 'approved' })
-      .eq('id', participant_id)
-      .eq('event_id', eventId);
+        .from('event_participants')
+        .update({ status: 'approved' })
+        .eq('id', participant_id)
+        .eq('event_id', eventId);
 
     if (error) return fail(500, { message: 'Failed to approve participant' });
+
+    // Send approval email
+    try {
+    const { data: participant } = await supabase
+        .from('event_participants')
+        .select(`
+        id,
+        user_id,
+        profiles ( username ),
+        events ( title, start_date )
+        `)
+        .eq('id', participant_id)
+        .single();
+
+    const { data: authUser } = await supabase.auth.admin.getUserById(
+        participant?.user_id ?? ''
+    );
+
+    if (authUser?.user?.email && participant) {
+        await sendRegistrationApprovedEmail({
+        to: authUser.user.email,
+        username: participant.profiles?.username ?? 'Dancer',
+        eventTitle: participant.events?.title ?? 'the event',
+        eventStartDate: participant.events?.start_date ?? '',
+        participantId: participant_id
+        });
+        console.log(`📧 Approval email sent to ${authUser.user.email}`);
+    }
+    } catch (emailErr) {
+    // Don't fail the approval if email fails — just log it
+    console.error('Failed to send approval email:', emailErr);
+    }
 
     return { success: true };
   },

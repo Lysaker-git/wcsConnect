@@ -49,25 +49,32 @@ export const POST: RequestHandler = async ({ request, cookies, url }) => {
     return json({ error: 'No pending items found' }, { status: 400 });
   }
 
-  // 5. Find the event organizer (Event Director) and their Stripe account
-  const { data: edParticipant, error: edError } = await supabase
+  // 5. Find the event organizer with a connected Stripe account
+  // Look for Event Director first — they own the Stripe account
+  const { data: edParticipants, error: edError } = await supabase
     .from('event_participants')
     .select('user_id')
     .eq('event_id', participant.event_id)
-    .eq('event_role', 'Event Director')
-    .single();
+    .eq('event_role', 'Event Director');
 
-  if (edError || !edParticipant) {
+  if (edError || !edParticipants || edParticipants.length === 0) {
     return json({ error: 'Event organizer not found' }, { status: 400 });
   }
 
-  const { data: organizer, error: orgError } = await supabase
-    .from('profiles')
-    .select('stripe_account_id, stripe_onboarding_complete')
-    .eq('id', edParticipant.user_id)
-    .single();
+  // Find the ED who has Stripe connected
+  const edUserIds = edParticipants.map(ep => ep.user_id);
 
-  if (orgError || !organizer?.stripe_account_id || !organizer.stripe_onboarding_complete) {
+  const { data: organizers } = await supabase
+    .from('profiles')
+    .select('id, stripe_account_id, stripe_onboarding_complete')
+    .in('id', edUserIds)
+    .eq('stripe_onboarding_complete', true)
+    .not('stripe_account_id', 'is', null)
+    .limit(1);
+
+  const organizer = organizers?.[0];
+
+  if (!organizer?.stripe_account_id) {
     return json({ error: 'Organizer has not connected Stripe yet' }, { status: 400 });
   }
 
@@ -121,7 +128,9 @@ export const POST: RequestHandler = async ({ request, cookies, url }) => {
   const applicationFee = serviceFeeAmount;
 
   // 10. Create Stripe Checkout Session
-  const origin = url.origin;
+  const origin = url.origin.includes('localhost') 
+    ? 'https://dancepoint.no' 
+    : url.origin;
   const session = await stripe.checkout.sessions.create({
     mode: 'payment',
     line_items: lineItems,

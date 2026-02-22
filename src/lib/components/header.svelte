@@ -77,7 +77,7 @@
           </div>
         {:else}
           <a href="/signup" class="text-sm font-medium text-stone-200 border border-stone-700 bg-transparent px-3 py-2 rounded-md hover:bg-stone-800">Sign Up</a>
-          <a href="/profile" class="text-sm font-medium text-white bg-amber-600/70 hover:bg-amber-700 px-3 py-2 rounded-md">Sign In</a>
+          <a href="/signin" class="text-sm font-medium text-white bg-amber-600/70 hover:bg-amber-700 px-3 py-2 rounded-md">Sign In</a>
         {/if}
 
         <!-- Mobile menu button -->

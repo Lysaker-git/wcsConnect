@@ -1,6 +1,7 @@
 import Stripe from 'stripe';
 import { STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, SUPABASE_SERVICE_ROLE_KEY } from '$env/static/private';
 import { PUBLIC_SUPABASE_URL } from '$env/static/public';
+import { sendPaymentConfirmedEmail } from '$lib/server/email';
 import { createClient } from '@supabase/supabase-js';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
@@ -11,7 +12,6 @@ export const POST: RequestHandler = async ({ request }) => {
   const body = await request.text();
   const signature = request.headers.get('stripe-signature') ?? '';
 
-  // 1. Verify the webhook actually came from Stripe
   let event: Stripe.Event;
   try {
     event = stripe.webhooks.constructEvent(body, signature, STRIPE_WEBHOOK_SECRET);
@@ -20,7 +20,9 @@ export const POST: RequestHandler = async ({ request }) => {
     return json({ error: 'Invalid signature' }, { status: 400 });
   }
 
-  // 2. Only handle successful checkouts
+  // Use one supabase client throughout
+  const supabase = createClient(PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
   if (event.type === 'checkout.session.completed' ||
       event.type === 'checkout.session.async_payment_succeeded') {
     const session = event.data.object as Stripe.Checkout.Session;
@@ -31,9 +33,7 @@ export const POST: RequestHandler = async ({ request }) => {
       return json({ error: 'Missing metadata' }, { status: 400 });
     }
 
-    const supabase = createClient(PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-
-    // 3. Flip all pending products for this participant to 'paid'
+    // Flip pending products to paid
     const { error } = await supabase
       .from('participant_products')
       .update({
@@ -49,14 +49,56 @@ export const POST: RequestHandler = async ({ request }) => {
     }
 
     console.log(`✅ Payment confirmed for participant ${participant_id}`);
+
+    // Send payment confirmed email — inside the success block
+    try {
+      const { data: participant } = await supabase
+        .from('event_participants')
+        .select(`
+          id,
+          user_id,
+          profiles ( username ),
+          events ( title, start_date )
+        `)
+        .eq('id', participant_id)
+        .single();
+
+      const { data: authUser } = await supabase.auth.admin.getUserById(
+        participant?.user_id ?? ''
+      );
+
+      const { data: products } = await supabase
+        .from('participant_products')
+        .select('subtotal, currency_type')
+        .eq('participant_id', participant_id)
+        .eq('payment_status', 'paid');
+
+      const total = (products ?? []).reduce((sum, p) => sum + parseFloat(p.subtotal), 0);
+      const currency = products?.[0]?.currency_type ?? 'EUR';
+      const email = authUser?.user?.email ?? session.customer_details?.email;
+
+      if (email && participant) {
+        await sendPaymentConfirmedEmail({
+          to: email,
+          username: participant.profiles?.username ?? 'Dancer',
+          eventTitle: participant.events?.title ?? 'the event',
+          eventStartDate: participant.events?.start_date ?? '',
+          amount: total,
+          currency,
+          participantId: participant_id
+        });
+        console.log(`📧 Payment confirmation email sent to ${email}`);
+      }
+    } catch (emailErr) {
+      console.error('Failed to send payment confirmation email:', emailErr);
+    }
   }
 
   if (event.type === 'checkout.session.async_payment_failed') {
     const session = event.data.object as Stripe.Checkout.Session;
     const { participant_id } = session.metadata ?? {};
-    
+
     if (participant_id) {
-      const supabase = createClient(PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
       await supabase
         .from('participant_products')
         .update({
@@ -65,7 +107,7 @@ export const POST: RequestHandler = async ({ request }) => {
         })
         .eq('participant_id', participant_id)
         .eq('payment_status', 'pending');
-      
+
       console.log(`❌ Async payment failed for participant ${participant_id}`);
     }
   }

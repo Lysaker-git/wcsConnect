@@ -17,7 +17,7 @@ export const load = async ({ params, url }) => {
     try {
         const { data: eventData, error: eventError } = await supabase
             .from('events')
-            .select('id, title')
+            .select('id, title, stripe_fee_model')
             .eq('id', eventID)
             .single();
 
@@ -82,6 +82,12 @@ export const load = async ({ params, url }) => {
         }
     }
 
+
+    const stripe_fee_model = event?.stripe_fee_model ?? 'on_top';
+    const stripeFee = stripe_fee_model === 'on_top' ? total * 0.035 : 0;
+    const serviceFee = total * 0.01;
+    const grandTotal = total + stripeFee + serviceFee;
+
     return {
         participantId,
         eventID,
@@ -89,6 +95,10 @@ export const load = async ({ params, url }) => {
         participant,
         participantUsername,
         participantProducts,
-        total
+        total,
+        stripeFee,
+        serviceFee,
+        grandTotal,
+        stripe_fee_model
     };
 };
