@@ -39,7 +39,7 @@ export async function POST({ request, cookies }) {
     }
 
     // set httpOnly cookie with access token
-    const maxAge = session.expires_in ?? 3600;
+    const maxAge = 60 * 60 * 24 * 7; // 7 days in seconds
     cookies.set('sb_access_token', session.access_token, {
       httpOnly: true,
       path: '/',

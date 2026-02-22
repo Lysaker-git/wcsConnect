@@ -1,5 +1,5 @@
 import { createEvent } from '$lib/api/createEvent';
-import { fail } from '@sveltejs/kit';
+import { fail, redirect } from '@sveltejs/kit';
 import { supabase } from "$lib/server/supabaseServiceClient";
 
 export const load = async ({ cookies }) => {
@@ -21,8 +21,12 @@ export const load = async ({ cookies }) => {
     }
   }
 
+  if (!user) {
+    throw redirect(303, '/signin');
+  }
+
   // Load user's events where they are Event Director
-  let myEvents = [];
+  let myEvents: any[] = [];
   console.log('[DEBUG myEvents] Starting myEvents fetch');
   console.log('[DEBUG myEvents] User exists:', !!user);
   console.log('[DEBUG myEvents] Profile exists:', !!profile);
@@ -65,7 +69,7 @@ export const load = async ({ cookies }) => {
   console.log('[DEBUG myEvents] Final myEvents array:', myEvents);
 
   // Fetch user's registrations (event_participants) to show on profile
-  let myRegistrations = [];
+  let myRegistrations: any[] = [];
   if (user) {
     try {
       console.log('[DEBUG myRegistrations] Fetching registrations for user:', user.id);

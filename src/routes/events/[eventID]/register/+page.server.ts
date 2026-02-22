@@ -1,4 +1,4 @@
-import { fail, json } from '@sveltejs/kit';
+import { fail, json, redirect } from '@sveltejs/kit';
 import { supabase } from "$lib/server/supabaseServiceClient";
 
 export const load = async ({ params, cookies }) => {
@@ -12,15 +12,31 @@ export const load = async ({ params, cookies }) => {
     if (sbUser) {
         try {
             user = JSON.parse(sbUser);
+
+            // Check email verification status via Supabase Auth admin
+            const { data: authUser, error: authError } = await supabase.auth.admin.getUserById(user.id);
+
+            if (authError || !authUser?.user) {
+                throw redirect(303, '/signin');
+            }
+
+            if (!authUser.user.email_confirmed_at) {
+                throw redirect(303, '/signup/verify-email?reason=unverified');
+            }
+
             try {
                 const { data, error } = await supabase.from('profiles').select('*').eq('id', user.id).single();
                 if (!error) profile = data;
             } catch (pe) {
                 console.warn('[registration load] profile fetch error', pe);
             }
-        } catch (e) {
+        } catch (e: any) {
+            if (e?.status === 303) throw e; // let redirect through
             user = null;
         }
+    } else {
+        // Not logged in at all — send to signin
+        throw redirect(303, `/profile?redirect=/events/${params.eventID}/register`);
     }
 
     // Fetch products for this event

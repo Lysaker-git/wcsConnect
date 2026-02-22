@@ -32,6 +32,7 @@
   let accessibility = '';
   let languages = '';
   let tags = '';
+  let registration_opens = '';
 
   // Event crew fields (array of crew members)
   let crew = [
@@ -75,6 +76,7 @@
       form.append('languages', languages);
       form.append('tags', tags);
       form.append('stripe_fee_model', stripe_fee_model);
+      form.append('registration_opens', registration_opens);
 
       // encode crew as JSON string for server-side parsing
       form.append('crew', JSON.stringify(crew));
@@ -127,15 +129,15 @@
 </script>
 
 <div class="max-w-3xl mx-auto py-8 px-4">
-  <h1 class="text-3xl font-bold mb-8 text-gray-800 text-center">Create Event</h1>
+  <h1 class="text-3xl font-bold mb-8 text-stone-200 text-center">Create Event</h1>
   
   <form on:submit={handleSubmit} class="space-y-4">
     <!-- Accordion: Events -->
-    <div class="neumorph-card rounded-2xl overflow-hidden">
+    <div class="neomorph-card rounded-2xl overflow-hidden bg-stone-800">
       <button 
         type="button" 
-        class="w-full px-6 py-4 text-left font-semibold text-gray-700 flex justify-between items-center transition-all hover:text-[var(--color-blue-700)]"
-        class:neumorph-pressed={openSection === 'events'}
+        class="bg-stone-800 w-full px-6 py-4 text-left font-semibold text-stone-200 flex justify-between items-center transition-all hover:text-[var(--color-stone-400)]"
+        class:neomorph-pressed={openSection === 'events'}
         on:click={() => openSection = openSection === 'events' ? '' : 'events'}
       >
         <span>Event Basics</span>
@@ -144,31 +146,31 @@
       {#if openSection === 'events'}
         <div class="px-6 pb-6 pt-2 space-y-4">
           <div>
-            <label for="title" class="block text-sm font-medium text-gray-600 mb-1.5">Title</label>
-            <input id="title" type="text" bind:value={title} class="neumorph-input w-full px-4 py-2.5 rounded-xl text-gray-700 outline-none transition-all focus:ring-2 focus:ring-[var(--color-blue-700)]/20" required />
+            <label for="title" class="block text-sm font-medium text-stone-200 mb-1.5">Title</label>
+            <input id="title" type="text" bind:value={title} class="bg-stone-700 w-full px-4 py-2.5 rounded-xl text-stone-200 outline-none transition-all focus:ring-2 focus:ring-[var(--color-blue-700)]/20" required />
           </div>
           <div class="grid grid-cols-2 gap-4">
             <div>
-              <label for="start_date" class="block text-sm font-medium text-gray-600 mb-1.5">Start Date</label>
-              <input id="start_date" type="date" bind:value={start_date} class="neumorph-input w-full px-4 py-2.5 rounded-xl text-gray-700 outline-none transition-all focus:ring-2 focus:ring-[var(--color-blue-700)]/20" required />
+              <label for="start_date" class="block text-sm font-medium text-stone-200 mb-1.5">Start Date</label>
+              <input id="start_date" type="date" bind:value={start_date} class="bg-stone-700 w-full px-4 py-2.5 rounded-xl text-stone-200 outline-none transition-all focus:ring-2 focus:ring-[var(--color-blue-700)]/20" required />
             </div>
             <div>
-              <label for="end_date" class="block text-sm font-medium text-gray-600 mb-1.5">End Date</label>
-              <input id="end_date" type="date" bind:value={end_date} class="neumorph-input w-full px-4 py-2.5 rounded-xl text-gray-700 outline-none transition-all focus:ring-2 focus:ring-[var(--color-blue-700)]/20" required />
+              <label for="end_date" class="block text-sm font-medium text-stone-200 mb-1.5">End Date</label>
+              <input id="end_date" type="date" bind:value={end_date} class="bg-stone-700 w-full px-4 py-2.5 rounded-xl text-stone-200 outline-none transition-all focus:ring-2 focus:ring-[var(--color-blue-700)]/20" required />
             </div>
           </div>
           <div class="mt-4">
-            <p class="block text-sm font-medium text-gray-600 mb-2">Stripe Payment Fee (3.5%)</p>
+            <p class="block text-sm font-medium text-stone-200 mb-2">Stripe Payment Fee (3.5%)</p>
             <div class="flex gap-3">
               <button
                 type="button"
                 class="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all border"
-                class:bg-blue-600={stripe_fee_model === 'on_top'}
-                class:text-white={stripe_fee_model === 'on_top'}
-                class:border-blue-600={stripe_fee_model === 'on_top'}
-                class:bg-white={stripe_fee_model === 'included'}
-                class:text-gray-600={stripe_fee_model === 'included'}
-                class:border-gray-200={stripe_fee_model === 'included'}
+                class:bg-amber-700={stripe_fee_model === 'on_top'}
+                class:text-stone-200={stripe_fee_model === 'on_top'}
+                class:border-amber-800={stripe_fee_model === 'on_top'}
+                class:bg-stone-100={stripe_fee_model === 'included'}
+                class:text-stone-800={stripe_fee_model === 'included'}
+                class:border-stone-200={stripe_fee_model === 'included'}
                 on:click={() => stripe_fee_model = 'on_top'}
               >
                 Add on top of ticket price
@@ -176,12 +178,12 @@
               <button
                 type="button"
                 class="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all border"
-                class:bg-blue-600={stripe_fee_model === 'included'}
-                class:text-white={stripe_fee_model === 'included'}
-                class:border-blue-600={stripe_fee_model === 'included'}
-                class:bg-white={stripe_fee_model === 'on_top'}
-                class:text-gray-600={stripe_fee_model === 'on_top'}
-                class:border-gray-200={stripe_fee_model === 'on_top'}
+                class:bg-amber-700={stripe_fee_model === 'included'}
+                class:text-stone-200={stripe_fee_model === 'included'}
+                class:border-amber-800={stripe_fee_model === 'included'}
+                class:bg-stone-100={stripe_fee_model === 'on_top'}
+                class:text-stone-800={stripe_fee_model === 'on_top'}
+                class:border-stone-200={stripe_fee_model === 'on_top'}
                 on:click={() => stripe_fee_model = 'included'}
               >
                 Include in ticket price
@@ -195,136 +197,150 @@
               {/if}
             </p>
           </div>
+          <div class="mt-4">
+            <label for="registration_opens" class="block text-sm font-medium text-gray-600 mb-1.5">
+              Registration Opens
+            </label>
+            <input
+              id="registration_opens"
+              type="datetime-local"
+              bind:value={registration_opens}
+              class="neumorph-input w-full px-4 py-2.5 rounded-xl text-gray-700 outline-none transition-all focus:ring-2 focus:ring-[var(--color-blue-700)]/20"
+            />
+            <p class="text-xs text-gray-400 mt-1">
+              Leave empty to allow registration immediately when published.
+            </p>
+          </div>
         </div>
       {/if}
     </div>
 
     <!-- Accordion: Event Details -->
-    <div class="neumorph-card rounded-2xl overflow-hidden">
+    <div class="neomorph-card rounded-2xl overflow-hidden bg-stone-800">
       <button 
         type="button" 
         class="w-full px-6 py-4 text-left font-semibold text-gray-700 flex justify-between items-center transition-all hover:text-[var(--color-blue-700)]"
-        class:neumorph-pressed={openSection === 'details'}
+        class:neomorph-pressed={openSection === 'details'}
         on:click={() => openSection = openSection === 'details' ? '' : 'details'}
       >
-        <span>Event Details</span>
+        <span class="text-stone-200">Event Details</span>
         <span class="text-xl font-light transition-transform" class:rotate-45={openSection === 'details'}>+</span>
       </button>
       {#if openSection === 'details'}
         <div class="px-6 pb-6 pt-2 space-y-4">
           <div>
-            <label for="description" class="block text-sm font-medium text-gray-600 mb-1.5">Description</label>
-            <textarea id="description" bind:value={description} rows="4" class="neumorph-input w-full px-4 py-2.5 rounded-xl text-gray-700 outline-none resize-y transition-all focus:ring-2 focus:ring-[var(--color-blue-700)]/20"></textarea>
+            <label for="description" class="block text-sm font-medium text-stone-200 mb-1.5">Description</label>
+            <textarea id="description" bind:value={description} rows="4" class="bg-stone-700 w-full px-4 py-2.5 rounded-xl text-stone-200 outline-none resize-y transition-all focus:ring-2 focus:ring-[var(--color-blue-700)]/20"></textarea>
           </div>
 
           <div class="grid grid-cols-2 gap-4">
             <div>
-              <label for="address" class="block text-sm font-medium text-gray-600 mb-1.5">Address</label>
-              <input id="address" type="text" bind:value={address} class="neumorph-input w-full px-4 py-2.5 rounded-xl text-gray-700 outline-none transition-all focus:ring-2 focus:ring-[var(--color-blue-700)]/20" />
+              <label for="address" class="block text-sm font-medium text-stone-200 mb-1.5">Address</label>
+              <input id="address" type="text" bind:value={address} class="bg-stone-700 w-full px-4 py-2.5 rounded-xl text-stone-200 outline-none transition-all focus:ring-2 focus:ring-[var(--color-blue-700)]/20" />
             </div>
             <div>
-                            <label for="venue" class="block text-sm font-medium text-gray-600 mb-1.5">Venue</label>
-                            <input id="venue" type="text" bind:value={venue} class="neumorph-input w-full px-4 py-2.5 rounded-xl text-gray-700 outline-none transition-all focus:ring-2 focus:ring-[var(--color-blue-700)]/20" />
-            </div>
-          </div>
-
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label for="hotel" class="block text-sm font-medium text-gray-600 mb-1.5">Hotel</label>
-              <input id="hotel" type="text" bind:value={hotel} class="neumorph-input w-full px-4 py-2.5 rounded-xl text-gray-700 outline-none transition-all focus:ring-2 focus:ring-[var(--color-blue-700)]/20" />
-            </div>
-            <div>
-              <label for="max_participants" class="block text-sm font-medium text-gray-600 mb-1.5">Max Participants</label>
-              <input id="max_participants" type="number" bind:value={max_participants} class="neumorph-input w-full px-4 py-2.5 rounded-xl text-gray-700 outline-none transition-all focus:ring-2 focus:ring-[var(--color-blue-700)]/20" />
+                            <label for="venue" class="block text-sm font-medium text-stone-200 mb-1.5">Venue</label>
+                            <input id="venue" type="text" bind:value={venue} class="bg-stone-700 w-full px-4 py-2.5 rounded-xl text-stone-200 outline-none transition-all focus:ring-2 focus:ring-[var(--color-blue-700)]/20" />
             </div>
           </div>
 
           <div class="grid grid-cols-2 gap-4">
             <div>
-              <label for="organizer_name" class="block text-sm font-medium text-gray-600 mb-1.5">Organizer Name</label>
-              <input id="organizer_name" type="text" bind:value={organizer_name} class="neumorph-input w-full px-4 py-2.5 rounded-xl text-gray-700 outline-none transition-all focus:ring-2 focus:ring-[var(--color-blue-700)]/20" />
+              <label for="hotel" class="block text-sm font-medium text-stone-200 mb-1.5">Hotel</label>
+              <input id="hotel" type="text" bind:value={hotel} class="bg-stone-700 w-full px-4 py-2.5 rounded-xl text-stone-200 outline-none transition-all focus:ring-2 focus:ring-[var(--color-blue-700)]/20" />
             </div>
             <div>
-              <label for="organizer_email" class="block text-sm font-medium text-gray-600 mb-1.5">Organizer Email</label>
-              <input id="organizer_email" type="email" bind:value={organizer_email} class="neumorph-input w-full px-4 py-2.5 rounded-xl text-gray-700 outline-none transition-all focus:ring-2 focus:ring-[var(--color-blue-700)]/20" />
+              <label for="max_participants" class="block text-sm font-medium text-stone-200 mb-1.5">Max Participants</label>
+              <input id="max_participants" type="number" bind:value={max_participants} class="bg-stone-700 w-full px-4 py-2.5 rounded-xl text-stone-200 outline-none transition-all focus:ring-2 focus:ring-[var(--color-blue-700)]/20" />
             </div>
-          </div>
-
-          <div>
-            <label for="organizer_phone" class="block text-sm font-medium text-gray-600 mb-1.5">Organizer Phone</label>
-            <input id="organizer_phone" type="text" bind:value={organizer_phone} class="neumorph-input w-full px-4 py-2.5 rounded-xl text-gray-700 outline-none transition-all focus:ring-2 focus:ring-[var(--color-blue-700)]/20" />
-          </div>
-
-          <div>
-            <label for="social_links" class="block text-sm font-medium text-gray-600 mb-1.5">Social Media Links (JSON)</label>
-            <input id="social_links" type="text" bind:value={social_links} class="neumorph-input w-full px-4 py-2.5 rounded-xl text-gray-700 outline-none transition-all focus:ring-2 focus:ring-[var(--color-blue-700)]/20" />
-          </div>
-
-          <div>
-            <label for="schedule_image_url" class="block text-sm font-medium text-gray-600 mb-1.5">Schedule Image URL</label>
-            <input id="schedule_image_url" type="text" bind:value={schedule_image_url} class="neumorph-input w-full px-4 py-2.5 rounded-xl text-gray-700 outline-none transition-all focus:ring-2 focus:ring-[var(--color-blue-700)]/20" />
-          </div>
-
-          <div>
-            <label for="transportation" class="block text-sm font-medium text-gray-600 mb-1.5">Transportation</label>
-            <input id="transportation" type="text" bind:value={transportation} class="neumorph-input w-full px-4 py-2.5 rounded-xl text-gray-700 outline-none transition-all focus:ring-2 focus:ring-[var(--color-blue-700)]/20" />
           </div>
 
           <div class="grid grid-cols-2 gap-4">
             <div>
-              <label for="event_type" class="block text-sm font-medium text-gray-600 mb-1.5">Event Type</label>
-              <input id="event_type" type="text" bind:value={event_type} class="neumorph-input w-full px-4 py-2.5 rounded-xl text-gray-700 outline-none transition-all focus:ring-2 focus:ring-[var(--color-blue-700)]/20" placeholder="Workshop, Competition, Social" />
+              <label for="organizer_name" class="block text-sm font-medium text-stone-200 mb-1.5">Organizer Name</label>
+              <input id="organizer_name" type="text" bind:value={organizer_name} class="bg-stone-700 w-full px-4 py-2.5 rounded-xl text-stone-200 outline-none transition-all focus:ring-2 focus:ring-[var(--color-blue-700)]/20" />
             </div>
             <div>
-              <label for="languages" class="block text-sm font-medium text-gray-600 mb-1.5">Languages</label>
-              <input id="languages" type="text" bind:value={languages} class="neumorph-input w-full px-4 py-2.5 rounded-xl text-gray-700 outline-none transition-all focus:ring-2 focus:ring-[var(--color-blue-700)]/20" placeholder="English, Norwegian" />
+              <label for="organizer_email" class="block text-sm font-medium text-stone-200 mb-1.5">Organizer Email</label>
+              <input id="organizer_email" type="email" bind:value={organizer_email} class="bg-stone-700 w-full px-4 py-2.5 rounded-xl text-stone-200 outline-none transition-all focus:ring-2 focus:ring-[var(--color-blue-700)]/20" />
             </div>
           </div>
 
           <div>
-            <label for="banner_image_url" class="block text-sm font-medium text-gray-600 mb-1.5">Banner Image URL</label>
-            <input id="banner_image_url" type="text" bind:value={banner_image_url} class="neumorph-input w-full px-4 py-2.5 rounded-xl text-gray-700 outline-none transition-all focus:ring-2 focus:ring-[var(--color-blue-700)]/20" />
+            <label for="organizer_phone" class="block text-sm font-medium text-stone-200 mb-1.5">Organizer Phone</label>
+            <input id="organizer_phone" type="text" bind:value={organizer_phone} class="bg-stone-700 w-full px-4 py-2.5 rounded-xl text-stone-200 outline-none transition-all focus:ring-2 focus:ring-[var(--color-blue-700)]/20" />
           </div>
 
           <div>
-            <label for="promo_video_url" class="block text-sm font-medium text-gray-600 mb-1.5">Promo Video URL</label>
-            <input id="promo_video_url" type="text" bind:value={promo_video_url} class="neumorph-input w-full px-4 py-2.5 rounded-xl text-gray-700 outline-none transition-all focus:ring-2 focus:ring-[var(--color-blue-700)]/20" />
+            <label for="social_links" class="block text-sm font-medium text-stone-200 mb-1.5">Social Media Links (JSON)</label>
+            <input id="social_links" type="text" bind:value={social_links} class="bg-stone-700 w-full px-4 py-2.5 rounded-xl text-stone-200 outline-none transition-all focus:ring-2 focus:ring-[var(--color-blue-700)]/20" />
           </div>
 
           <div>
-            <label for="accessibility" class="block text-sm font-medium text-gray-600 mb-1.5">Accessibility</label>
-            <input id="accessibility" type="text" bind:value={accessibility} class="neumorph-input w-full px-4 py-2.5 rounded-xl text-gray-700 outline-none transition-all focus:ring-2 focus:ring-[var(--color-blue-700)]/20" placeholder="Wheelchair accessible, ASL available" />
+            <label for="schedule_image_url" class="block text-sm font-medium text-stone-200 mb-1.5">Schedule Image URL</label>
+            <input id="schedule_image_url" type="text" bind:value={schedule_image_url} class="bg-stone-700 w-full px-4 py-2.5 rounded-xl text-stone-200 outline-none transition-all focus:ring-2 focus:ring-[var(--color-blue-700)]/20" />
           </div>
 
           <div>
-            <label for="tags" class="block text-sm font-medium text-gray-600 mb-1.5">Tags (comma separated)</label>
-            <input id="tags" type="text" bind:value={tags} class="neumorph-input w-full px-4 py-2.5 rounded-xl text-gray-700 outline-none transition-all focus:ring-2 focus:ring-[var(--color-blue-700)]/20" placeholder="salsa, bachata, kizomba" />
+            <label for="transportation" class="block text-sm font-medium text-stone-200 mb-1.5">Transportation</label>
+            <input id="transportation" type="text" bind:value={transportation} class="bg-stone-700 w-full px-4 py-2.5 rounded-xl text-stone-200 outline-none transition-all focus:ring-2 focus:ring-[var(--color-blue-700)]/20" />
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label for="event_type" class="block text-sm font-medium text-stone-200 mb-1.5">Event Type</label>
+              <input id="event_type" type="text" bind:value={event_type} class="bg-stone-700 w-full px-4 py-2.5 rounded-xl text-stone-200 outline-none transition-all focus:ring-2 focus:ring-[var(--color-blue-700)]/20" placeholder="Workshop, Competition, Social" />
+            </div>
+            <div>
+              <label for="languages" class="block text-sm font-medium text-stone-200 mb-1.5">Languages</label>
+              <input id="languages" type="text" bind:value={languages} class="bg-stone-700 w-full px-4 py-2.5 rounded-xl text-stone-200 outline-none transition-all focus:ring-2 focus:ring-[var(--color-blue-700)]/20" placeholder="English, Norwegian" />
+            </div>
+          </div>
+
+          <div>
+            <label for="banner_image_url" class="block text-sm font-medium text-stone-200 mb-1.5">Banner Image URL</label>
+            <input id="banner_image_url" type="text" bind:value={banner_image_url} class="bg-stone-700 w-full px-4 py-2.5 rounded-xl text-stone-200 outline-none transition-all focus:ring-2 focus:ring-[var(--color-blue-700)]/20" />
+          </div>
+
+          <div>
+            <label for="promo_video_url" class="block text-sm font-medium text-stone-200 mb-1.5">Promo Video URL</label>
+            <input id="promo_video_url" type="text" bind:value={promo_video_url} class="bg-stone-700 w-full px-4 py-2.5 rounded-xl text-stone-200 outline-none transition-all focus:ring-2 focus:ring-[var(--color-blue-700)]/20" />
+          </div>
+
+          <div>
+            <label for="accessibility" class="block text-sm font-medium text-stone-200 mb-1.5">Accessibility</label>
+            <input id="accessibility" type="text" bind:value={accessibility} class="bg-stone-700 w-full px-4 py-2.5 rounded-xl text-stone-200 outline-none transition-all focus:ring-2 focus:ring-[var(--color-blue-700)]/20" placeholder="Wheelchair accessible, ASL available" />
+          </div>
+
+          <div>
+            <label for="tags" class="block text-sm font-medium text-stone-200 mb-1.5">Tags (comma separated)</label>
+            <input id="tags" type="text" bind:value={tags} class="bg-stone-700 w-full px-4 py-2.5 rounded-xl text-stone-200 outline-none transition-all focus:ring-2 focus:ring-[var(--color-blue-700)]/20" placeholder="salsa, bachata, kizomba" />
           </div>
         </div>
       {/if}
     </div>
 
     <!-- Accordion: Event Crew -->
-    <div class="neumorph-card rounded-2xl overflow-hidden">
+    <div class="neomorph-card rounded-2xl overflow-hidden bg-stone-800">
       <button 
         type="button" 
-        class="w-full px-6 py-4 text-left font-semibold text-gray-700 flex justify-between items-center transition-all hover:text-[var(--color-blue-700)]"
-        class:neumorph-pressed={openSection === 'crew'}
+        class="w-full px-6 py-4 text-left font-semibold text-gray-700 flex justify-between items-center transition-all hover:text-[var(--color-stone-600)]"
+        class:neomorph-pressed={openSection === 'crew'}
         on:click={() => openSection = openSection === 'crew' ? '' : 'crew'}
       >
-        <span>Event Crew</span>
+        <span class="text-stone-200">Event Crew</span>
         <span class="text-xl font-light transition-transform" class:rotate-45={openSection === 'crew'}>+</span>
       </button>
       {#if openSection === 'crew'}
         <div class="px-6 pb-6 pt-2 space-y-4">
           {#each crew as member, idx}
-            <div class="neumorph-subcard rounded-xl p-5">
+            <div class="rounded-xl bg-stone-800">
               <div class="flex justify-between items-center mb-3">
-                <h4 class="font-semibold text-gray-700">Crew Member {idx + 1}</h4>
+                <h4 class="font-semibold text-stone-200">Crew Member {idx + 1}</h4>
                 {#if crew.length > 1}
                   <button 
                     type="button" 
-                    class="neumorph-btn-small w-8 h-8 rounded-lg text-red-500 hover:text-red-600 flex items-center justify-center transition-all"
+                    class="w-8 h-8 rounded-lg text-red-500 hover:text-red-600 flex items-center justify-center transition-all"
                     on:click={() => removeCrewMember(idx)}
                     title="Remove this member"
                   >
@@ -335,25 +351,25 @@
               
               <div class="space-y-3">
                 <div>
-                  <label for={`crew-${idx}-name`} class="block text-sm font-medium text-gray-600 mb-1.5">Name</label>
-                  <input id={`crew-${idx}-name`} type="text" bind:value={member.name} class="neumorph-input w-full px-4 py-2.5 rounded-xl text-gray-700 outline-none transition-all focus:ring-2 focus:ring-[var(--color-blue-700)]/20" placeholder="Full name (or leave blank to link later)" />
+                  <label for={`crew-${idx}-name`} class="block text-sm font-medium text-stone-200 mb-1.5">Name</label>
+                  <input id={`crew-${idx}-name`} type="text" bind:value={member.name} class="bg-stone-700 w-full px-4 py-2.5 rounded-xl text-stone-200 outline-none transition-all focus:ring-2 focus:ring-[var(--color-blue-700)]/20" placeholder="Full name (or leave blank to link later)" />
                 </div>
                 
                 <div class="grid grid-cols-2 gap-3">
                   <div>
-                    <label for={`crew-${idx}-role`} class="block text-sm font-medium text-gray-600 mb-1.5">Role</label>
-                    <input id={`crew-${idx}-role`} type="text" bind:value={member.role} class="neumorph-input w-full px-4 py-2.5 rounded-xl text-gray-700 outline-none transition-all focus:ring-2 focus:ring-[var(--color-blue-700)]/20" placeholder="Teacher, DJ, Judge" />
+                    <label for={`crew-${idx}-role`} class="block text-sm font-medium text-stone-200 mb-1.5">Role</label>
+                    <input id={`crew-${idx}-role`} type="text" bind:value={member.role} class="bg-stone-700 w-full px-4 py-2.5 rounded-xl text-stone-200 outline-none transition-all focus:ring-2 focus:ring-[var(--color-blue-700)]/20" placeholder="Teacher, DJ, Judge" />
                   </div>
                   <div>
-                    <label for={`crew-${idx}-description`} class="block text-sm font-medium text-gray-600 mb-1.5">Description</label>
-                    <input id={`crew-${idx}-description`} type="text" bind:value={member.description} class="neumorph-input w-full px-4 py-2.5 rounded-xl text-gray-700 outline-none transition-all focus:ring-2 focus:ring-[var(--color-blue-700)]/20" placeholder="Brief description" />
+                    <label for={`crew-${idx}-description`} class="block text-sm font-medium text-stone-200 mb-1.5">Description</label>
+                    <input id={`crew-${idx}-description`} type="text" bind:value={member.description} class="bg-stone-700 w-full px-4 py-2.5 rounded-xl text-stone-200 outline-none transition-all focus:ring-2 focus:ring-[var(--color-blue-700)]/20" placeholder="Brief description" />
                   </div>
                 </div>
               </div>
             </div>
           {/each}
           
-          <button type="button" class="neumorph-btn w-full py-3 rounded-xl font-semibold text-[var(--color-blue-700)] transition-all hover:shadow-lg flex items-center justify-center gap-2" on:click={addCrewMember}>
+          <button type="button" class="neumorph-btn w-full py-3 rounded-xl font-semibold text-[var(--color-stone-200)] transition-all hover:shadow-lg flex items-center justify-center gap-2" on:click={addCrewMember}>
             <span class="text-xl font-light">+</span>
             Add Crew Member
           </button>
@@ -361,7 +377,7 @@
       {/if}
     </div>
 
-    <button type="submit" class="neumorph-btn-submit w-full py-4 rounded-xl font-bold text-white bg-[var(--color-blue-700)] hover:bg-[var(--color-blue-800)] transition-all mt-6 disabled:opacity-60 disabled:cursor-not-allowed" disabled={isSubmitting}>
+    <button type="submit" class="w-full py-4 rounded-xl font-bold text-stone-200 bg-amber-700 hover:bg-amber-800 duration-300 transition-all mt-6 disabled:opacity-60 disabled:cursor-not-allowed" disabled={isSubmitting}>
       {#if isSubmitting}
         Creating...
       {:else}
@@ -372,83 +388,12 @@
 </div>
 
 <style>
-  /* Subtle neumorphism for white background */
-  .neumorph-card {
-    background: #ffffff;
-    box-shadow: 
-      3px 3px 6px rgba(0, 0, 0, 0.03),
-      -3px -3px 6px rgba(255, 255, 255, 0.9);
-  }
-
-  .neumorph-subcard {
-    background: #ffffff;
-    box-shadow: 
-      2px 2px 4px rgba(0, 0, 0, 0.02),
-      -2px -2px 4px rgba(255, 255, 255, 0.8);
-  }
-
-  .neumorph-input {
-    background: #ffffff;
-    box-shadow: 
-      inset 2px 2px 4px rgba(0, 0, 0, 0.04),
-      inset -2px -2px 4px rgba(255, 255, 255, 0.7);
-  }
-
-  .neumorph-btn {
-    background: #ffffff;
-    box-shadow: 
-      3px 3px 6px rgba(0, 0, 0, 0.03),
-      -3px -3px 6px rgba(255, 255, 255, 0.9);
-  }
-
-  .neumorph-btn:hover {
-    box-shadow: 
-      4px 4px 8px rgba(0, 0, 0, 0.04),
-      -4px -4px 8px rgba(255, 255, 255, 0.9);
-  }
-
-  .neumorph-btn:active {
-    box-shadow: 
-      inset 2px 2px 4px rgba(0, 0, 0, 0.04),
-      inset -2px -2px 4px rgba(255, 255, 255, 0.7);
-  }
-
-  .neumorph-btn-small {
-    background: #ffffff;
-    box-shadow: 
-      2px 2px 4px rgba(0, 0, 0, 0.03),
-      -2px -2px 4px rgba(255, 255, 255, 0.9);
-  }
-
-  .neumorph-btn-small:active {
-    box-shadow: 
-      inset 2px 2px 3px rgba(0, 0, 0, 0.04),
-      inset -2px -2px 3px rgba(255, 255, 255, 0.7);
-  }
-
-  .neumorph-pressed {
-    box-shadow: 
-      inset 2px 2px 4px rgba(0, 0, 0, 0.04),
-      inset -2px -2px 4px rgba(255, 255, 255, 0.7);
-  }
-
-  .neumorph-btn-submit {
-    box-shadow: 
-      4px 4px 8px rgba(0, 0, 0, 0.08),
-      -2px -2px 6px rgba(255, 255, 255, 0.4);
-  }
-
-  .neumorph-btn-submit:hover {
-    box-shadow: 
-      5px 5px 10px rgba(0, 0, 0, 0.1),
-      -3px -3px 8px rgba(255, 255, 255, 0.4);
-    transform: translateY(-1px);
-  }
-
-  .neumorph-btn-submit:active {
-    box-shadow: 
-      inset 3px 3px 6px rgba(0, 0, 0, 0.15),
-      inset -1px -1px 3px rgba(255, 255, 255, 0.3);
-    transform: translateY(0);
+  .neomorph-card {
+    box-shadow:
+      5px 5px 18px rgba(2,6,23,0.5),
+      -5px -5px 12px rgba(255,255,255,0.08);
+    border-radius: 1.25rem;
+    border: none;
+    border: 2px solid rgba(255,255,255,0.02);
   }
 </style>

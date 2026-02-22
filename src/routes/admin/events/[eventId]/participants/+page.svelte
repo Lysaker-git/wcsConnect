@@ -3,34 +3,40 @@
 
   export let data: { event: any; participants: any[] };
 
-  const statusColors: Record<string, string> = {
-    approved: 'bg-green-100 text-green-700',
-    rejected: 'bg-red-100 text-red-700',
-    pending: 'bg-yellow-100 text-yellow-700',
-    pending_couples_registration: 'bg-blue-100 text-blue-700'
-  };
+    const statusColors: Record<string, string> = {
+        approved: 'bg-green-100 text-green-700',
+        rejected: 'bg-red-100 text-red-700',
+        pending: 'bg-yellow-100 text-yellow-700',
+        pending_single_registration: 'bg-yellow-100 text-yellow-700',
+        pending_couples_registration: 'bg-blue-100 text-blue-700'
+    };
 
-  const statusLabel: Record<string, string> = {
-    approved: 'Approved',
-    rejected: 'Rejected',
-    pending: 'Pending',
-    pending_couples_registration: 'Pending (Couples)'
-  };
+    const statusLabel: Record<string, string> = {
+        approved: 'Approved',
+        rejected: 'Rejected',
+        pending: 'Pending',
+        pending_single_registration: 'Pending (Single)',
+        pending_couples_registration: 'Pending (Couples)'
+    };
 
-  $: pending = data.participants.filter(p => 
-    p.status === 'pending' || p.status === 'pending_couples_registration'
-  );
-  $: approved = data.participants.filter(p => p.status === 'approved');
-  $: rejected = data.participants.filter(p => p.status === 'rejected');
+    $: pending = data.participants.filter(p => 
+        p.status === 'pending' || 
+        p.status === 'pending_couples_registration' ||
+        p.status === 'pending_single_registration'
+    );
+    $: approved = data.participants.filter(p => p.status === 'approved');
+    $: rejected = data.participants.filter(p => p.status === 'rejected');
 
-  let filter: 'all' | 'pending' | 'approved' | 'rejected' = 'pending';
+    let filter: 'all' | 'pending' | 'approved' | 'rejected' = 'pending';
 
-  $: filtered = filter === 'all' 
-    ? data.participants 
-    : data.participants.filter(p => {
-        if (filter === 'pending') return p.status === 'pending' || p.status === 'pending_couples_registration';
-        return p.status === filter;
-      });
+    $: filtered = filter === 'all' 
+        ? data.participants 
+        : data.participants.filter(p => {
+            if (filter === 'pending') return p.status === 'pending' || 
+                p.status === 'pending_couples_registration' ||
+                p.status === 'pending_single_registration';
+            return p.status === filter;
+        });
 
   function fmt(n: number) { return parseFloat(n?.toString() ?? '0').toFixed(2); }
 </script>

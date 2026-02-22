@@ -4,7 +4,8 @@
   import * as Icon from 'svelte-flag-icons';
   
   export let data: { user?: { id?: string; email?: string } | null; profile?: any; myEvents?: any[] };
-  
+
+
   $: isSuperUser = (data.profile?.userRole ?? []).includes('Super User');
   $: stripeConnected = data.profile?.stripe_onboarding_complete === true;
 
@@ -15,6 +16,8 @@
 
   let user = data?.user ?? null;
   let profile = data?.profile ?? null;
+
+
 
   // --- NEW HELPER FUNCTIONS FOR DISPLAY ---
 
@@ -457,44 +460,6 @@ $: isProfileIncomplete = user && (!profile || (
         </div>
       </div>
     {/if}
-
-  {:else}
-    <section class="mb-8 p-6 rounded-lg bg-stone-900 neomorph-card">
-      <h2 class="text-2xl font-bold mb-2">Sign In</h2>
-      {#if signinMessage}
-        <div class="mb-4 text-sm text-rose-400">{signinMessage}</div>
-      {/if}
-      <form on:submit|preventDefault={signIn} class="space-y-4">
-        <div>
-          <label for="signin-email-input" class="block text-sm font-medium text-stone-100">Email</label>
-          <input id="signin-email-input" bind:value={signinEmail} type="email" name="email" required class="mt-1 block w-full rounded-md border-stone-700 bg-stone-800 text-stone-100 shadow-sm" />
-        </div>
-        <div>
-          <label for="signin-password-input" class="block text-sm font-medium text-stone-100">Password</label>
-          <input id="signin-password-input" bind:value={signinPassword} type="password" name="password" required class="mt-1 block w-full rounded-md border-stone-700 bg-stone-800 text-stone-100 shadow-sm" />
-        </div>
-        <div class="pt-4">
-          <button 
-            type="submit" 
-            disabled={isSigningIn}
-            class="inline-flex items-center px-6 py-3 bg-amber-600 text-white rounded-md transition-all duration-200 font-semibold {isSigningIn ? 'bg-amber-500 cursor-not-allowed' : 'hover:bg-amber-700 active:scale-95'}" 
-            on:mousedown={() => !isSigningIn && (buttonPressed = true)} 
-            on:mouseup={() => buttonPressed = false} 
-            on:mouseleave={() => buttonPressed = false}
-          >
-            {#if isSigningIn}
-              <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              Signing In...
-            {:else}
-              Sign In
-            {/if}
-          </button>
-        </div>
-      </form>
-    </section>
   {/if}
   </div>
 </div>
