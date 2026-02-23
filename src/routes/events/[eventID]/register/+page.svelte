@@ -2,6 +2,9 @@
     // Route for /events/[eventID]/register showing the registration form and handling submission
     import { goto } from '$app/navigation';
     import { page } from '$app/stores';
+    import { enhance } from '$app/forms';
+
+    export let form: any = null;
 
     export let data: { user?: { id?: string; email?: string } | null; profile?: any; products?: any[]; stripe_fee_model?: string };
     let { profile, products = [], stripe_fee_model = 'on_top' } = data;
@@ -50,9 +53,18 @@
     let soldOutProducts: string[] = [];
     let isLoading = false;
 
+    // Promo code
+    let promoCode = '';
+    let promoInput = '';
+    let promoDiscount = 0;
+    let promoError = '';
+    let promoChecking = false;
+
+    
+
     const wsdcDisabled = wsdcID === '' ? false : true;
     const ageDisabled = typeof age === 'number' ? true : false;
-    
+
     // Group products by type
     $: productsByType = products
         .filter(product => product.product_type !== 'accommodation')
@@ -65,17 +77,21 @@
 
 
 
-    // Count selected products
-    $: selectedCount = (selectedTicket ? 1 : 0) + Object.values(selectedProducts).filter(q => q > 0).length + Object.values(selectedIntensives).filter(s => s).length;
+    // Update cart calculations to include promo discount on tickets
+    $: ticketProduct = selectedTicket ? products.find(p => p.id === selectedTicket) : null;
+    $: ticketPrice = ticketProduct ? parseFloat(ticketProduct.price) : 0;
+    $: discountedTicketPrice = promoDiscount > 0
+        ? ticketPrice * (1 - promoDiscount / 100)
+        : ticketPrice;
+    $: ticketSaving = ticketPrice - discountedTicketPrice;
 
     $: cartSubtotal = [
-        ...(selectedTicket ? products.filter(p => p.id === selectedTicket) : []),
+        ...(selectedTicket ? [{ price: discountedTicketPrice }] : []),
         ...products.filter(p => selectedIntensives[p.id]),
         ...products.filter(p => selectedProducts[p.id] > 0).map(p => ({
-            ...p,
             price: p.price * (selectedProducts[p.id] || 0)
         }))
-    ].reduce((sum, p) => sum + parseFloat(p.price), 0);
+        ].reduce((sum, p) => sum + parseFloat(p.price.toString()), 0);
 
     $: stripeFeePreview = stripe_fee_model === 'on_top' ? cartSubtotal * 0.035 : 0;
     $: previewServiceFee = cartSubtotal * 0.01;
@@ -107,6 +123,7 @@
             formData.append('partner', partner);
             formData.append('partner_wsdcID', partnerWsdcID);
 
+
             // Add selected ticket
             if (selectedTicket) {
                 formData.append(`product_${selectedTicket}`, '1');
@@ -123,6 +140,11 @@
                     formData.append(`product_${productId}`, '1');
                 }
             });
+            // Add promo code if valid
+            if (promoCode) {
+                formData.append('promo_code', promoCode);
+                formData.append('promo_discount', promoDiscount.toString());
+            }
 
             const res = await fetch('?/register', {
                 method: 'POST',
@@ -203,7 +225,40 @@
         'Other': '📦'
     };
 
+    async function handleValidatePromo() {
+        if (!promoInput) return;
+        promoChecking = true;
+        promoError = '';
 
+        try {
+            const formData = new FormData();
+            formData.append('code', promoInput);
+
+            const res = await fetch('?/validatePromo', {
+            method: 'POST',
+            body: formData
+            });
+
+            const result = await res.json();
+            const parsed = JSON.parse(result.data);
+
+            // SvelteKit fail() returns status 400, success returns 200
+            if (result.status === 200) {
+            // parsed is array: [status, data] — find the object
+            const data = parsed.find((x: any) => typeof x === 'object' && x !== null) ?? {};
+            promoCode = data.promoCode ?? '';
+            promoDiscount = data.promoDiscount ?? 0;
+            promoError = '';
+            } else {
+            const data = parsed.find((x: any) => typeof x === 'object' && x !== null) ?? {};
+            promoError = data.promoError ?? 'Invalid or expired promo code';
+            }
+        } catch (err) {
+            promoError = 'Failed to validate promo code';
+        } finally {
+            promoChecking = false;
+        }
+    }
 
 
 
@@ -448,35 +503,71 @@
                     {/if}
                 </div>
 
+                <!-- Promo Code -->
+                {#if selectedTicket}
+                <div class="border-t border-stone-600 pt-6">
+                <h3 class="text-sm font-semibold text-stone-300 mb-3">Promo Code</h3>
+                {#if promoCode}
+                    <div class="flex items-center gap-2 p-3 bg-green-900/30 border border-green-700 rounded-xl">
+                    <span class="text-green-400 text-sm">✓ Code <strong>{promoCode}</strong> applied — {promoDiscount}% off your event pass</span>
+                    <button
+                        type="button"
+                        on:click={() => { promoCode = ''; promoDiscount = 0; promoInput = ''; }}
+                        class="ml-auto text-xs text-stone-400 hover:text-stone-200"
+                    >
+                        Remove
+                    </button>
+                    </div>
+                {:else}
+                    <div class="flex gap-2">
+                    <input
+                        type="text"
+                        bind:value={promoInput}
+                        placeholder="Enter promo code"
+                        class="flex-1 px-4 py-2.5 rounded-xl bg-stone-800 border border-stone-600 text-stone-100 uppercase placeholder-stone-500 focus:outline-none focus:border-amber-500"
+                    />
+                    <button
+                        type="button"
+                        disabled={promoChecking || !promoInput}
+                        on:click={handleValidatePromo}
+                        class="px-4 py-2.5 bg-stone-700 hover:bg-stone-600 text-stone-200 font-medium rounded-xl transition disabled:opacity-50"
+                    >
+                        {promoChecking ? '...' : 'Apply'}
+                    </button>
+                    </div>
+                    {#if promoError}
+                    <p class="text-red-400 text-xs mt-1">{promoError}</p>
+                    {/if}
+                {/if}
+                </div>
+                {/if}
                 {#if selectedCount > 0}
                     <div class="bg-stone-800 border border-stone-600 rounded-lg p-4 space-y-2">
                         <p class="text-sm font-semibold text-stone-300 mb-2">Order Summary</p>
                         <div class="flex justify-between text-sm text-stone-400">
-                            <span>Tickets subtotal</span>
-                            <span>{cartSubtotal.toFixed(2)} {products[0]?.currency_type || 'EUR'}</span>
+                        <span>Tickets subtotal</span>
+                        <span>{cartSubtotal.toFixed(2)} {products[0]?.currency_type || 'EUR'}</span>
                         </div>
+                        {#if promoDiscount > 0 && ticketSaving > 0}
+                        <div class="flex justify-between text-sm text-green-400">
+                            <span>Promo discount ({promoDiscount}%)</span>
+                            <span>-{ticketSaving.toFixed(2)} {products[0]?.currency_type || 'EUR'}</span>
+                        </div>
+                        {/if}
                         {#if stripe_fee_model === 'on_top'}
-                            <div class="flex justify-between text-sm text-stone-400">
-                                <span>Payment handling fee (3.5%)</span>
-                                <span>{stripeFeePreview.toFixed(2)} {products[0]?.currency_type || 'EUR'}</span>
-                            </div>
+                        <div class="flex justify-between text-sm text-stone-400">
+                            <span>Payment handling fee (3.5%)</span>
+                            <span>{stripeFeePreview.toFixed(2)} {products[0]?.currency_type || 'EUR'}</span>
+                        </div>
                         {/if}
                         <div class="flex justify-between text-sm text-stone-400">
-                            <span>Service fee (1%)</span>
-                            <span>{previewServiceFee.toFixed(2)} {products[0]?.currency_type || 'EUR'}</span>
+                        <span>Service fee (1%)</span>
+                        <span>{previewServiceFee.toFixed(2)} {products[0]?.currency_type || 'EUR'}</span>
                         </div>
                         <div class="flex justify-between border-t pt-2 font-semibold text-stone-300">
-                            <span>Estimated total</span>
-                            <span class="text-blue-600">{previewTotal.toFixed(2)} {products[0]?.currency_type || 'EUR'}</span>
+                        <span>Estimated total</span>
+                        <span class="text-blue-600">{previewTotal.toFixed(2)} {products[0]?.currency_type || 'EUR'}</span>
                         </div>
-                        <p class="text-xs text-stone-400">
-                            {#if stripe_fee_model === 'on_top'}
-                                3.5% covers card processing costs · 1% platform service fee
-                            {:else}
-                                Payment handling is included in ticket prices · 1% platform service fee
-                            {/if}
-                        </p>
-                        <p class="text-xs text-stone-400">Final amount charged at payment after approval</p>
                     </div>
                 {/if}
 

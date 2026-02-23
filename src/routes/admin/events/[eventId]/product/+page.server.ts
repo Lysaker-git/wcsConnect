@@ -67,6 +67,9 @@ export const actions: Actions = {
     const follower_limit = form.get('follower_limit')?.toString() ? parseInt(form.get('follower_limit')!.toString()) : null;
     const is_active = form.get('is_active') === 'on';
     const max_per_user = form.get('max_per_user')?.toString() ? parseInt(form.get('max_per_user')!.toString()) : null;
+    const discount_percent = form.get('discount_percent')?.toString() 
+    ? parseFloat(form.get('discount_percent')!.toString()) 
+    : null;
 
     if (!name || !product_type || price < 0) return fail(400, { message: 'Missing required fields' });
 
@@ -86,7 +89,8 @@ export const actions: Actions = {
         leader_limit,
         follower_limit,
         is_active,
-        max_per_user
+        max_per_user,
+        discount_percent
       });
 
     if (error) return fail(500, { message: error.message });
@@ -116,15 +120,27 @@ export const actions: Actions = {
     const follower_limit = form.get('follower_limit')?.toString() ? parseInt(form.get('follower_limit')!.toString()) : null;
     const is_active = form.get('is_active') === 'on';
     const max_per_user = form.get('max_per_user')?.toString() ? parseInt(form.get('max_per_user')!.toString()) : null;
-
+    const discount_percent = form.get('discount_percent')?.toString() 
+    ? parseFloat(form.get('discount_percent')!.toString()) 
+    : null;
     if (!productId || !name || !product_type) return fail(400, { message: 'Missing required fields' });
 
     const { error } = await supabase
       .from('products')
       .update({
-        name, description, price, product_type, currency_type,
-        sale_start, sale_end, quantity_total, leader_limit,
-        follower_limit, is_active, max_per_user,
+        name, 
+        description, 
+        price, 
+        product_type, 
+        currency_type,
+        sale_start, 
+        sale_end, 
+        quantity_total, 
+        leader_limit,
+        follower_limit, 
+        is_active, 
+        max_per_user, 
+        discount_percent,
         updated_at: new Date().toISOString()
       })
       .eq('id', productId)
@@ -134,26 +150,38 @@ export const actions: Actions = {
     return { success: true };
   },
 
-  deleteProduct: async ({ request, params, cookies }) => {
-    const { eventId } = params;
-    const sbUser = cookies.get('sb_user');
-    if (!sbUser) return fail(401, { message: 'Not authenticated' });
+    deleteProduct: async ({ request, params, cookies }) => {
+        const { eventId } = params;
+        const sbUser = cookies.get('sb_user');
+        if (!sbUser) return fail(401, { message: 'Not authenticated' });
 
-    let user: any;
-    try { user = JSON.parse(sbUser); } catch { return fail(401, { message: 'Invalid session' }); }
-    if (!(await verifyED(eventId, user.id))) return fail(403, { message: 'Access denied' });
+        let user: any;
+        try { user = JSON.parse(sbUser); } catch { return fail(401, { message: 'Invalid session' }); }
+        if (!(await verifyED(eventId, user.id))) return fail(403, { message: 'Access denied' });
 
-    const form = await request.formData();
-    const productId = form.get('productId')?.toString();
-    if (!productId) return fail(400, { message: 'Missing product ID' });
+        const form = await request.formData();
+        const productId = form.get('productId')?.toString();
+        if (!productId) return fail(400, { message: 'Missing product ID' });
 
-    const { error } = await supabase
-      .from('products')
-      .delete()
-      .eq('id', productId)
-      .eq('event_id', eventId);
+        // Check if anyone has purchased this product
+        const { count } = await supabase
+            .from('participant_products')
+            .select('id', { count: 'exact', head: true })
+            .eq('product_id', productId);
 
-    if (error) return fail(500, { message: error.message });
-    return { success: true };
-  }
+        if (count && count > 0) {
+            return fail(400, { 
+            message: `Cannot delete — ${count} participant(s) have purchased this product. Deactivate it instead to hide it from new registrations.`
+            });
+        }
+
+        const { error } = await supabase
+            .from('products')
+            .delete()
+            .eq('id', productId)
+            .eq('event_id', eventId);
+
+        if (error) return fail(500, { message: error.message });
+        return { success: true };
+    },
 };

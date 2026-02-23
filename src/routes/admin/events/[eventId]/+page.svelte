@@ -4,10 +4,11 @@
   import { SiFacebook, SiInstagram, SiTiktok } from "@icons-pack/svelte-simple-icons";
   import EditEventDetailsModal from '$lib/components/EditEventDetailsModal.svelte';
   import ParticipantsModal from '$lib/components/ParticipantsModal.svelte';
-  export let data: { event: any; eventDetails: any; user: any; products: any[] };
+  export let data: { event: any; eventDetails: any; user: any; products: any[] , isOwner: boolean};
 
   console.log('Admin event page loaded with data:', data);
 
+  $: platformFee = data.event?.platform_fee_percent ?? 1;
   // Event modals state
   let showEditEventModal = false;
   let showParticipantsModal = false;
@@ -253,6 +254,7 @@
               <a href={`/admin/events/${data.event.id}/participants`} on:click={() => showActions = false} class="block w-full text-left px-4 py-2 text-stone-100 hover:bg-stone-700">Participants</a>
               <a href={`/admin/events/${data.event.id}/dashboard`} on:click={() => showActions = false} class="block w-full text-left px-4 py-2 text-stone-100 hover:bg-stone-700">Dashboard</a>
               <a href={`/admin/events/${data.event.id}/products`} on:click={() => showActions = false} class="block w-full text-left px-4 py-2 text-stone-100 hover:bg-stone-700">Products</a>
+              <a href={`/admin/events/${data.event.id}/promo-codes`} on:click={() => showActions = false} class="block w-full text-left px-4 py-2 text-stone-100 hover:bg-stone-700">Promo Codes</a>
               <a href={`/admin/events/${data.event.id}/crew`} on:click={() => showActions = false} class="block w-full text-left px-4 py-2 text-stone-100 hover:bg-stone-700">Permissions / Settings</a>
             </div>
           {/if}
@@ -398,6 +400,51 @@
     </div>
   {/if}
 </div>
+  {#if data.isOwner}
+    <div class="shadow-lg rounded-lg p-6 mt-8 neumorph-subcard bg-stone-800">
+      <h2 class="text-xl font-semibold text-stone-100 mb-1">Platform Fee</h2>
+      <p class="text-stone-500 text-xs mb-4">Owner only — overrides the default 1% platform fee for this event.</p>
+      <form
+        method="POST"
+        action="?/updatePlatformFee"
+        use:enhance={() => {
+          return async ({ result, update }) => {
+            if (result.type === 'success') {
+              platformFee = result.data?.platform_fee_percent ?? platformFee;
+            }
+            await update({ reset: false });
+          };
+        }}
+        class="flex items-end gap-3"
+      >
+        <div class="flex-1">
+          <label for="platform_fee_percent" class="block text-sm font-medium text-stone-300 mb-1.5">
+            Platform fee (%)
+          </label>
+          <input
+            id="platform_fee_percent"
+            name="platform_fee_percent"
+            type="number"
+            step="0.01"
+            min="0"
+            max="100"
+            value={platformFee}
+            class="w-full px-4 py-2.5 rounded-xl bg-stone-900 border border-stone-700 text-stone-100 focus:outline-none focus:border-amber-500"
+          />
+        </div>
+        <button
+          type="submit"
+          class="px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-xl transition"
+        >
+          Save
+        </button>
+      </form>
+      <p class="text-xs text-stone-600 mt-2">
+        Current: {platformFee}% · Set to 0 for a free first event offer
+      </p>
+    </div>
+  {/if}
+
 
 
 </div>

@@ -39,6 +39,17 @@ export const load = async ({ params, cookies }) => {
         throw redirect(303, `/profile?redirect=/events/${params.eventID}/register`);
     }
 
+    // Check if registration is open
+    const { data: eventData } = await supabase
+    .from('events')
+    .select('registration_opens')
+    .eq('id', eventID)
+    .single();
+
+    if (eventData?.registration_opens && new Date(eventData.registration_opens) > new Date()) {
+        throw redirect(303, `/events/${eventID}`);
+    }
+
     // Fetch products for this event
     try {
         const now = new Date().toISOString();
@@ -109,6 +120,8 @@ export const actions = {
             const country = formData.get('country')?.toString();
             const age = formData.get('age')?.toString();
             const partner = formData.get('partner')?.toString();
+            const promo_code = formData.get('promo_code')?.toString() || null;
+            const promo_discount = parseFloat(formData.get('promo_discount')?.toString() || '0');
 
             // Get selected products
             const selectedProducts: Array<{ productID: string; quantity: number }> = [];
@@ -217,7 +230,11 @@ export const actions = {
                     continue;
                 }
 
-                const subtotal = parseFloat(product.price.toString()) * selectedProduct.quantity;
+                let unitPrice = parseFloat(product.price.toString());
+                if (promo_code && promo_discount > 0 && product.product_type === 'ticket') {
+                unitPrice = unitPrice * (1 - promo_discount / 100);
+                }
+                const subtotal = unitPrice * selectedProduct.quantity;
                 
                 participantProductsToInsert.push({
                     participant_id: participantData.id,
@@ -225,11 +242,12 @@ export const actions = {
                     product_name: product.name,
                     product_type: product.product_type || 'Other',
                     quantity_ordered: selectedProduct.quantity,
-                    unit_price: parseFloat(product.price.toString()),
                     currency_type: product.currency_type,
                     subtotal: subtotal,
                     payment_status: 'pending',
-                    confirmation_status: 'pending'
+                    confirmation_status: 'pending',
+                    unit_price: unitPrice,
+                    promo_code_used: promo_code
                 });
 
                 console.log(`[registration] Queued participant_product: ${product.name} x${selectedProduct.quantity} = ${subtotal}`);
@@ -313,5 +331,32 @@ export const actions = {
             console.error('[registration action] error:', err);
             return fail(500, { message: (err as any)?.message ?? 'Registration failed' });
         }
+    },
+    validatePromo: async ({ request, params }) => {
+        const eventID = params.eventID;
+        const form = await request.formData();
+        const code = form.get('code')?.toString().toUpperCase().trim();
+
+        if (!code) return fail(400, { promoError: 'Enter a promo code' });
+
+        const today = new Date().toISOString().split('T')[0];
+
+        const { data: promo } = await supabase
+            .from('promo_codes')
+            .select('*')
+            .eq('event_id', eventID)
+            .eq('code', code)
+            .eq('is_active', true)
+            .lte('valid_from', today)
+            .gte('valid_to', today)
+            .single();
+
+        if (!promo) return fail(400, { promoError: 'Invalid or expired promo code' });
+
+        return { 
+            promoValid: true, 
+            promoCode: promo.code, 
+            promoDiscount: promo.discount_percent 
+        };
     }
 };

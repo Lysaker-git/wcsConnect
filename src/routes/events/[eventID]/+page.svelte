@@ -6,6 +6,7 @@
   import { onMount, onDestroy } from 'svelte';
 
   export let data;
+  console.log(data)
 
   const event = data.event;
   const error = data.error;
@@ -88,6 +89,13 @@
             <!-- Event Detail Card -->
             <div class="neomorph-card bg-stone-800 rounded-3xl overflow-hidden border-t-8 border-blue-600 transition-all duration-300">
                 
+                {#if eventDetails?.banner_image_url}
+                    <div class="w-full h-64 bg-gray-800 relative overflow-hidden">
+                        <img src={eventDetails.banner_image_url} alt="Event banner" class="w-full h-full object-cover" />
+                        <div class="absolute inset-0 bg-black/30"></div>
+                    </div>
+                {/if}
+
                 <div class="p-10"> <!-- Increased padding around content -->
                     <!-- Title -->
                     <h2 class="text-5xl font-extrabold text-stone-300 mb-6 leading-tight tracking-tight">
@@ -206,15 +214,10 @@
                         </div>
 
                         <!-- Media / Extras -->
+                        {#if eventDetails?.schedule_image_url || eventDetails?.promo_video_url}
                         <div class="p-6 bg-stone-700 rounded-xl border border-stone-600 shadow-sm neomorph-inset">
                             <p class="text-sm font-semibold text-stone-400 mb-3">Media</p>
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                {#if eventDetails?.banner_image_url}
-                                    <div class="col-span-1 md:col-span-1">
-                                        <img src={eventDetails.banner_image_url} alt="Event banner" class="w-full h-32 object-cover rounded-md" />
-                                        <p class="text-xs text-stone-500 mt-2">Banner</p>
-                                    </div>
-                                {/if}
 
                                 {#if eventDetails?.schedule_image_url}
                                     <div class="col-span-1 md:col-span-1">
@@ -233,6 +236,7 @@
                                 {/if}
                             </div>
                         </div>
+                        {/if}
                     </div>
 
                     <!-- Main Call to Action -->

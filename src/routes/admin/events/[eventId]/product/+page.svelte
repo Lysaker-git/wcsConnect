@@ -1,7 +1,10 @@
 <script lang="ts">
-  import { enhance } from '$app/forms';
+    import { enhance } from '$app/forms';
 
-  export let data: { event: any; products: any[] };
+    export let data: { event: any; products: any[] };
+
+    export let form: { message?: string } | null = null;
+    $: deleteError = form?.message ?? '';
 
   const productTypes = [
     { value: 'ticket', label: '🎟️ Event Ticket' },
@@ -38,12 +41,14 @@
   let follower_limit = '';
   let is_active = true;
   let max_per_user = '';
+  let discount_percent = '';
 
   function resetForm() {
     name = ''; description = ''; price = ''; product_type = 'ticket';
     currency_type = 'EUR'; sale_start = ''; sale_end = '';
     quantity_total = ''; leader_limit = ''; follower_limit = '';
     is_active = true; max_per_user = '';
+    discount_percent = '';
   }
 
   function openCreate() { resetForm(); showCreate = true; }
@@ -63,6 +68,7 @@
     is_active = product.is_active ?? true;
     max_per_user = product.max_per_user?.toString() ?? '';
     showEdit = true;
+    discount_percent = product.discount_percent?.toString() ?? '';
   }
 
   // Max per user hint based on product type
@@ -115,6 +121,11 @@
     {/if}
   </div>
 
+    {#if deleteError}
+        <div class="mb-4 p-3 bg-red-900/30 border border-red-700 text-red-300 rounded-lg text-sm">
+            {deleteError}
+        </div>
+    {/if}
   <!-- Products grouped by type -->
   {#each Object.entries(grouped) as [type, group]}
     <div class="mb-8">
@@ -139,7 +150,14 @@
                 <p class="text-sm text-stone-400 mt-1">{product.description}</p>
               {/if}
               <div class="flex flex-wrap gap-4 mt-2 text-xs text-stone-400">
-                <span class="font-semibold text-stone-200">{parseFloat(product.price).toFixed(2)} {product.currency_type}</span>
+                {#if product.discount_percent}
+                    {@const discounted = parseFloat(product.price) * (1 - product.discount_percent / 100)}
+                    <span class="line-through text-stone-500 text-xs">{parseFloat(product.price).toFixed(2)}</span>
+                    <span class="font-semibold text-amber-400">{discounted.toFixed(2)} {product.currency_type}</span>
+                    <span class="text-xs text-green-400">-{product.discount_percent}%</span>
+                    {:else}
+                    <span class="font-semibold text-stone-200">{parseFloat(product.price).toFixed(2)} {product.currency_type}</span>
+                    {/if}
                 <span>
                   {#if product.quantity_total}
                     {product.quantity_sold ?? 0} / {product.quantity_total} sold
@@ -209,6 +227,7 @@
       <input type="number" name="price" bind:value={price} step="0.01" min="0" required
         class="w-full px-4 py-2.5 rounded-xl bg-stone-900 border border-stone-700 text-stone-100 focus:outline-none focus:border-amber-500" />
     </div>
+    
     <div>
       <label class="block text-sm font-medium text-stone-300 mb-1">Currency</label>
       <select name="currency_type" bind:value={currency_type}
@@ -217,7 +236,24 @@
       </select>
     </div>
   </div>
-
+  <div>
+    <label class="block text-sm font-medium text-stone-300 mb-1">
+        Discount (% off)
+    </label>
+    <input
+        type="number"
+        name="discount_percent"
+        bind:value={discount_percent}
+        min="0"
+        max="100"
+        step="0.01"
+        placeholder="Leave empty for no discount"
+        class="w-full px-4 py-2.5 rounded-xl bg-stone-900 border border-stone-700 text-stone-100 focus:outline-none focus:border-amber-500"
+    />
+    <p class="text-xs text-stone-500 mt-1">
+        e.g. 50 = 50% off. Used for judge passes, staff passes etc.
+    </p>
+    </div>
   <div>
     <label class="block text-sm font-medium text-stone-300 mb-1">Product Type *</label>
     <select name="product_type" bind:value={product_type} required

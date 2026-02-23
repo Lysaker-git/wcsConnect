@@ -50,8 +50,9 @@
         <div>
           <h4 class="text-sm font-semibold text-stone-100 mb-3">Legal</h4>
           <ul class="space-y-2 text-sm text-stone-300">
-            <li><a href="/terms" class="hover:text-amber-300">Terms</a></li>
-            <li><a href="/privacy" class="hover:text-amber-300">Privacy</a></li>
+            <li><a href="/terms" class="hover:text-amber-300">Terms of Service</a></li>
+            <li><a href="/privacy" class="hover:text-amber-300">Privacy Policy</a></li>
+            <li><a href="/cookies" class="hover:text-amber-300">Cookie Policy</a></li>
           </ul>
         </div>
       </div>

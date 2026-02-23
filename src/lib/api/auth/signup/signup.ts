@@ -32,7 +32,9 @@ export async function signUpUser({ email, password, profile }: {
     username: profile.username,
     role: profile.role ?? 'follower',
     avatar_url: profile.avatar_url ?? null,
-    userRole: ['member']
+    userRole: ['member'],
+    terms_accepted_at: new Date().toISOString(),
+    terms_version: '2026-02'
   };
 
   console.log('[signUpUser] inserting profile:', profileRow);
