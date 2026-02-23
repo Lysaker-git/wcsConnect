@@ -132,6 +132,21 @@
         </div>
       </div>
     {/if}
+	<!-- Accommodation -->
+	{#if participant.status === 'approved'}
+	<div class="bg-stone-800 rounded-2xl border border-stone-700 p-5 mb-6">
+		<div class="flex justify-between items-center">
+		<div>
+			<h2 class="text-base font-semibold text-stone-100">🏨 Accommodation</h2>
+			<p class="text-stone-500 text-xs mt-0.5">Book your room for this event</p>
+		</div>
+		<a href="/profile/{participant.id}/accommodation"
+			class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold rounded-xl transition">
+			View rooms →
+		</a>
+		</div>
+	</div>
+	{/if}
 
     <!-- Unpaid products -->
     {#if unpaidProducts.length > 0}

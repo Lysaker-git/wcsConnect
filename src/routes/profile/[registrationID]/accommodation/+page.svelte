@@ -1,121 +1,285 @@
-
 <script lang="ts">
-	export let data: {
-		registrationID?: string;
-		participant?: any;
-		event?: { id: string; title: string };
-		accommodationProducts?: any[];
-	};
+  import { enhance } from '$app/forms';
+  import { page } from '$app/stores';
 
-	let selectedProductId = '';
-	let checkIn = '';
-	let checkOut = '';
-	let roommates = '';
-	let amount = 0;
-	let numberOfNights = 1;
-	let error = '';
+  export let data: {
+    participant: any;
+    event: any;
+    rooms: any[];
+    existingBooking: any;
+  };
+  export let form: { message?: string } | null = null;
 
-	// Pre-fill name/email if available
-	let name = data.participant?.name || '';
-	let email = data.participant?.email || '';
+  $: success = $page.url.searchParams.get('success') === 'true';
+  $: cancelled = $page.url.searchParams.get('cancelled') === 'true';
 
-	// Calculate price and nights
-	$: selectedProduct = data.accommodationProducts?.find(p => p.id === selectedProductId);
-	$: pricePerNight = selectedProduct ? parseFloat(selectedProduct.price) : 0;
-	$: amount = pricePerNight * numberOfNights;
-	$: upfront = amount * 0.2;
+  const { event, rooms, existingBooking, participant } = data;
 
-	function handleProductChange(e: Event) {
-		selectedProductId = (e.target as HTMLSelectElement).value;
-	}
-	function handleCheckInChange(e: Event) {
-		checkIn = (e.target as HTMLInputElement).value;
-		updateNights();
-	}
-	function handleCheckOutChange(e: Event) {
-		checkOut = (e.target as HTMLInputElement).value;
-		updateNights();
-	}
-	function updateNights() {
-		if (checkIn && checkOut) {
-			const inDate = new Date(checkIn);
-			const outDate = new Date(checkOut);
-			const diff = (outDate.getTime() - inDate.getTime()) / (1000 * 60 * 60 * 24);
-			numberOfNights = Math.max(1, Math.round(diff));
-		} else {
-			numberOfNights = 1;
-		}
-	}
-	function handleSubmit(e: Event) {
-		e.preventDefault();
-		// Placeholder for booking logic
-		if (!selectedProductId || !name || !email || !checkIn || !checkOut) {
-			error = 'Please fill out all required fields.';
-			return;
-		}
-		error = '';
-		alert('Booking submitted! (not yet implemented)');
-	}
+  let selectedRoom = '';
+  let paymentType = 'deposit';
+
+  $: room = rooms.find(r => r.id === selectedRoom);
+  $: totalAmount = room ? parseFloat(room.price) : 0;
+  $: depositPercent = event?.accommodation_deposit_percent ?? 10;
+  $: depositAmount = parseFloat((totalAmount * depositPercent / 100).toFixed(2));
+  $: remainingAmount = parseFloat((totalAmount - depositAmount).toFixed(2));
+  $: chargeAmount = paymentType === 'full' ? totalAmount : depositAmount;
+  $: stripeFeeModel = event?.stripe_fee_model ?? 'on_top';
+  $: stripeFee = stripeFeeModel === 'on_top' ? chargeAmount * 0.035 : 0;
+  $: serviceFee = chargeAmount * ((event?.platform_fee_percent ?? 1) / 100);
+  $: grandTotal = chargeAmount + stripeFee + serviceFee;
+  $: currency = room?.currency_type ?? existingBooking?.currency ?? 'EUR';
+
+  $: finalDeadline = event?.accommodation_final_payment_deadline
+    ? new Date(event.accommodation_final_payment_deadline).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+    : null;
+
+  $: isDeadlinePassed = event?.accommodation_final_payment_deadline
+    ? new Date(event.accommodation_final_payment_deadline) < new Date()
+    : false;
 </script>
 
-<div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 py-12">
-	<div class="max-w-xl mx-auto px-6">
-		<div class="text-center mb-10">
-			<h1 class="text-3xl font-extrabold text-gray-900 mb-2">Book Event Hotel</h1>
-			<p class="text-lg text-gray-600">Reserve your accommodation for <span class="font-semibold">{data.event?.title}</span></p>
-		</div>
-		<form class="bg-white rounded-3xl shadow-2xl p-8 border-t-8 border-blue-500 space-y-6" on:submit={handleSubmit}>
-			<div>
-				<label class="block text-sm font-medium text-gray-700 mb-1">Accommodation Option</label>
-				<select class="w-full rounded-lg border-gray-300 p-3" bind:value={selectedProductId} on:change={handleProductChange} required>
-					<option value="" disabled selected>Select a room option</option>
-					{#each data.accommodationProducts as product}
-						<option value={product.id}>{product.name} ({parseFloat(product.price).toFixed(2)} {product.currency_type || 'EUR'} per night)</option>
-					{/each}
-				</select>
-			</div>
-			<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-				<div>
-					<label class="block text-sm font-medium text-gray-700 mb-1">Check In</label>
-					<input type="date" class="w-full rounded-lg border-gray-300 p-3" bind:value={checkIn} on:change={handleCheckInChange} required />
-				</div>
-				<div>
-					<label class="block text-sm font-medium text-gray-700 mb-1">Check Out</label>
-					<input type="date" class="w-full rounded-lg border-gray-300 p-3" bind:value={checkOut} on:change={handleCheckOutChange} required />
-				</div>
-			</div>
-			<div>
-				<label class="block text-sm font-medium text-gray-700 mb-1">Roommates (optional)</label>
-				<input type="text" class="w-full rounded-lg border-gray-300 p-3" bind:value={roommates} placeholder="Names of roommates" />
-			</div>
-			<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-				<div>
-					<label class="block text-sm font-medium text-gray-700 mb-1">Your Name</label>
-					<input type="text" class="w-full rounded-lg border-gray-300 p-3" bind:value={name} required />
-				</div>
-				<div>
-					<label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-					<input type="email" class="w-full rounded-lg border-gray-300 p-3" bind:value={email} required />
-				</div>
-			</div>
-			<div class="bg-blue-50 border border-blue-200 rounded-lg p-4 flex flex-col gap-2">
-				<div class="flex items-center justify-between">
-					<span class="text-gray-700 font-medium">Nights</span>
-					<span class="font-semibold">{numberOfNights}</span>
-				</div>
-				<div class="flex items-center justify-between">
-					<span class="text-gray-700 font-medium">Total Price</span>
-					<span class="font-bold text-blue-700">{amount.toFixed(2)} {selectedProduct?.currency_type || 'EUR'}</span>
-				</div>
-				<div class="flex items-center justify-between">
-					<span class="text-gray-700 font-medium">Upfront Payment (20%)</span>
-					<span class="font-bold text-green-600">{upfront.toFixed(2)} {selectedProduct?.currency_type || 'EUR'}</span>
-				</div>
-			</div>
-			{#if error}
-				<div class="p-3 bg-red-100 border border-red-300 text-red-700 rounded-lg">{error}</div>
-			{/if}
-			<button type="submit" class="w-full py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition text-lg">Pay {upfront.toFixed(2)} {selectedProduct?.currency_type || 'EUR'} (20% Upfront)</button>
-		</form>
-	</div>
+<div class="min-h-screen bg-stone-900 py-10 px-6">
+  <div class="max-w-2xl mx-auto">
+
+    <!-- Header -->
+    <div class="mb-8">
+      <a href="/profile/{participant.id}" class="text-sm text-amber-500 hover:underline">
+        ← Back to registration
+      </a>
+      <h1 class="text-3xl font-bold text-stone-100 mt-2">Accommodation</h1>
+      <p class="text-stone-400 text-sm mt-1">{event?.title}</p>
+    </div>
+
+    {#if success}
+      <div class="mb-6 p-4 bg-green-900/30 border border-green-700 text-green-300 rounded-xl">
+        ✅ Payment successful! Your room booking has been confirmed.
+      </div>
+    {/if}
+
+    {#if cancelled}
+      <div class="mb-6 p-4 bg-amber-900/30 border border-amber-700 text-amber-300 rounded-xl">
+        Payment cancelled — your booking has not been confirmed yet.
+      </div>
+    {/if}
+
+    {#if form?.message}
+      <div class="mb-6 p-4 bg-red-900/30 border border-red-700 text-red-300 rounded-xl text-sm">
+        {form.message}
+      </div>
+    {/if}
+
+    <!-- Existing booking -->
+    {#if existingBooking}
+      <div class="bg-stone-800 rounded-2xl border border-stone-700 p-6 mb-6">
+        <h2 class="text-lg font-semibold text-stone-100 mb-4">Your Room Booking</h2>
+
+        <div class="space-y-3">
+          <div class="flex justify-between text-sm">
+            <span class="text-stone-400">Room</span>
+            <span class="text-stone-100 font-medium">{existingBooking.room_name}</span>
+          </div>
+          <div class="flex justify-between text-sm">
+            <span class="text-stone-400">Total price</span>
+            <span class="text-stone-100">{parseFloat(existingBooking.total_amount).toFixed(2)} {existingBooking.currency}</span>
+          </div>
+
+          <div class="flex justify-between text-sm">
+            <span class="text-stone-400">Deposit ({depositPercent}%)</span>
+            <div class="flex items-center gap-2">
+              <span class="text-stone-100">{parseFloat(existingBooking.deposit_amount).toFixed(2)} {existingBooking.currency}</span>
+              {#if existingBooking.deposit_paid}
+                <span class="px-2 py-0.5 rounded-full text-xs bg-green-900 text-green-300">Paid</span>
+              {:else}
+                <span class="px-2 py-0.5 rounded-full text-xs bg-yellow-900 text-yellow-300">Pending</span>
+              {/if}
+            </div>
+          </div>
+
+          {#if existingBooking.remaining_amount > 0}
+            <div class="flex justify-between text-sm">
+              <span class="text-stone-400">Remaining balance</span>
+              <div class="flex items-center gap-2">
+                <span class="text-stone-100">{parseFloat(existingBooking.remaining_amount).toFixed(2)} {existingBooking.currency}</span>
+                {#if existingBooking.remaining_paid}
+                  <span class="px-2 py-0.5 rounded-full text-xs bg-green-900 text-green-300">Paid</span>
+                {:else}
+                  <span class="px-2 py-0.5 rounded-full text-xs bg-yellow-900 text-yellow-300">Outstanding</span>
+                {/if}
+              </div>
+            </div>
+          {/if}
+
+          {#if finalDeadline && !existingBooking.remaining_paid && existingBooking.remaining_amount > 0}
+            <div class="p-3 rounded-xl {isDeadlinePassed ? 'bg-red-900/30 border border-red-700' : 'bg-stone-700/50 border border-stone-600'} text-sm">
+              {#if isDeadlinePassed}
+                <p class="text-red-300">⚠️ Final payment deadline has passed ({finalDeadline}). Please contact the organiser.</p>
+              {:else}
+                <p class="text-stone-300">Final payment due by <strong class="text-amber-400">{finalDeadline}</strong></p>
+              {/if}
+            </div>
+          {/if}
+        </div>
+
+        <!-- Pay remaining button -->
+        {#if existingBooking.deposit_paid && !existingBooking.remaining_paid && existingBooking.remaining_amount > 0 && !isDeadlinePassed}
+          <form method="POST" action="?/payRemaining" use:enhance class="mt-5">
+            {@const rem = parseFloat(existingBooking.remaining_amount)}
+            {@const sFee = stripeFeeModel === 'on_top' ? rem * 0.035 : 0}
+            {@const pFee = rem * ((event?.platform_fee_percent ?? 1) / 100)}
+            {@const total = rem + sFee + pFee}
+            <div class="bg-stone-900 rounded-xl p-4 space-y-1 mb-4 text-xs text-stone-400">
+              <div class="flex justify-between">
+                <span>Remaining balance</span>
+                <span>{rem.toFixed(2)} {existingBooking.currency}</span>
+              </div>
+              {#if stripeFeeModel === 'on_top'}
+                <div class="flex justify-between">
+                  <span>Payment handling (3.5%)</span>
+                  <span>{sFee.toFixed(2)} {existingBooking.currency}</span>
+                </div>
+              {/if}
+              <div class="flex justify-between">
+                <span>Service fee ({event?.platform_fee_percent ?? 1}%)</span>
+                <span>{pFee.toFixed(2)} {existingBooking.currency}</span>
+              </div>
+              <div class="flex justify-between border-t border-stone-700 pt-1 font-semibold text-stone-200">
+                <span>Total due</span>
+                <span class="text-amber-400">{total.toFixed(2)} {existingBooking.currency}</span>
+              </div>
+            </div>
+            <button type="submit"
+              class="w-full py-3 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl transition">
+              Pay remaining balance — {total.toFixed(2)} {existingBooking.currency}
+            </button>
+          </form>
+        {/if}
+
+        {#if existingBooking.deposit_paid && existingBooking.remaining_paid}
+          <div class="mt-4 p-3 bg-green-900/20 border border-green-800 rounded-xl text-center text-green-300 text-sm">
+            ✅ Room fully paid — you're all set!
+          </div>
+        {/if}
+      </div>
+
+    {:else}
+      <!-- Room selection -->
+      {#if rooms.length === 0}
+        <div class="bg-stone-800 rounded-2xl border border-stone-700 p-8 text-center text-stone-500">
+          No accommodation options available for this event yet.
+        </div>
+      {:else}
+        <div class="bg-stone-800 rounded-2xl border border-stone-700 p-6">
+          <h2 class="text-lg font-semibold text-stone-100 mb-5">Select a Room</h2>
+
+          <form method="POST" action="?/book" use:enhance class="space-y-5">
+
+            <!-- Room options -->
+            <div class="space-y-3">
+              {#each rooms as r (r.id)}
+                {@const available = r.quantity_total ? r.quantity_total - (r.quantity_sold ?? 0) : null}
+                {@const soldOut = r.quantity_total && (r.quantity_sold ?? 0) >= r.quantity_total}
+                <label class="block cursor-pointer {soldOut ? 'opacity-50 cursor-not-allowed' : ''}">
+                  <input type="radio" name="product_id" value={r.id}
+                    bind:group={selectedRoom}
+                    disabled={soldOut}
+                    class="sr-only peer" />
+                  <div class="p-4 rounded-xl border-2 transition
+                    {selectedRoom === r.id
+                      ? 'border-amber-500 bg-stone-900'
+                      : 'border-stone-700 bg-stone-900/50 hover:border-stone-500'}">
+                    <div class="flex justify-between items-start">
+                      <div>
+                        <p class="font-semibold text-stone-100">{r.name}</p>
+                        {#if r.description}
+                          <p class="text-xs text-stone-400 mt-0.5">{r.description}</p>
+                        {/if}
+                        {#if available !== null}
+                          <p class="text-xs text-stone-500 mt-1">
+                            {soldOut ? 'Sold out' : `${available} remaining`}
+                          </p>
+                        {/if}
+                      </div>
+                      <span class="text-lg font-bold text-stone-100 ml-4">
+                        {parseFloat(r.price).toFixed(2)} {r.currency_type}
+                      </span>
+                    </div>
+                  </div>
+                </label>
+              {/each}
+            </div>
+
+            {#if selectedRoom}
+              <!-- Payment type -->
+              <div>
+                <p class="text-sm font-medium text-stone-300 mb-3">Payment option</p>
+                <div class="grid grid-cols-2 gap-3">
+                  <label class="cursor-pointer">
+                    <input type="radio" name="payment_type" value="deposit"
+                      bind:group={paymentType} class="sr-only" />
+                    <div class="p-3 rounded-xl border-2 text-center transition
+                      {paymentType === 'deposit'
+                        ? 'border-amber-500 bg-stone-900'
+                        : 'border-stone-700 bg-stone-900/50 hover:border-stone-500'}">
+                      <p class="font-semibold text-stone-100 text-sm">Reserve with deposit</p>
+                      <p class="text-amber-400 font-bold mt-1">{depositAmount.toFixed(2)} {currency}</p>
+                      <p class="text-xs text-stone-500 mt-0.5">{depositPercent}% now</p>
+                      {#if finalDeadline}
+                        <p class="text-xs text-stone-500">Rest due {finalDeadline}</p>
+                      {/if}
+                    </div>
+                  </label>
+                  <label class="cursor-pointer">
+                    <input type="radio" name="payment_type" value="full"
+                      bind:group={paymentType} class="sr-only" />
+                    <div class="p-3 rounded-xl border-2 text-center transition
+                      {paymentType === 'full'
+                        ? 'border-amber-500 bg-stone-900'
+                        : 'border-stone-700 bg-stone-900/50 hover:border-stone-500'}">
+                      <p class="font-semibold text-stone-100 text-sm">Pay in full</p>
+                      <p class="text-amber-400 font-bold mt-1">{totalAmount.toFixed(2)} {currency}</p>
+                      <p class="text-xs text-stone-500 mt-0.5">No further payments</p>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Order summary -->
+              <div class="bg-stone-900 rounded-xl p-4 space-y-1.5 text-xs text-stone-400">
+                <div class="flex justify-between">
+                  <span>{paymentType === 'full' ? 'Full payment' : `Deposit (${depositPercent}%)`}</span>
+                  <span>{chargeAmount.toFixed(2)} {currency}</span>
+                </div>
+                {#if stripeFeeModel === 'on_top'}
+                  <div class="flex justify-between">
+                    <span>Payment handling (3.5%)</span>
+                    <span>{stripeFee.toFixed(2)} {currency}</span>
+                  </div>
+                {/if}
+                <div class="flex justify-between">
+                  <span>Service fee ({event?.platform_fee_percent ?? 1}%)</span>
+                  <span>{serviceFee.toFixed(2)} {currency}</span>
+                </div>
+                {#if paymentType === 'deposit'}
+                  <div class="flex justify-between text-stone-500 pt-1 border-t border-stone-800">
+                    <span>Remaining balance (due later)</span>
+                    <span>{remainingAmount.toFixed(2)} {currency}</span>
+                  </div>
+                {/if}
+                <div class="flex justify-between border-t border-stone-700 pt-1.5 font-semibold text-stone-200 text-sm">
+                  <span>Due now</span>
+                  <span class="text-amber-400">{grandTotal.toFixed(2)} {currency}</span>
+                </div>
+              </div>
+
+              <button type="submit"
+                class="w-full py-3 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl transition">
+                Book now — {grandTotal.toFixed(2)} {currency}
+              </button>
+            {/if}
+          </form>
+        </div>
+      {/if}
+    {/if}
+  </div>
 </div>

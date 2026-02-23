@@ -89,9 +89,45 @@ export const POST: RequestHandler = async ({ request }) => {
         });
         console.log(`📧 Payment confirmation email sent to ${email}`);
       }
-    } catch (emailErr) {
-      console.error('Failed to send payment confirmation email:', emailErr);
-    }
+      } catch (emailErr) {
+        console.error('Failed to send payment confirmation email:', emailErr);
+      }
+
+      // Accommodation payments
+      if (session.metadata?.type === 'accommodation_full') {
+        await supabase
+          .from('hotel_bookings')
+          .update({
+            deposit_paid: true,
+            remaining_paid: true,
+            remaining_amount: 0,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', session.metadata.hotel_booking_id);
+        console.log(`🏨 Full accommodation payment confirmed for booking ${session.metadata.hotel_booking_id}`);
+      }
+
+      if (session.metadata?.type === 'accommodation_deposit') {
+        await supabase
+          .from('hotel_bookings')
+          .update({
+            deposit_paid: true,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', session.metadata.hotel_booking_id);
+        console.log(`🏨 Accommodation deposit confirmed for booking ${session.metadata.hotel_booking_id}`);
+      }
+
+      if (session.metadata?.type === 'accommodation_remaining') {
+        await supabase
+          .from('hotel_bookings')
+          .update({
+            remaining_paid: true,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', session.metadata.hotel_booking_id);
+        console.log(`🏨 Accommodation remaining balance confirmed for booking ${session.metadata.hotel_booking_id}`);
+      }
   }
 
   if (event.type === 'checkout.session.async_payment_failed') {

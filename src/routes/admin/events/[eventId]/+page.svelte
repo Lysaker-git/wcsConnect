@@ -2,13 +2,13 @@
   // route admin/events/[eventId]/+page.svelte - main event admin page with details and product management
   import { enhance } from '$app/forms';
   import { SiFacebook, SiInstagram, SiTiktok } from "@icons-pack/svelte-simple-icons";
-  import EditEventDetailsModal from '$lib/components/EditEventDetailsModal.svelte';
-  import ParticipantsModal from '$lib/components/ParticipantsModal.svelte';
   export let data: { event: any; eventDetails: any; user: any; products: any[] , isOwner: boolean};
 
   console.log('Admin event page loaded with data:', data);
 
   $: platformFee = data.event?.platform_fee_percent ?? 1;
+  $: depositPercent = data.event?.accommodation_deposit_percent ?? 10;
+  $: finalPaymentDeadline = data.event?.accommodation_final_payment_deadline ?? '';
   // Event modals state
   let showEditEventModal = false;
   let showParticipantsModal = false;
@@ -253,7 +253,7 @@
               <a href={`/admin/events/${data.event.id}/edit`} on:click={() => showActions = false} class="block w-full text-left px-4 py-2 text-stone-100 hover:bg-stone-700">Edit Event</a>
               <a href={`/admin/events/${data.event.id}/participants`} on:click={() => showActions = false} class="block w-full text-left px-4 py-2 text-stone-100 hover:bg-stone-700">Participants</a>
               <a href={`/admin/events/${data.event.id}/dashboard`} on:click={() => showActions = false} class="block w-full text-left px-4 py-2 text-stone-100 hover:bg-stone-700">Dashboard</a>
-              <a href={`/admin/events/${data.event.id}/products`} on:click={() => showActions = false} class="block w-full text-left px-4 py-2 text-stone-100 hover:bg-stone-700">Products</a>
+              <a href={`/admin/events/${data.event.id}/product`} on:click={() => showActions = false} class="block w-full text-left px-4 py-2 text-stone-100 hover:bg-stone-700">Products</a>
               <a href={`/admin/events/${data.event.id}/promo-codes`} on:click={() => showActions = false} class="block w-full text-left px-4 py-2 text-stone-100 hover:bg-stone-700">Promo Codes</a>
               <a href={`/admin/events/${data.event.id}/crew`} on:click={() => showActions = false} class="block w-full text-left px-4 py-2 text-stone-100 hover:bg-stone-700">Permissions / Settings</a>
             </div>
@@ -370,79 +370,129 @@
     </div>
   </div>
 
-<!-- Products Summary -->
-<div class="shadow-lg rounded-lg p-6 mt-8 neumorph-subcard bg-stone-800">
-  <div class="flex justify-between items-center">
-    <div>
-      <h2 class="text-xl font-semibold text-stone-100">Products</h2>
-      <p class="text-stone-400 text-sm mt-1">
-        {data.products.length} product{data.products.length === 1 ? '' : 's'} ·
-        {data.products.filter(p => p.is_active).length} active
-      </p>
-    </div>
-    <a
-      href="/admin/events/{data.event.id}/product"
-      class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-xl transition"
-    >
-      Manage Products →
-    </a>
-  </div>
-  {#if data.products.length > 0}
-    <div class="mt-4 flex flex-wrap gap-2">
-      {#each ['ticket', 'intensive', 'merchandise', 'accommodation', 'other'] as type}
-        {@const count = data.products.filter(p => p.product_type === type).length}
-        {#if count > 0}
-          <span class="px-3 py-1 bg-stone-700 text-stone-300 rounded-full text-xs capitalize">
-            {type}: {count}
-          </span>
-        {/if}
-      {/each}
-    </div>
-  {/if}
-</div>
-  {#if data.isOwner}
-    <div class="shadow-lg rounded-lg p-6 mt-8 neumorph-subcard bg-stone-800">
-      <h2 class="text-xl font-semibold text-stone-100 mb-1">Platform Fee</h2>
-      <p class="text-stone-500 text-xs mb-4">Owner only — overrides the default 1% platform fee for this event.</p>
-      <form
-        method="POST"
-        action="?/updatePlatformFee"
-        use:enhance={() => {
-          return async ({ result, update }) => {
-            if (result.type === 'success') {
-              platformFee = result.data?.platform_fee_percent ?? platformFee;
-            }
-            await update({ reset: false });
-          };
-        }}
-        class="flex items-end gap-3"
+  <!-- Products Summary -->
+  <div class="shadow-lg rounded-lg p-6 mt-8 neumorph-subcard bg-stone-800">
+    <div class="flex justify-between items-center">
+      <div>
+        <h2 class="text-xl font-semibold text-stone-100">Products</h2>
+        <p class="text-stone-400 text-sm mt-1">
+          {data.products.length} product{data.products.length === 1 ? '' : 's'} ·
+          {data.products.filter(p => p.is_active).length} active
+        </p>
+      </div>
+      <a
+        href="/admin/events/{data.event.id}/product"
+        class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-xl transition"
       >
-        <div class="flex-1">
-          <label for="platform_fee_percent" class="block text-sm font-medium text-stone-300 mb-1.5">
-            Platform fee (%)
-          </label>
+        Manage Products →
+      </a>
+    </div>
+    {#if data.products.length > 0}
+      <div class="mt-4 flex flex-wrap gap-2">
+        {#each ['ticket', 'intensive', 'merchandise', 'accommodation', 'other'] as type}
+          {@const count = data.products.filter(p => p.product_type === type).length}
+          {#if count > 0}
+            <span class="px-3 py-1 bg-stone-700 text-stone-300 rounded-full text-xs capitalize">
+              {type}: {count}
+            </span>
+          {/if}
+        {/each}
+      </div>
+    {/if}
+  </div>
+    {#if data.isOwner}
+      <div class="shadow-lg rounded-lg p-6 mt-8 neumorph-subcard bg-stone-800">
+        <h2 class="text-xl font-semibold text-stone-100 mb-1">Platform Fee</h2>
+        <p class="text-stone-500 text-xs mb-4">Owner only — overrides the default 1% platform fee for this event.</p>
+        <form
+          method="POST"
+          action="?/updatePlatformFee"
+          use:enhance={() => {
+            return async ({ result, update }) => {
+              if (result.type === 'success') {
+                platformFee = result.data?.platform_fee_percent ?? platformFee;
+              }
+              await update({ reset: false });
+            };
+          }}
+          class="flex items-end gap-3"
+        >
+          <div class="flex-1">
+            <label for="platform_fee_percent" class="block text-sm font-medium text-stone-300 mb-1.5">
+              Platform fee (%)
+            </label>
+            <input
+              id="platform_fee_percent"
+              name="platform_fee_percent"
+              type="number"
+              step="0.01"
+              min="0"
+              max="100"
+              value={platformFee}
+              class="w-full px-4 py-2.5 rounded-xl bg-stone-900 border border-stone-700 text-stone-100 focus:outline-none focus:border-amber-500"
+            />
+          </div>
+          <button
+            type="submit"
+            class="px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-xl transition"
+          >
+            Save
+          </button>
+        </form>
+        <p class="text-xs text-stone-600 mt-2">
+          Current: {platformFee}% · Set to 0 for a free first event offer
+        </p>
+      </div>
+      <div class="shadow-lg rounded-lg p-6 mt-8 neumorph-subcard bg-stone-800">
+    <h2 class="text-xl font-semibold text-stone-100 mb-1">Accommodation Settings</h2>
+    <p class="text-stone-500 text-xs mb-4">Controls deposit % and final payment deadline for room bookings.</p>
+    <form
+      method="POST"
+      action="?/updateAccommodationSettings"
+      use:enhance={() => {
+        return async ({ result, update }) => {
+          if (result.type === 'success') {
+            depositPercent = result.data?.accommodation_deposit_percent ?? depositPercent;
+            finalPaymentDeadline = result.data?.accommodation_final_payment_deadline ?? finalPaymentDeadline;
+          }
+          await update({ reset: false });
+        };
+      }}
+      class="space-y-4"
+    >
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-stone-300 mb-1.5">Deposit %</label>
           <input
-            id="platform_fee_percent"
-            name="platform_fee_percent"
+            name="accommodation_deposit_percent"
             type="number"
-            step="0.01"
+            step="1"
             min="0"
             max="100"
-            value={platformFee}
+            value={depositPercent}
             class="w-full px-4 py-2.5 rounded-xl bg-stone-900 border border-stone-700 text-stone-100 focus:outline-none focus:border-amber-500"
           />
+          <p class="text-xs text-stone-600 mt-1">e.g. 10 = 10% deposit to secure room</p>
         </div>
-        <button
-          type="submit"
-          class="px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-xl transition"
-        >
-          Save
-        </button>
-      </form>
-      <p class="text-xs text-stone-600 mt-2">
-        Current: {platformFee}% · Set to 0 for a free first event offer
-      </p>
-    </div>
+        <div>
+          <label class="block text-sm font-medium text-stone-300 mb-1.5">Final Payment Deadline</label>
+          <input
+            name="accommodation_final_payment_deadline"
+            type="date"
+            value={finalPaymentDeadline}
+            class="w-full px-4 py-2.5 rounded-xl bg-stone-900 border border-stone-700 text-stone-100 focus:outline-none focus:border-amber-500"
+          />
+          <p class="text-xs text-stone-600 mt-1">Deadline for paying remaining balance</p>
+        </div>
+      </div>
+      <button
+        type="submit"
+        class="px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-xl transition"
+      >
+        Save Accommodation Settings
+      </button>
+    </form>
+  </div>
   {/if}
 
 
