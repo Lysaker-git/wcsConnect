@@ -1,5 +1,9 @@
+//src /routes/admin/events/[eventId]/+page.server.ts
+
 import { supabase } from "$lib/server/supabaseServiceClient";
 import { error as svelteError } from '@sveltejs/kit';
+
+
 
 export const load = async ({ params, cookies }) => {
   const { eventId } = params;
@@ -16,6 +20,16 @@ export const load = async ({ params, cookies }) => {
   } else {
     throw svelteError(401, 'Not authenticated');
   }
+
+  // Check if user is Owner
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('userRole')
+    .eq('id', user.id)
+    .single();
+
+  const isOwner = (profile?.userRole ?? []).includes('Owner');
+
 
   // Check if user is Event Director for this event
   const { data: participant, error: participantError } = await supabase
@@ -51,26 +65,6 @@ export const load = async ({ params, cookies }) => {
   // If no event_details record exists, create one
   let eventDetailsData = eventDetails;
   
-  // if (detailsError && detailsError.code === 'PGRST116') {
-  //   const { data: newDetails, error: createError } = await supabase
-  //     .from('event_details')
-  //     .insert({
-  //       event_id: eventId,
-  //       description: null,
-  //       address: null,
-  //       hotel: null,
-  //       venue: null,
-  //       max_participants: null
-  //     })
-  //     .select()
-  //     .single();
-
-  //   if (createError) {
-  //     console.error('Error creating event details:', createError);
-  //   } else {
-  //     eventDetailsData = newDetails;
-  //   }
-  // }
 
   // Load products for this event
   const { data: products, error: productsError } = await supabase
@@ -83,7 +77,7 @@ export const load = async ({ params, cookies }) => {
     console.error('Error loading products:', productsError);
   }
 
-  return { event: eventData, eventDetails: eventDetailsData, user, products: products || [] };
+  return { event: eventData, eventDetails: eventDetailsData, user, products: products || [], isOwner };
 };
 
 export const actions = {
@@ -498,5 +492,41 @@ export const actions = {
     if (updateError) throw svelteError(500, 'Failed to update visibility');
 
     return { success: true, is_published: !event?.is_published };
+  },
+  updatePlatformFee: async ({ request, params, cookies }) => {
+    const { eventId } = params;
+
+    const sbUser = cookies.get('sb_user');
+    if (!sbUser) throw svelteError(401, 'Not authenticated');
+
+    let user: any;
+    try { user = JSON.parse(sbUser); } catch { throw svelteError(401, 'Invalid session'); }
+
+    // Owner only
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('userRole')
+      .eq('id', user.id)
+      .single();
+
+    if (!(profile?.userRole ?? []).includes('Owner')) {
+      throw svelteError(403, 'Owner access required');
+    }
+
+    const form = await request.formData();
+    const platform_fee_percent = parseFloat(form.get('platform_fee_percent')?.toString() ?? '1');
+
+    if (isNaN(platform_fee_percent) || platform_fee_percent < 0 || platform_fee_percent > 100) {
+      throw svelteError(400, 'Invalid fee percentage');
+    }
+
+    const { error } = await supabase
+      .from('events')
+      .update({ platform_fee_percent })
+      .eq('id', eventId);
+
+    if (error) throw svelteError(500, 'Failed to update platform fee');
+
+    return { success: true, platform_fee_percent };
   }
 };

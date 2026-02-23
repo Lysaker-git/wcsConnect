@@ -30,13 +30,14 @@ export const load: PageServerLoad = async ({ params, cookies }) => {
     );
     console.log('[Event Load] Supabase response - data:', events);
 
-    const { data: eventDetails } = await selectFromSupabaseDetailed(
+    const { data: eventDetail } = await selectFromSupabaseDetailed(
         'event_details',
         '*',
         eventId, // Select all columns
         'event_id' // Column name to match
     );
-    console.log('[Event Load] Supabase response for event_details - data:', eventDetails); 
+    console.log('[Event Load] Supabase response for event_details - data:', eventDetail); 
+    const eventDetails = eventDetail ?? null;
 
     if (error) {
         console.error(`[Event Load] Database Error: ${error.message}`);

@@ -12,8 +12,10 @@
   let avatar_url = maleAvatar;
   let message: string | null = null;
   let isSubmitting = false;
+  let termsAccepted = false;
 
   $: passwordMismatch = passwordConfirm.length > 0 && password !== passwordConfirm;
+
 </script>
 
 <div class="bg-stone-950/90 w-full">
@@ -95,9 +97,25 @@
       </div>
     </fieldset>
 
+    <div class="flex items-start gap-2">
+      <input
+        id="terms"
+        type="checkbox"
+        bind:checked={termsAccepted}
+        required
+        class="mt-0.5 rounded border-stone-600 bg-stone-900 text-amber-500 focus:ring-amber-500"
+      />
+      <label for="terms" class="text-xs text-stone-400 leading-relaxed">
+        I agree to the
+        <a href="/terms" target="_blank" class="text-amber-400 hover:underline">Terms of Service</a>
+        and
+        <a href="/privacy" target="_blank" class="text-amber-400 hover:underline">Privacy Policy</a>
+      </label>
+    </div>
+
     <button 
       type="submit" 
-      disabled={isSubmitting || passwordMismatch || password !== passwordConfirm}
+      disabled={isSubmitting || passwordMismatch || password !== passwordConfirm || !termsAccepted}
       class="px-4 py-2 bg-stone-600 text-white rounded-md disabled:opacity-50"
     >
       {isSubmitting ? 'Creating account...' : 'Sign Up'}

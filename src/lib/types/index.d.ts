@@ -280,5 +280,26 @@ export interface EventDocument {
   updatedAt: Date;
 }
 
+export interface EventDetails {
+  event_id: string;
+  description?: string;
+  address?: string;
+  hotel?: string;
+  venue?: string;
+  max_participants?: number;
+  organizer_name?: string;
+  organizer_email?: string;
+  organizer_phone?: string;
+  social_links?: string[];
+  schedule_image_url?: string;
+  transportation?: string;
+  event_type?: string;
+  banner_image_url?: string;
+  promo_video_url?: string;
+  accessibility?: string;
+  languages?: string;
+  tags?: string[];
+}
+
 // --- Audit fields for all main tables ---
 // Add createdAt, updatedAt, deletedAt (nullable) to all main tables above as shown.
