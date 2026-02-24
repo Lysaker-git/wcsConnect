@@ -21,7 +21,6 @@ export async function signUpUser({ email, password, profile }: {
     }
   });
 
-  console.log('[signUpUser] signUp result:', { user: data?.user?.id, signUpError });
 
   if (signUpError) throw signUpError;
   if (!data.user) throw new Error('User creation failed');
@@ -37,7 +36,6 @@ export async function signUpUser({ email, password, profile }: {
     terms_version: '2026-02'
   };
 
-  console.log('[signUpUser] inserting profile:', profileRow);
 
   const { error: profileInsertError } = await supabase
     .from('profiles')

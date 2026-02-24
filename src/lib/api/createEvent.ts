@@ -34,7 +34,6 @@ async function fallbackInsert(payload: any) {
  */
 export async function createEvent(ev: NewEvent, organizerProfileId?: string) {
   try {
-    console.log('[createEvent] start', ev);
 
     const toDateString = (d: string | Date) => {
       if (d instanceof Date) {
@@ -50,17 +49,14 @@ export async function createEvent(ev: NewEvent, organizerProfileId?: string) {
       title: ev.title
     };
 
-    console.log('[createEvent] payload prepared:', payload);
 
     // Try inserting with Supabase JS client
-    console.log('[createEvent] calling supabase.from().insert()');
     const { data, error } = await supabase
       .from('events')
       .insert([payload])
       .select()
       .single();
 
-    console.log('[createEvent] supabase response - data:', data, 'error:', error);
 
     if (error) {
       console.error('[createEvent] supabase error object:', JSON.stringify(error));
@@ -69,16 +65,13 @@ export async function createEvent(ev: NewEvent, organizerProfileId?: string) {
       const msg = (error as any)?.message ?? '';
       if (msg.includes('Unsupported Media Type') || (error as any)?.status === 415) {
         const fallback = await fallbackInsert(payload);
-        console.log('[createEvent] fallback result:', fallback);
         return fallback;
       }
 
       return { data: null, error };
     }
 
-    console.log('[createEvent] success, inserted:', data);
-
-    // If an organizer profile id was provided, insert them into event_participants
+   // If an organizer profile id was provided, insert them into event_participants
     if (organizerProfileId) {
       try {
         const participant = {
@@ -88,7 +81,6 @@ export async function createEvent(ev: NewEvent, organizerProfileId?: string) {
           event_role: 'Event Director'
         };
 
-        console.log('[createEvent] inserting organizer into event_participants:', participant);
         const { error: participantError } = await supabase.from('event_participants').insert([participant]);
         if (participantError) {
           console.error('[createEvent] failed to insert event_participants row:', participantError);

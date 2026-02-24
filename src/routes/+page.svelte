@@ -1,7 +1,6 @@
 <script lang="ts">
     import Roadmap from "$lib/components/roadmap.svelte";
     export let data;
-    console.log('Home page data:', data);
 
     // Define the data for the four feature cards (neumorphism styling applied below)
     const featureCards = [

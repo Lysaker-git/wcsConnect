@@ -18,7 +18,6 @@
     };
 
 const { participantId, eventID, event, participant, participantUsername, participantProducts = [], total = 0, stripeFee = 0, serviceFee = 0, grandTotal = 0, stripe_fee_model = 'on_top' } = data;
-    console.log('Loaded success page with data:', data);
     async function goBack() {
         await goto('/profile');
     }

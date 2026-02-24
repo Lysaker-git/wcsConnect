@@ -66,7 +66,6 @@ export const actions = {
                 })
                 .eq('id', eventId)
 
-            console.log('Updated event response, events:', { updatedEvent, eventError });
             if (eventError) {
                 return fail(500, { message: 'Failed to update event', error: eventError });
             }
@@ -94,7 +93,6 @@ export const actions = {
                 languages: languages,
                 tags: tags ? tags.split(',').map((t: string) => t.trim()) : null
             };
-            console.log('Prepared details payload:', detailsPayload);
 
             // Try updating existing details row
             const { data: updatedDetails, error: detailsError } = await supabase
@@ -103,7 +101,6 @@ export const actions = {
                 .eq('event_id', eventId)
                 .select();
 
-            console.log('Updated details response:', { updatedDetails, detailsError });    
             if (detailsError) {
                 return fail(500, { message: 'Failed to update event details', error: detailsError });
             }
@@ -117,7 +114,6 @@ export const actions = {
                     return fail(500, { message: 'Failed to insert event details', error: insertError });
                 }
             }
-            console.log('Event and details updated successfully');
 
             throw redirect(303, `/admin/events/${eventId}`);
         } catch (err) {

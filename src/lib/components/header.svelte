@@ -16,7 +16,6 @@
   async function logout() {
     try {
       const res = await fetch('/api/auth/signout', { method: 'POST' });
-      console.log(res);
       if (res.status === 200) {
         // invalidate root so +layout.server.ts reloads and header gets updated user
         window.location.href = '/';

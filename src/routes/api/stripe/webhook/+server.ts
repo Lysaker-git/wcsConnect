@@ -48,7 +48,6 @@ export const POST: RequestHandler = async ({ request }) => {
       return json({ error: 'DB update failed' }, { status: 500 });
     }
 
-    console.log(`✅ Payment confirmed for participant ${participant_id}`);
 
     // Send payment confirmed email — inside the success block
     try {
@@ -87,7 +86,6 @@ export const POST: RequestHandler = async ({ request }) => {
           currency,
           participantId: participant_id
         });
-        console.log(`📧 Payment confirmation email sent to ${email}`);
       }
       } catch (emailErr) {
         console.error('Failed to send payment confirmation email:', emailErr);
@@ -104,7 +102,6 @@ export const POST: RequestHandler = async ({ request }) => {
             updated_at: new Date().toISOString()
           })
           .eq('id', session.metadata.hotel_booking_id);
-        console.log(`🏨 Full accommodation payment confirmed for booking ${session.metadata.hotel_booking_id}`);
       }
 
       if (session.metadata?.type === 'accommodation_deposit') {
@@ -115,7 +112,6 @@ export const POST: RequestHandler = async ({ request }) => {
             updated_at: new Date().toISOString()
           })
           .eq('id', session.metadata.hotel_booking_id);
-        console.log(`🏨 Accommodation deposit confirmed for booking ${session.metadata.hotel_booking_id}`);
       }
 
       if (session.metadata?.type === 'accommodation_remaining') {
@@ -126,7 +122,6 @@ export const POST: RequestHandler = async ({ request }) => {
             updated_at: new Date().toISOString()
           })
           .eq('id', session.metadata.hotel_booking_id);
-        console.log(`🏨 Accommodation remaining balance confirmed for booking ${session.metadata.hotel_booking_id}`);
       }
   }
 
@@ -144,7 +139,6 @@ export const POST: RequestHandler = async ({ request }) => {
         .eq('participant_id', participant_id)
         .eq('payment_status', 'pending');
 
-      console.log(`❌ Async payment failed for participant ${participant_id}`);
     }
   }
 

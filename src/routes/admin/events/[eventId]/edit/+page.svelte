@@ -87,7 +87,6 @@
 
       try {
         const data = await res.json();
-        console.log('Event update response data:', data);
         if (data?.redirect) {
           window.location.href = data.redirect;
         } else {

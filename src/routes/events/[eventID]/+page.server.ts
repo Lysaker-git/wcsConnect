@@ -6,7 +6,6 @@ import { error as svelteError } from '@sveltejs/kit';
 export const load: PageServerLoad = async ({ params, cookies }) => {
     const eventId = params.eventID;
 
-    // console.log('[Event Load] Received eventID param:', eventId);
 
     // Parse sb_user cookie to determine auth state
     let user = null;
@@ -21,14 +20,12 @@ export const load: PageServerLoad = async ({ params, cookies }) => {
         user = null;
     }
 
-    // console.log(`[Event Load] Attempting to fetch event with ID: ${eventId}`);
 
     const { data: events, error } = await selectFromSupabase(
         'events',
         '*',
         eventId // Select all columns
     );
-    console.log('[Event Load] Supabase response - data:', events);
 
     const { data: eventDetail } = await selectFromSupabaseDetailed(
         'event_details',
@@ -36,7 +33,6 @@ export const load: PageServerLoad = async ({ params, cookies }) => {
         eventId, // Select all columns
         'event_id' // Column name to match
     );
-    console.log('[Event Load] Supabase response for event_details - data:', eventDetail); 
     const eventDetails = eventDetail ?? null;
 
     if (error) {

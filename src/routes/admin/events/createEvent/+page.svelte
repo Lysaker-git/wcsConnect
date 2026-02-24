@@ -108,7 +108,6 @@
       // Success without redirect: try to parse response
       try {
         const data = await res.json();
-        console.log('Event created successfully:', data);
         // If action returned event id or location, redirect
         if (data?.redirect) {
           await goto(data.redirect);
