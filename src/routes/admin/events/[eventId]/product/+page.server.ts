@@ -41,7 +41,13 @@ export const load: PageServerLoad = async ({ params, cookies }) => {
 
   if (productsError) throw svelteError(500, 'Failed to load products');
 
-  return { event, products: products ?? [] };
+  const { data: productGroups } = await supabase
+    .from('product_groups')
+    .select('*')
+    .eq('event_id', eventId)
+    .order('created_at', { ascending: true });
+
+  return { event, products: products ?? [], productGroups: productGroups ?? [] };
 };
 
 export const actions: Actions = {
@@ -73,6 +79,7 @@ export const actions: Actions = {
     const room_capacity = form.get('room_capacity')?.toString()
       ? parseInt(form.get('room_capacity')!.toString())
       : null;
+    const product_group_id = form.get('product_group_id')?.toString() || null;
 
     if (!name || !product_type || price < 0) return fail(400, { message: 'Missing required fields' });
 
@@ -95,6 +102,7 @@ export const actions: Actions = {
         max_per_user,
         discount_percent,
         room_capacity,
+        product_group_id
       });
 
     if (error) return fail(500, { message: error.message });
@@ -130,6 +138,7 @@ export const actions: Actions = {
     const room_capacity = form.get('room_capacity')?.toString()
       ? parseInt(form.get('room_capacity')!.toString())
       : null;
+    const product_group_id = form.get('product_group_id')?.toString() || null;
     if (!productId || !name || !product_type) return fail(400, { message: 'Missing required fields' });
 
     const { error } = await supabase
@@ -149,7 +158,7 @@ export const actions: Actions = {
         max_per_user, 
         discount_percent,
         room_capacity,
-        updated_at: new Date().toISOString()
+        product_group_id,
       })
       .eq('id', productId)
       .eq('event_id', eventId);
@@ -158,38 +167,114 @@ export const actions: Actions = {
     return { success: true };
   },
 
-    deleteProduct: async ({ request, params, cookies }) => {
-        const { eventId } = params;
-        const sbUser = cookies.get('sb_user');
-        if (!sbUser) return fail(401, { message: 'Not authenticated' });
+  deleteProduct: async ({ request, params, cookies }) => {
+      const { eventId } = params;
+      const sbUser = cookies.get('sb_user');
+      if (!sbUser) return fail(401, { message: 'Not authenticated' });
 
-        let user: any;
-        try { user = JSON.parse(sbUser); } catch { return fail(401, { message: 'Invalid session' }); }
-        if (!(await verifyED(eventId, user.id))) return fail(403, { message: 'Access denied' });
+      let user: any;
+      try { user = JSON.parse(sbUser); } catch { return fail(401, { message: 'Invalid session' }); }
+      if (!(await verifyED(eventId, user.id))) return fail(403, { message: 'Access denied' });
 
-        const form = await request.formData();
-        const productId = form.get('productId')?.toString();
-        if (!productId) return fail(400, { message: 'Missing product ID' });
+      const form = await request.formData();
+      const productId = form.get('productId')?.toString();
+      if (!productId) return fail(400, { message: 'Missing product ID' });
 
-        // Check if anyone has purchased this product
-        const { count } = await supabase
-            .from('participant_products')
-            .select('id', { count: 'exact', head: true })
-            .eq('product_id', productId);
+      // Check if anyone has purchased this product
+      const { count } = await supabase
+          .from('participant_products')
+          .select('id', { count: 'exact', head: true })
+          .eq('product_id', productId);
 
-        if (count && count > 0) {
-            return fail(400, { 
-            message: `Cannot delete — ${count} participant(s) have purchased this product. Deactivate it instead to hide it from new registrations.`
-            });
-        }
+      if (count && count > 0) {
+          return fail(400, { 
+          message: `Cannot delete — ${count} participant(s) have purchased this product. Deactivate it instead to hide it from new registrations.`
+          });
+      }
 
-        const { error } = await supabase
-            .from('products')
-            .delete()
-            .eq('id', productId)
-            .eq('event_id', eventId);
+      const { error } = await supabase
+          .from('products')
+          .delete()
+          .eq('id', productId)
+          .eq('event_id', eventId);
 
-        if (error) return fail(500, { message: error.message });
-        return { success: true };
-    },
+      if (error) return fail(500, { message: error.message });
+      return { success: true };
+  },
+  createGroup: async ({ request, params, cookies }) => {
+    const { eventId } = params;
+    const sbUser = cookies.get('sb_user');
+    if (!sbUser) return fail(401, { message: 'Not authenticated' });
+
+    let user: any;
+    try { user = JSON.parse(sbUser); } catch { return fail(401, { message: 'Invalid session' }); }
+    if (!(await verifyED(eventId, user.id))) return fail(403, { message: 'Access denied' });
+
+    const form = await request.formData();
+    const name = form.get('name')?.toString().trim();
+    const quantity_total = parseInt(form.get('quantity_total')?.toString() ?? '0');
+
+    if (!name || quantity_total <= 0) return fail(400, { message: 'Name and quantity required' });
+
+    const { error } = await supabase
+      .from('product_groups')
+      .insert({ event_id: eventId, name, quantity_total, quantity_sold: 0 });
+
+    if (error) return fail(500, { message: error.message });
+    return { success: true, action: 'createGroup' };
+  },
+
+  deleteGroup: async ({ request, params, cookies }) => {
+    const { eventId } = params;
+    const sbUser = cookies.get('sb_user');
+    if (!sbUser) return fail(401, { message: 'Not authenticated' });
+
+    let user: any;
+    try { user = JSON.parse(sbUser); } catch { return fail(401, { message: 'Invalid session' }); }
+    if (!(await verifyED(eventId, user.id))) return fail(403, { message: 'Access denied' });
+
+    const form = await request.formData();
+    const groupId = form.get('groupId')?.toString();
+    if (!groupId) return fail(400, { message: 'Missing group ID' });
+
+    // Unassign all products from group first
+    await supabase
+      .from('products')
+      .update({ product_group_id: null })
+      .eq('product_group_id', groupId);
+
+    const { error } = await supabase
+      .from('product_groups')
+      .delete()
+      .eq('id', groupId)
+      .eq('event_id', eventId);
+
+    if (error) return fail(500, { message: error.message });
+    return { success: true, action: 'deleteGroup' };
+  },
+
+  assignGroup: async ({ request, params, cookies }) => {
+    const { eventId } = params;
+    const sbUser = cookies.get('sb_user');
+    if (!sbUser) return fail(401, { message: 'Not authenticated' });
+
+    let user: any;
+    try { user = JSON.parse(sbUser); } catch { return fail(401, { message: 'Invalid session' }); }
+    if (!(await verifyED(eventId, user.id))) return fail(403, { message: 'Access denied' });
+
+    const form = await request.formData();
+    const productId = form.get('productId')?.toString();
+    const product_group_id = form.get('product_group_id')?.toString() || null;
+
+    if (!productId) return fail(400, { message: 'Missing product ID' });
+
+    const { error } = await supabase
+      .from('products')
+      .update({ product_group_id })
+      .eq('id', productId)
+      .eq('event_id', eventId);
+
+    if (error) return fail(500, { message: error.message });
+    return { success: true, action: 'assignGroup' };
+  }
 };

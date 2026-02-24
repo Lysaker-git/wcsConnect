@@ -348,9 +348,9 @@ $: isProfileIncomplete = user && (!profile || (
 
     <!-- Modal -->
     {#if showModal}
-      <div class="fixed inset-0 bg-black/30 backdrop-blur-lg flex items-center justify-center z-50 p-4">
-        <div class="bg-stone-800 rounded-lg shadow-lg max-w-lg w-full max-h-[90vh] overflow-hidden">
-          <div class="p-6 overflow-y-auto max-h-full">
+    <div class="fixed inset-0 bg-black/30 backdrop-blur-lg flex items-center justify-center z-50 p-4">
+      <div class="bg-stone-800 rounded-lg shadow-lg max-w-lg w-full max-h-[90vh] flex flex-col">
+        <div class="p-6 overflow-y-auto flex-1 min-h-0">
             <h3 class="text-xl font-semibold mb-4 text-stone-100">Edit Profile</h3>
             <form on:submit|preventDefault={handleProfileSubmit} class="space-y-4">
               <div>
