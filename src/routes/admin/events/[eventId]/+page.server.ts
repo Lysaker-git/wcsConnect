@@ -528,5 +528,36 @@ export const actions = {
     if (error) throw svelteError(500, 'Failed to update platform fee');
 
     return { success: true, platform_fee_percent };
+  },
+  updateAccommodationSettings: async ({ request, params, cookies }) => {
+    const { eventId } = params;
+    const sbUser = cookies.get('sb_user');
+    if (!sbUser) throw svelteError(401, 'Not authenticated');
+
+    let user: any;
+    try { user = JSON.parse(sbUser); } catch { throw svelteError(401, 'Invalid session'); }
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('userRole')
+      .eq('id', user.id)
+      .single();
+
+    if (!(profile?.userRole ?? []).includes('Owner')) {
+      throw svelteError(403, 'Owner access required');
+    }
+
+    const form = await request.formData();
+    const accommodation_deposit_percent = parseFloat(form.get('accommodation_deposit_percent')?.toString() ?? '10');
+    const accommodation_final_payment_deadline = form.get('accommodation_final_payment_deadline')?.toString() || null;
+
+    const { error } = await supabase
+      .from('events')
+      .update({ accommodation_deposit_percent, accommodation_final_payment_deadline })
+      .eq('id', eventId);
+
+    if (error) throw svelteError(500, 'Failed to update accommodation settings');
+
+    return { success: true, accommodation_deposit_percent, accommodation_final_payment_deadline };
   }
 };

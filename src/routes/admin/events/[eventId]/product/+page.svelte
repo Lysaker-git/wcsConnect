@@ -42,6 +42,7 @@
   let is_active = true;
   let max_per_user = '';
   let discount_percent = '';
+  let room_capacity = '';
 
   function resetForm() {
     name = ''; description = ''; price = ''; product_type = 'ticket';
@@ -49,6 +50,7 @@
     quantity_total = ''; leader_limit = ''; follower_limit = '';
     is_active = true; max_per_user = '';
     discount_percent = '';
+    room_capacity = '';
   }
 
   function openCreate() { resetForm(); showCreate = true; }
@@ -69,6 +71,7 @@
     max_per_user = product.max_per_user?.toString() ?? '';
     showEdit = true;
     discount_percent = product.discount_percent?.toString() ?? '';
+    room_capacity = product.room_capacity?.toString() ?? '';
   }
 
   // Max per user hint based on product type
@@ -289,6 +292,23 @@
         class="w-full px-4 py-2.5 rounded-xl bg-stone-900 border border-stone-700 text-stone-100 focus:outline-none focus:border-amber-500" />
       <p class="text-xs text-stone-500 mt-1">{maxPerUserHint}</p>
     </div>
+    {#if product_type === 'accommodation'}
+      <div>
+        <label class="block text-sm font-medium text-stone-300 mb-1">Room Capacity</label>
+        <input
+          type="number"
+          name="room_capacity"
+          bind:value={room_capacity}
+          min="1"
+          max="10"
+          placeholder="e.g. 2 for double room"
+          class="w-full px-4 py-2.5 rounded-xl bg-stone-900 border border-stone-700 text-stone-100 focus:outline-none focus:border-amber-500"
+        />
+        <p class="text-xs text-stone-500 mt-1">
+          Single = 1 · Double = 2 · Triple = 3 · Quadruple = 4
+        </p>
+      </div>
+    {/if}
   </div>
 
   <div class="grid grid-cols-2 gap-4">
