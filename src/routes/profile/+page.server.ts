@@ -224,7 +224,7 @@ export const actions = {
           wsdcID: wsdcID ? parseInt(wsdcID) : null,
           wsdcLevel,
           country,
-          age,
+          age: age || null,
           updated_at: new Date().toISOString()
         })
         .eq('id', userId);
