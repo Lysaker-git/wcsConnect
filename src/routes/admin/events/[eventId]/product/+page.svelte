@@ -1,7 +1,7 @@
 <script lang="ts">
     import { enhance } from '$app/forms';
 
-    export let data: { event: any; products: any[] };
+    export let data: { event: any; products: any[] ; productGroups: any[] };
 
     export let form: { message?: string } | null = null;
     $: deleteError = form?.message ?? '';
@@ -16,18 +16,12 @@
 
   const currencies = ['EUR', 'NOK', 'USD', 'GBP', 'CAD'];
 
-  // Group products by type
-  $: grouped = productTypes.reduce((acc, t) => {
-    const items = data.products.filter(p => p.product_type === t.value);
-    if (items.length > 0) acc[t.value] = { label: t.label, items };
-    return acc;
-  }, {} as Record<string, { label: string; items: any[] }>);
-
+  
   // Modal state
   let showCreate = false;
   let showEdit = false;
   let editingProduct: any = null;
-
+  
   // Form fields
   let name = '';
   let description = '';
@@ -43,6 +37,19 @@
   let max_per_user = '';
   let discount_percent = '';
   let room_capacity = '';
+  let showCreateGroup = false;
+  let newGroupName = '';
+  let newGroupQuantity = '';
+  let product_group_id = '';
+
+  // Group products visually
+  $: ungrouped = data.products.filter(p => !p.product_group_id);
+  $: grouped = data.productGroups.map(g => ({
+    ...g,
+    items: data.products.filter(p => p.product_group_id === g.id)
+  }));
+
+$: remaining = (g: any) => g.quantity_total - (g.quantity_sold ?? 0);
 
   function resetForm() {
     name = ''; description = ''; price = ''; product_type = 'ticket';
@@ -51,6 +58,7 @@
     is_active = true; max_per_user = '';
     discount_percent = '';
     room_capacity = '';
+    product_group_id = '';
   }
 
   function openCreate() { resetForm(); showCreate = true; }
@@ -72,6 +80,7 @@
     showEdit = true;
     discount_percent = product.discount_percent?.toString() ?? '';
     room_capacity = product.room_capacity?.toString() ?? '';
+    product_group_id = product.product_group_id ?? '';
   }
 
   // Max per user hint based on product type
@@ -129,84 +138,115 @@
             {deleteError}
         </div>
     {/if}
-  <!-- Products grouped by type -->
-  {#each Object.entries(grouped) as [type, group]}
-    <div class="mb-8">
-      <h2 class="text-lg font-semibold text-stone-300 mb-3">{group.label}</h2>
-      <div class="space-y-3">
-        {#each group.items as product (product.id)}
-          {@const status = saleStatus(product)}
-          <div class="bg-stone-800 rounded-xl border border-stone-700 p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div class="flex-1 min-w-0">
-              <div class="flex items-center gap-2 flex-wrap">
-                <p class="font-semibold text-stone-100">{product.name}</p>
-                <span class="px-2 py-0.5 rounded-full text-xs font-medium {status.color}">
-                  {status.label}
-                </span>
-                {#if product.max_per_user === 1}
-                  <span class="px-2 py-0.5 rounded-full text-xs bg-purple-900 text-purple-300">
-                    1 per user
-                  </span>
-                {/if}
-              </div>
-              {#if product.description}
-                <p class="text-sm text-stone-400 mt-1">{product.description}</p>
-              {/if}
-              <div class="flex flex-wrap gap-4 mt-2 text-xs text-stone-400">
-                {#if product.discount_percent}
-                    {@const discounted = parseFloat(product.price) * (1 - product.discount_percent / 100)}
-                    <span class="line-through text-stone-500 text-xs">{parseFloat(product.price).toFixed(2)}</span>
-                    <span class="font-semibold text-amber-400">{discounted.toFixed(2)} {product.currency_type}</span>
-                    <span class="text-xs text-green-400">-{product.discount_percent}%</span>
-                    {:else}
-                    <span class="font-semibold text-stone-200">{parseFloat(product.price).toFixed(2)} {product.currency_type}</span>
-                    {/if}
-                <span>
-                  {#if product.quantity_total}
-                    {product.quantity_sold ?? 0} / {product.quantity_total} sold
-                  {:else}
-                    Unlimited
-                  {/if}
-                </span>
-                {#if product.sale_start}
-                  <span>Opens {new Date(product.sale_start).toLocaleDateString()}</span>
-                {/if}
-                {#if product.sale_end}
-                  <span>Closes {new Date(product.sale_end).toLocaleDateString()}</span>
-                {/if}
-                {#if product.leader_limit || product.follower_limit}
-                  <span>
-                    {#if product.leader_limit}L: {product.leader_limit}{/if}
-                    {#if product.follower_limit} F: {product.follower_limit}{/if}
-                  </span>
-                {/if}
-              </div>
-            </div>
+  <!-- Create group panel -->
+  <div class="mb-6 bg-stone-800 rounded-xl border border-stone-700 p-5">
+    <div class="flex justify-between items-center mb-3">
+      <h2 class="text-base font-semibold text-stone-300">Shared Inventory Pools</h2>
+      <button on:click={() => showCreateGroup = !showCreateGroup}
+        class="px-3 py-1.5 bg-stone-700 hover:bg-stone-600 text-stone-200 text-sm rounded-lg transition">
+        + New Pool
+      </button>
+    </div>
 
-            <div class="flex gap-2 flex-shrink-0">
-              <button
-                on:click={() => openEdit(product)}
-                class="px-3 py-1.5 bg-stone-700 text-stone-200 text-sm rounded-lg hover:bg-stone-600 transition"
-              >
-                Edit
-              </button>
-              <form method="POST" action="?/deleteProduct" use:enhance={() => {
-                if (!confirm(`Delete "${product.name}"? This cannot be undone.`)) return () => {};
-                return async ({ update }) => { await update(); };
-              }}>
-                <input type="hidden" name="productId" value={product.id} />
-                <button
-                  type="submit"
-                  class="px-3 py-1.5 bg-red-900/40 text-red-400 text-sm rounded-lg hover:bg-red-900/70 transition"
-                >
-                  Delete
-                </button>
-              </form>
+    {#if showCreateGroup}
+      <form method="POST" action="?/createGroup"
+        use:enhance={() => {
+          return async ({ update }) => {
+            showCreateGroup = false;
+            newGroupName = '';
+            newGroupQuantity = '';
+            await update();
+          };
+        }}
+        class="flex gap-3 items-end mt-3"
+      >
+        <div class="flex-1">
+          <label class="block text-xs text-stone-400 mb-1">Pool name</label>
+          <input type="text" name="name" bind:value={newGroupName} required
+            placeholder="e.g. Full Pass Pool"
+            class="w-full px-3 py-2 rounded-lg bg-stone-900 border border-stone-700 text-stone-100 text-sm focus:outline-none focus:border-amber-500" />
+        </div>
+        <div class="w-32">
+          <label class="block text-xs text-stone-400 mb-1">Total spots</label>
+          <input type="number" name="quantity_total" bind:value={newGroupQuantity} required min="1"
+            placeholder="e.g. 100"
+            class="w-full px-3 py-2 rounded-lg bg-stone-900 border border-stone-700 text-stone-100 text-sm focus:outline-none focus:border-amber-500" />
+        </div>
+        <button type="submit"
+          class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold rounded-lg transition">
+          Create
+        </button>
+        <button type="button" on:click={() => showCreateGroup = false}
+          class="px-4 py-2 bg-stone-700 text-stone-300 text-sm rounded-lg hover:bg-stone-600">
+          Cancel
+        </button>
+      </form>
+    {/if}
+
+    {#if data.productGroups.length === 0}
+      <p class="text-stone-600 text-xs mt-2">No pools yet — create one to link products to a shared inventory limit.</p>
+    {:else}
+      <div class="mt-3 space-y-2">
+        {#each data.productGroups as group (group.id)}
+          {@const rem = group.quantity_total - (group.quantity_sold ?? 0)}
+          <div class="flex items-center justify-between p-3 bg-stone-900 rounded-lg border border-stone-700">
+            <div>
+              <span class="text-sm font-medium text-stone-100">{group.name}</span>
+              <span class="ml-3 text-xs text-stone-400">
+                {group.quantity_sold ?? 0} / {group.quantity_total} sold ·
+                <span class="{rem <= 0 ? 'text-red-400' : 'text-green-400'}">{rem} remaining</span>
+              </span>
             </div>
+            <form method="POST" action="?/deleteGroup"
+              use:enhance={() => {
+                if (!confirm(`Delete pool "${group.name}"? Products will be unlinked.`)) return () => {};
+                return async ({ update }) => { await update(); };
+              }}
+            >
+              <input type="hidden" name="groupId" value={group.id} />
+              <button type="submit" class="text-xs text-red-500 hover:text-red-400">Delete</button>
+            </form>
           </div>
         {/each}
       </div>
-    </div>
+    {/if}
+  </div>
+
+  <!-- Grouped products -->
+  {#each grouped as group (group.id)}
+    {#if group.items.length > 0}
+      <div class="mb-8">
+        <div class="flex items-center gap-3 mb-3">
+          <h2 class="text-base font-semibold text-stone-300">{group.name}</h2>
+          <span class="text-xs text-stone-500">
+            shared pool: {group.quantity_sold ?? 0} / {group.quantity_total}
+          </span>
+          {#if remaining(group) <= 0}
+            <span class="px-2 py-0.5 rounded-full text-xs bg-red-900 text-red-300">Pool full</span>
+          {/if}
+        </div>
+        <div class="space-y-3">
+          {#each group.items as product (product.id)}
+            {@render productRow(product)}
+          {/each}
+        </div>
+      </div>
+    {/if}
+  {/each}
+
+  <!-- Ungrouped products -->
+  {#each productTypes as t}
+    {@const items = ungrouped.filter(p => p.product_type === t.value)}
+    {#if items.length > 0}
+      <div class="mb-8">
+        <h2 class="text-lg font-semibold text-stone-300 mb-3">{t.label}</h2>
+        <div class="space-y-3">
+          {#each items as product (product.id)}
+            {@render productRow(product)}
+          {/each}
+        </div>
+      </div>
+    {/if}
   {/each}
 </div>
 
@@ -309,6 +349,16 @@
         </p>
       </div>
     {/if}
+    <div>
+      <label class="block text-sm font-medium text-stone-300 mb-1">Inventory Pool</label>
+      <select name="product_group_id" bind:value={product_group_id}
+        class="w-full px-4 py-2.5 rounded-xl bg-stone-900 border border-stone-700 text-stone-100 focus:outline-none focus:border-amber-500">
+        <option value="">No pool</option>
+        {#each data.productGroups as g}
+          <option value={g.id}>{g.name}</option>
+        {/each}
+      </select>
+    </div>
   </div>
 
   <div class="grid grid-cols-2 gap-4">
@@ -404,3 +454,76 @@
     </div>
   </div>
 {/if}
+
+{#snippet productRow(product: any)}
+  {@const status = saleStatus(product)}
+  <div class="bg-stone-800 rounded-xl border border-stone-700 p-5">
+    <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2 flex-wrap">
+          <p class="font-semibold text-stone-100">{product.name}</p>
+          <span class="px-2 py-0.5 rounded-full text-xs font-medium {status.color}">{status.label}</span>
+          {#if product.max_per_user === 1}
+            <span class="px-2 py-0.5 rounded-full text-xs bg-purple-900 text-purple-300">1 per user</span>
+          {/if}
+        </div>
+        {#if product.description}
+          <p class="text-sm text-stone-400 mt-1">{product.description}</p>
+        {/if}
+        <div class="flex flex-wrap gap-4 mt-2 text-xs text-stone-400">
+          {#if product.discount_percent}
+            {@const discounted = parseFloat(product.price) * (1 - product.discount_percent / 100)}
+            <span class="line-through text-stone-500">{parseFloat(product.price).toFixed(2)}</span>
+            <span class="font-semibold text-amber-400">{discounted.toFixed(2)} {product.currency_type}</span>
+            <span class="text-green-400">-{product.discount_percent}%</span>
+          {:else}
+            <span class="font-semibold text-stone-200">{parseFloat(product.price).toFixed(2)} {product.currency_type}</span>
+          {/if}
+          <span>
+            {#if product.quantity_total}
+              {product.quantity_sold ?? 0} / {product.quantity_total} sold
+            {:else}
+              Unlimited
+            {/if}
+          </span>
+        </div>
+
+        <!-- Group assignment dropdown -->
+        <form method="POST" action="?/assignGroup"
+          use:enhance={() => {
+            return async ({ update }) => { await update({ reset: false }); };
+          }}
+          class="mt-3 flex items-center gap-2"
+        >
+          <input type="hidden" name="productId" value={product.id} />
+          <select name="product_group_id"
+            on:change={(e) => e.currentTarget.form?.requestSubmit()}
+            class="text-xs px-2 py-1.5 rounded-lg bg-stone-900 border border-stone-700 text-stone-300 focus:outline-none focus:border-amber-500">
+            <option value="">No pool</option>
+            {#each data.productGroups as g}
+              <option value={g.id} selected={product.product_group_id === g.id}>{g.name}</option>
+            {/each}
+          </select>
+          <span class="text-xs text-stone-600">Inventory pool</span>
+        </form>
+      </div>
+
+      <div class="flex gap-2 flex-shrink-0">
+        <button on:click={() => openEdit(product)}
+          class="px-3 py-1.5 bg-stone-700 text-stone-200 text-sm rounded-lg hover:bg-stone-600 transition">
+          Edit
+        </button>
+        <form method="POST" action="?/deleteProduct" use:enhance={() => {
+          if (!confirm(`Delete "${product.name}"? This cannot be undone.`)) return () => {};
+          return async ({ update }) => { await update(); };
+        }}>
+          <input type="hidden" name="productId" value={product.id} />
+          <button type="submit"
+            class="px-3 py-1.5 bg-red-900/40 text-red-400 text-sm rounded-lg hover:bg-red-900/70 transition">
+            Delete
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+{/snippet}
