@@ -57,7 +57,6 @@ export const load: PageServerLoad = async ({ params, cookies }) => {
       .select('participant_id, product_name, product_type, quantity_ordered, unit_price, subtotal, currency_type, payment_status')
       .in('participant_id', participantIds);
 
-    console.log('[participants] products fetch result:', products, participantIds);
     participantProducts = products ?? [];
   }
 
@@ -127,7 +126,6 @@ export const actions: Actions = {
         eventStartDate: participant.events?.start_date ?? '',
         participantId: participant_id
         });
-        console.log(`📧 Approval email sent to ${authUser.user.email}`);
     }
     } catch (emailErr) {
     // Don't fail the approval if email fails — just log it
@@ -139,7 +137,6 @@ export const actions: Actions = {
 
   reject: async ({ request, params, cookies }) => {
     const { eventId } = params;
-    console.log('[reject action] eventId:', eventId);
     const sbUser = cookies.get('sb_user');
     if (!sbUser) return fail(401, { message: 'Not authenticated' });
 

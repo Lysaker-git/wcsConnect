@@ -455,7 +455,6 @@ export const actions = {
 
     const sbUser = cookies.get('sb_user');
     if (!sbUser) throw svelteError(401, 'Not authenticated');
-    console.log('[togglePublish] sb_user cookie:', sbUser);
 
     let user: any;
     try { user = JSON.parse(sbUser); } catch { throw svelteError(401, 'Invalid session'); }
@@ -469,7 +468,6 @@ export const actions = {
       .eq('event_role', 'Event Director')
       .single();
 
-    console.log('[togglePublish] Event participant record:', participant);
     
     if (!participant) throw svelteError(403, 'Access denied');
 
@@ -480,7 +478,6 @@ export const actions = {
       .eq('id', eventId)
       .single();
 
-    console.log('[togglePublish] Event record:', event);
 
     // Flip it
     const { error: updateError } = await supabase
@@ -488,7 +485,6 @@ export const actions = {
       .update({ is_published: !event?.is_published })
       .eq('id', eventId);
 
-    console.log('[togglePublish] Update result:', { updateError });
     if (updateError) throw svelteError(500, 'Failed to update visibility');
 
     return { success: true, is_published: !event?.is_published };

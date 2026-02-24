@@ -27,9 +27,6 @@ export const load = async ({ cookies }) => {
 
   // Load user's events where they are Event Director
   let myEvents: any[] = [];
-  console.log('[DEBUG myEvents] Starting myEvents fetch');
-  console.log('[DEBUG myEvents] User exists:', !!user);
-  console.log('[DEBUG myEvents] Profile exists:', !!profile);
   if (user && profile) {
     
     // First, let's check if user has ANY event_participants records
@@ -54,25 +51,21 @@ export const load = async ({ cookies }) => {
         .eq('event_role', 'Event Director');
 
       if (!error && data) {
-        console.log('[DEBUG myEvents] Mapping data to events');
         myEvents = data.map(item => item.events).filter(Boolean);
-        console.log('[DEBUG myEvents] Mapped events:', myEvents);
       } else {
-        console.log('[DEBUG myEvents] No data or error occurred');
+        console.warn('[DEBUG myEvents] Supabase error fetching events:', error);
       }
     } catch (e) {
-      console.log('[DEBUG myEvents] Exception during Event Director query:', e);
-    }
+      console.warn('[DEBUG myEvents] fetch exception:', e);}
   } else {
-    console.log('[DEBUG myEvents] Skipping fetch - user or profile missing');
+    console.warn('[DEBUG myEvents] Skipping fetch - user or profile missing');
   }
-  console.log('[DEBUG myEvents] Final myEvents array:', myEvents);
 
   // Fetch user's registrations (event_participants) to show on profile
   let myRegistrations: any[] = [];
   if (user) {
     try {
-      console.log('[DEBUG myRegistrations] Fetching registrations for user:', user.id);
+      console.warn('[DEBUG myRegistrations] Fetching registrations for user:', user.id);
       const { data: regsData, error: regsError } = await supabase
         .from('event_participants')
         .select(`
@@ -85,7 +78,6 @@ export const load = async ({ cookies }) => {
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
-      console.log('[DEBUG myRegistrations] data:', regsData, 'error:', regsError);
       if (!regsError && regsData) {
         myRegistrations = regsData.map(r => ({
           id: r.id,
@@ -183,7 +175,6 @@ export const actions = {
       let userId: string | null = null;
       try {
         const sbUser = cookies.get('sb_user');
-        console.log('[updateProfile] sb_user cookie:', sbUser);
         if (sbUser) {
           const user = JSON.parse(sbUser);
           userId = user.id;
@@ -202,17 +193,7 @@ export const actions = {
       if (accessToken) {
         await supabase.auth.setSession({ access_token: accessToken, refresh_token: '' });
       }
-      console.log('[updateProfile] Updating profile for userId:', userId);
-      console.log('[updateProfile] New profile data:', {
-        username,
-        role,
-        description,
-        avatar_url,
-        wsdcID: wsdcID ? parseInt(wsdcID) : null,
-        wsdcLevel,  
-        country,
-        age
-      });
+
 
       const { error } = await supabase
         .from('profiles')
@@ -228,7 +209,6 @@ export const actions = {
           updated_at: new Date().toISOString()
         })
         .eq('id', userId);
-      console.log('[updateProfile] Supabase update error:', error);
       if (error) {
         return fail(500, { success: false, message: error.message });
       }

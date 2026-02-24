@@ -4,8 +4,6 @@ export const load = async ({ params, url }) => {
     const participantId = url.searchParams.get('participantId');
     const eventID = params.eventID;
 
-    console.log('[success page load] Loading success page for participant:', participantId);
-    console.log('[success page load] Event ID:', eventID);
 
     let participant = null;
     let participantProducts = [];
@@ -23,7 +21,6 @@ export const load = async ({ params, url }) => {
 
         if (!eventError && eventData) {
             event = eventData;
-            console.log('[success page load] Event data:', event);
         } else {
             console.warn('[success page load] Error fetching event:', eventError);
         }
@@ -53,7 +50,6 @@ export const load = async ({ params, url }) => {
                         participantUsername = profileData.username;
                     }
                 }
-                console.log('[success page load] Participant data:', participant);
             } else {
                 console.warn('[success page load] Error fetching participant:', participantError);
             }
@@ -73,7 +69,6 @@ export const load = async ({ params, url }) => {
                 participantProducts = productsData;
                 // Calculate total
                 total = participantProducts.reduce((sum, item) => sum + parseFloat(item.subtotal.toString()), 0);
-                console.log('[success page load] Participant products:', participantProducts.length, 'records, total:', total);
             } else {
                 console.warn('[success page load] Error fetching participant products:', productsError);
             }

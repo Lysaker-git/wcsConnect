@@ -17,7 +17,6 @@ export async function POST({ request, cookies }) {
       password = form.get('password')?.toString();
     }
 
-    console.log('[api/auth/signin] signin attempt', { email });
 
     if (!email || !password) {
       return json({ error: 'Missing email or password' }, { status: 400 });
@@ -25,7 +24,6 @@ export async function POST({ request, cookies }) {
 
     // Use supabase auth to sign in (server-side)
     const resp: any = await (supabase as any).auth.signInWithPassword({ email, password });
-    console.log('[api/auth/signin] supabase resp', resp);
 
     if (resp.error) {
       return json({ error: resp.error.message ?? resp.error }, { status: 400 });

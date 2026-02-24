@@ -43,14 +43,12 @@ export const actions: Actions = {
 
     // Always keep 'member' as base role
     const finalRoles = Array.from(new Set(['member', ...newRoles]));
-    console.log('Updating profile', profile_id, 'with roles', finalRoles);
 
     const { error: updateError } = await supabase
       .from('profiles')
       .update({ userRole: finalRoles })
       .eq('id', profile_id);
 
-    console.log('Supabase update error:', updateError);
     if (updateError) return fail(500, { message: 'Failed to update role' });
 
     return { success: true };

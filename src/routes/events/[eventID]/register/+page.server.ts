@@ -55,7 +55,7 @@ export const load = async ({ params, cookies }) => {
         const now = new Date().toISOString();
         const { data, error } = await supabase
             .from('products')
-            .select('*')
+            .select('*, product_groups(id, name, quantity_total, quantity_sold)')
             .eq('event_id', eventID)
             .eq('is_active', true)
             .or(`sale_start.is.null,sale_start.lte.${now}`)
@@ -64,12 +64,15 @@ export const load = async ({ params, cookies }) => {
 
         if (!error && data) {
             // Filter server-side: quantity_sold < quantity_total
-            products = data.filter(
-                p =>
-                    (typeof p.quantity_total === 'number' && typeof p.quantity_sold === 'number'
-                        ? p.quantity_sold < p.quantity_total
-                        : true)
-            );
+            products = data.filter(p => {
+                if (typeof p.quantity_total === 'number' && typeof p.quantity_sold === 'number') {
+                    if (p.quantity_sold >= p.quantity_total) return false;
+                }
+                if (p.product_groups) {
+                    if ((p.product_groups.quantity_sold ?? 0) >= p.product_groups.quantity_total) return false;
+                }
+                return true;
+            });
         }
 
         
@@ -101,7 +104,6 @@ export const actions = {
             const formData = await request.formData();
             const eventID = params.eventID;
             
-            console.log('[registration] Starting registration for event:', eventID);
             
             const sbUser = cookies.get('sb_user');
             if (!sbUser) {
@@ -111,7 +113,6 @@ export const actions = {
 
             const user = JSON.parse(sbUser);
             const userID = user.id;
-            console.log('[registration] User ID:', userID);
 
             // Get form data
             const role = formData.get('role')?.toString();
@@ -136,7 +137,6 @@ export const actions = {
                 }
             });
 
-            console.log('[registration] Selected products:', selectedProducts);
 
             if (selectedProducts.length === 0) {
                 return fail(400, { message: 'Please select at least one product' });
@@ -144,11 +144,10 @@ export const actions = {
 
             // Fetch products to check availability
             const productIDs = selectedProducts.map(p => p.productID);
-            console.log('[registration] Fetching products with IDs:', productIDs);
             
             const { data: productData, error: productError } = await supabase
                 .from('products')
-                .select('id, name, quantity_total, quantity_sold, currency_type, price')
+                .select('id, name, quantity_total, quantity_sold, currency_type, price, product_type, product_group_id')
                 .in('id', productIDs);
 
             if (productError || !productData) {
@@ -156,7 +155,6 @@ export const actions = {
                 return fail(500, { message: 'Failed to fetch product information' });
             }
 
-            console.log('[registration] Product data retrieved:', productData);
 
             // Check if any products are sold out or insufficient quantity
             const soldOutProducts = [];
@@ -166,15 +164,14 @@ export const actions = {
                 const selectedQuantity = selectedProducts.find(p => p.productID === product.id)?.quantity || 0;
                 const remainingQuantity = product.quantity_total ? product.quantity_total - product.quantity_sold : Infinity;
                 
-                console.log(`[registration] Product ${product.name}: quantity_sold=${product.quantity_sold}, quantity_total=${product.quantity_total}, remaining=${remainingQuantity}, requested=${selectedQuantity}`);
                 
                 const isSoldOut = product.quantity_total && (product.quantity_sold + selectedQuantity) > product.quantity_total;
                 
                 if (isSoldOut) {
-                    console.log(`[registration] Product ${product.name} is sold out or insufficient quantity`);
+                    
                     soldOutProducts.push(product.name);
                 } else {
-                    console.log(`[registration] Product ${product.name} is available`);
+                    
                     availableProducts.push(product);
                 }
             }
@@ -188,12 +185,38 @@ export const actions = {
                     partial: true
                 });
             }
+            // Check group pool availability
+            const groupIds = productData
+                .filter(p => p.product_group_id)
+                .map(p => p.product_group_id)
+                .filter((v, i, a) => a.indexOf(v) === i); // unique
+
+                if (groupIds.length > 0) {
+                const { data: groups } = await supabase
+                    .from('product_groups')
+                    .select('id, name, quantity_total, quantity_sold')
+                    .in('id', groupIds);
+
+                for (const group of groups ?? []) {
+                    const groupProducts = selectedProducts.filter(sp =>
+                    productData.find(p => p.id === sp.productID)?.product_group_id === group.id
+                    );
+                    const totalRequested = groupProducts.reduce((sum, sp) => sum + sp.quantity, 0);
+
+                    if ((group.quantity_sold + totalRequested) > group.quantity_total) {
+                    return fail(400, {
+                        message: `"${group.name}" is fully booked — no spots remaining in this pool`,
+                        soldOutProducts: [group.name],
+                        partial: true
+                    });
+                    }
+                }
+            }
 
             // Determine status based on partner
             const status = partner ? 'pending_couples_registration' : 'pending_single_registration';
 
             // Create event_participants entry
-            console.log('[registration] Creating event_participants record');
             
             const { data: participantData, error: participantError } = await supabase
                 .from('event_participants')
@@ -217,10 +240,10 @@ export const actions = {
                 return fail(500, { message: 'Failed to create participant record' });
             }
 
-            console.log('[registration] event_participants created:', participantData.id);
+            
 
             // Create participant_products entries
-            console.log('[registration] Creating participant_products records');
+            
             const participantProductsToInsert = [];
             
             for (const selectedProduct of selectedProducts) {
@@ -250,7 +273,7 @@ export const actions = {
                     promo_code_used: promo_code
                 });
 
-                console.log(`[registration] Queued participant_product: ${product.name} x${selectedProduct.quantity} = ${subtotal}`);
+                
             }
 
             // Batch insert participant_products
@@ -265,11 +288,11 @@ export const actions = {
                     return fail(500, { message: 'Failed to create participant products' });
                 }
 
-                console.log('[registration] participant_products created:', participantProductsData?.length, 'records');
+                
             }
 
             // Update quantity_sold in products table
-            console.log('[registration] Updating quantity_sold in products');
+            
             for (const selectedProduct of selectedProducts) {
                 const product = productData.find(p => p.id === selectedProduct.productID);
                 if (!product) {
@@ -278,13 +301,7 @@ export const actions = {
                 }
 
                 const newQuantitySold = (product.quantity_sold || 0) + selectedProduct.quantity;
-                console.log(`[registration] Attempting to update product:`, {
-                    productId: product.id,
-                    productName: product.name,
-                    currentQuantitySold: product.quantity_sold,
-                    quantityToAdd: selectedProduct.quantity,
-                    newQuantitySold: newQuantitySold
-                });
+
 
                 const { data: updateData, error: updateError } = await supabase
                     .from('products')
@@ -292,18 +309,40 @@ export const actions = {
                     .eq('id', product.id)
                     .select();
 
-                console.log(`[registration] Update response for ${product.name}:`, {
-                    success: !updateError,
-                    error: updateError,
-                    data: updateData
-                });
 
                 if (updateError) {
                     console.error(`[registration] Failed to update quantity_sold for product ${product.id}:`, updateError);
                     return fail(500, { message: `Failed to update product quantity for ${product.name}` });
                 }
 
-                console.log(`[registration] Successfully updated quantity_sold for ${product.name}`);
+                
+            }
+            
+            // Update group quantity_sold
+            const usedGroupIds = [...new Set(
+                productData
+                    .filter(p => p.product_group_id)
+                    .map(p => p.product_group_id)
+            )];
+
+            for (const groupId of usedGroupIds) {
+                const groupProducts = selectedProducts.filter(sp =>
+                    productData.find(p => p.id === sp.productID)?.product_group_id === groupId
+                );
+                const totalSold = groupProducts.reduce((sum, sp) => sum + sp.quantity, 0);
+
+                const { data: group } = await supabase
+                    .from('product_groups')
+                    .select('quantity_sold')
+                    .eq('id', groupId)
+                    .single();
+
+                if (group) {
+                    await supabase
+                        .from('product_groups')
+                        .update({ quantity_sold: (group.quantity_sold ?? 0) + totalSold })
+                        .eq('id', groupId);
+                }
             }
 
             // Calculate total for receipt
@@ -318,7 +357,6 @@ export const actions = {
             // Get currency from first product
             const currency = productData[0]?.currency_type || 'EUR';
 
-            console.log('[registration] Registration completed successfully. Participant ID:', participantData.id);
             
             return { 
                 success: true, 

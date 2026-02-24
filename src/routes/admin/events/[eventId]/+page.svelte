@@ -4,7 +4,6 @@
   import { SiFacebook, SiInstagram, SiTiktok } from "@icons-pack/svelte-simple-icons";
   export let data: { event: any; eventDetails: any; user: any; products: any[] , isOwner: boolean};
 
-  console.log('Admin event page loaded with data:', data);
 
   $: platformFee = data.event?.platform_fee_percent ?? 1;
   $: depositPercent = data.event?.accommodation_deposit_percent ?? 10;

@@ -152,11 +152,9 @@
             });
 
             const result = await res.json();
-            console.log('Registration result:', result);
 
             const parsedData = JSON.parse(result.data);
             const participantId = parsedData[2]
-            console.log('Extracted participant ID:', participantId);
 
             if (parsedData?.partial) {
                 isLoading = false;

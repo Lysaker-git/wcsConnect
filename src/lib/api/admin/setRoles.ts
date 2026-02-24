@@ -16,7 +16,6 @@ export interface SetRolesResult {
  * for Row Level Security.
  */
 export async function setRolesAsCaller(callerJwt: string, targetId: string, roles: Role[] | string[]): Promise<SetRolesResult> {
-	console.log(`🔨 [API/Admin/setRoles] Starting role update for Target ID: ${targetId}. Roles: [${roles.join(', ')}]`);
 
 	// Initial input validation
 	if (!callerJwt) {
@@ -29,7 +28,6 @@ export async function setRolesAsCaller(callerJwt: string, targetId: string, role
 	}
 
 	// create a temporary supabase client that includes the caller's JWT
-	console.log('🔗 [API/Admin/setRoles] Creating temporary Supabase client with caller JWT for RLS.');
 	const temp = createClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_API_KEY, {
 		global: {
 			headers: {
@@ -41,7 +39,6 @@ export async function setRolesAsCaller(callerJwt: string, targetId: string, role
 
 	try {
 		// Log the database operation details
-		console.log(`📡 [API/Admin/setRoles] Executing Supabase UPDATE on 'profiles' table for ID: ${targetId}.`);
 
 		// write into `userRole` jsonb column (your schema uses jsonb for roles)
 		const { data, error } = await temp
@@ -57,7 +54,6 @@ export async function setRolesAsCaller(callerJwt: string, targetId: string, role
 		}
 		
 		// Log successful operation
-		console.log(`✅ [API/Admin/setRoles] Successfully updated roles for Target ID: ${targetId}.`);
 		return { success: true, data };
 	} catch (err) {
 		// Log any unexpected error during the process

@@ -33,7 +33,6 @@
         `)
         .eq('event_id', eventId);
 
-        console.log('🔗 [ParticipantsModal] Fetched participants:', response);
       if (response.status !== 200) {
         throw new Error('Failed to load participants');
       }
