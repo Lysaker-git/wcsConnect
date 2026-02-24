@@ -15,15 +15,31 @@
   let termsAccepted = false;
 
   $: passwordMismatch = passwordConfirm.length > 0 && password !== passwordConfirm;
+  $: submitDisabledReason = 
+    password.length < 6 ? 'Password must be at least 6 characters' :
+    passwordMismatch ? 'Passwords do not match' :
+    !termsAccepted ? 'Please accept the terms to continue' :
+    null;
 
 </script>
 
 <div class="bg-stone-950/90 w-full">
   <div class="max-w-md mx-auto py-12 px-6 w-full">
     <h1 class="text-stone-100 text-2xl font-bold mb-4">Sign Up</h1>
-  {#if message}
-    <div class="mb-4 text-sm text-red-600">{message}</div>
-  {/if}
+    {#if message}
+      <div class="mb-4 p-4 bg-red-900/30 border border-red-700 rounded-xl flex items-start gap-3">
+        <span class="text-red-400 text-lg flex-shrink-0">⚠</span>
+        <div>
+          <p class="text-sm font-semibold text-red-300">Signup failed</p>
+          <p class="text-sm text-red-400 mt-0.5">{message}</p>
+          {#if message.includes('already exists')}
+            <a href="/signin" class="text-amber-400 text-xs hover:underline mt-1 inline-block">
+              Go to sign in →
+            </a>
+          {/if}
+        </div>
+      </div>
+    {/if}
 
     <form 
       method="POST" 
@@ -51,22 +67,24 @@
 
     <div>
       <label for="signup-password" class="block text-sm font-medium text-stone-300">Password</label>
-      <input id="signup-password" bind:value={password} type="password" name="password" required class="mt-1 block w-full rounded-md border-stone-700 bg-stone-800 text-stone-100 shadow-sm" />
+      <input id="signup-password" bind:value={password} type="password" name="password" required
+        class="mt-1 block w-full rounded-md border-stone-700 bg-stone-800 text-stone-100 shadow-sm" />
+      {#if password.length > 0 && password.length < 6}
+        <p class="text-amber-400 text-xs mt-1">⚠ Password must be at least 6 characters</p>
+      {:else if password.length >= 6}
+        <p class="text-green-400 text-xs mt-1">✓ Password length looks good</p>
+      {/if}
     </div>
 
     <div>
-      <label for="signup-password-confirm" class="block text-sm font-medium text-stone-300">
-        Confirm Password
-      </label>
-      <input 
-        id="signup-password-confirm" 
-        bind:value={passwordConfirm} 
-        type="password" 
-        required 
-        class="mt-1 block w-full rounded-md border-stone-700 bg-stone-800 text-stone-100 shadow-sm" 
-      />
+      <label for="signup-password-confirm" class="block text-sm font-medium text-stone-300">Confirm Password</label>
+      <input id="signup-password-confirm" bind:value={passwordConfirm} type="password" required
+        class="mt-1 block w-full rounded-md border-stone-700 bg-stone-800 text-stone-100 shadow-sm
+        {passwordMismatch ? 'border-red-500 ring-1 ring-red-500' : ''}" />
       {#if passwordMismatch}
-        <p class="text-red-400 text-xs mt-1">Passwords do not match</p>
+        <p class="text-red-400 text-xs mt-1">⚠ Passwords do not match</p>
+      {:else if passwordConfirm.length > 0 && password === passwordConfirm}
+        <p class="text-green-400 text-xs mt-1">✓ Passwords match</p>
       {/if}
     </div>
     
@@ -113,13 +131,16 @@
       </label>
     </div>
 
-    <button 
+    {#if submitDisabledReason && (password.length > 0 || passwordConfirm.length > 0)}
+      <p class="text-xs text-stone-500 text-center">{submitDisabledReason}</p>
+    {/if}
+  <button 
       type="submit" 
-      disabled={isSubmitting || passwordMismatch || password !== passwordConfirm || !termsAccepted}
-      class="px-4 py-2 bg-stone-600 text-white rounded-md disabled:opacity-50"
+      disabled={isSubmitting || passwordMismatch || password !== passwordConfirm || !termsAccepted || password.length < 6}
+      class="w-full px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-xl transition disabled:opacity-50 disabled:cursor-not-allowed"
     >
-      {isSubmitting ? 'Creating account...' : 'Sign Up'}
-    </button>
+      {isSubmitting ? 'Creating account...' : 'Create Account'}
+  </button>
   </form>
   </div>
 </div>
