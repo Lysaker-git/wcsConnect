@@ -388,7 +388,7 @@ export const actions = {
             .lte('valid_from', today)
             .gte('valid_to', today)
             .single();
-
+        console.log('Promo fetch result:', { promo });
         if (!promo) return fail(400, { promoError: 'Invalid or expired promo code' });
 
         return { 

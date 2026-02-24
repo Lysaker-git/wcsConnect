@@ -86,16 +86,26 @@
     $: ticketSaving = ticketPrice - discountedTicketPrice;
 
     $: cartSubtotal = [
-        ...(selectedTicket ? [{ price: discountedTicketPrice }] : []),
-        ...products.filter(p => selectedIntensives[p.id]),
-        ...products.filter(p => selectedProducts[p.id] > 0).map(p => ({
-            price: p.price * (selectedProducts[p.id] || 0)
-        }))
-        ].reduce((sum, p) => sum + parseFloat(p.price.toString()), 0);
+        ...(selectedTicket ? [{ price: ticketPrice }] : []),
+        ...products
+            .filter(p => selectedIntensives[p.id])
+            .map(p => ({
+                price: p.discount_percent
+                    ? parseFloat(p.price) * (1 - p.discount_percent / 100)
+                    : parseFloat(p.price)
+            })),
+        ...products
+            .filter(p => selectedProducts[p.id] > 0)
+            .map(p => ({
+                price: (p.discount_percent
+                    ? parseFloat(p.price) * (1 - p.discount_percent / 100)
+                    : parseFloat(p.price)) * (selectedProducts[p.id] || 0)
+            }))
+    ].reduce((sum, p) => sum + p.price, 0);
 
-    $: stripeFeePreview = stripe_fee_model === 'on_top' ? cartSubtotal * 0.035 : 0;
-    $: previewServiceFee = cartSubtotal * 0.01;
-    $: previewTotal = cartSubtotal + stripeFeePreview + previewServiceFee;
+    $: stripeFeePreview = stripe_fee_model === 'on_top' ? (cartSubtotal - ticketSaving) * 0.035 : 0;
+    $: previewServiceFee = (cartSubtotal - ticketSaving) * 0.01;
+    $: previewTotal = cartSubtotal - ticketSaving + stripeFeePreview + previewServiceFee;
     $: selectedCount = 
         (selectedTicket ? 1 : 0) +
         Object.values(selectedIntensives).filter(Boolean).length +
@@ -241,19 +251,20 @@
             body: formData
             });
 
+            
             const result = await res.json();
             const parsed = JSON.parse(result.data);
-
+            
+            console.log(parsed)
             // SvelteKit fail() returns status 400, success returns 200
             if (result.status === 200) {
-            // parsed is array: [status, data] — find the object
-            const data = parsed.find((x: any) => typeof x === 'object' && x !== null) ?? {};
-            promoCode = data.promoCode ?? '';
-            promoDiscount = data.promoDiscount ?? 0;
-            promoError = '';
+                const indexMap = parsed.find((x: any) => typeof x === 'object' && x !== null) ?? {};
+                promoCode = parsed[indexMap.promoCode] ?? '';
+                promoDiscount = parseFloat(parsed[indexMap.promoDiscount]) || 0;
+                promoError = '';
             } else {
-            const data = parsed.find((x: any) => typeof x === 'object' && x !== null) ?? {};
-            promoError = data.promoError ?? 'Invalid or expired promo code';
+                const indexMap = parsed.find((x: any) => typeof x === 'object' && x !== null) ?? {};
+                promoError = parsed[indexMap.promoError] ?? 'Invalid or expired promo code';
             }
         } catch (err) {
             promoError = 'Failed to validate promo code';
@@ -452,9 +463,16 @@
                                                     {/if}
                                                 </div>
                                                 <div class="text-right ml-4">
-                                                    <div class="text-lg font-bold text-stone-200">
-                                                        {parseFloat(product.price).toFixed(2)} {product.currency_type || 'EUR'}
-                                                    </div>
+                                                    {#if product.discount_percent}
+                                                        {@const discounted = parseFloat(product.price) * (1 - product.discount_percent / 100)}
+                                                        <div class="text-sm line-through text-stone-500">{parseFloat(product.price).toFixed(2)} {product.currency_type || 'EUR'}</div>
+                                                        <div class="text-lg font-bold text-amber-400">{discounted.toFixed(2)} {product.currency_type || 'EUR'}</div>
+                                                        <div class="text-xs text-green-400">-{product.discount_percent}%</div>
+                                                    {:else}
+                                                        <div class="text-lg font-bold text-stone-200">
+                                                            {parseFloat(product.price).toFixed(2)} {product.currency_type || 'EUR'}
+                                                        </div>
+                                                    {/if}
                                                 </div>
                                             </div>
 
