@@ -71,7 +71,7 @@
     </div>
     
     <div>
-      <label for="signup-username" class="block text-sm font-medium text-stone-300">Username</label>
+      <label for="signup-username" class="block text-sm font-medium text-stone-300">Full Name</label>
       <input id="signup-username" bind:value={username} type="text" name="username" required class="mt-1 block w-full rounded-md border-stone-700 bg-stone-800 text-stone-100 shadow-sm" />
     </div>
 

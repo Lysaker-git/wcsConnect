@@ -7,7 +7,7 @@ import type { PageServerLoad, Actions } from './$types';
 const stripe = new Stripe(STRIPE_SECRET_KEY);
 
 export const load: PageServerLoad = async ({ params, cookies, url }) => {
-  const { registrationId } = params;
+  const { registrationID } = params;
 
   const sbUser = cookies.get('sb_user');
   if (!sbUser) throw redirect(303, '/signin');
@@ -25,12 +25,12 @@ export const load: PageServerLoad = async ({ params, cookies, url }) => {
         accommodation_deposit_percent, accommodation_final_payment_deadline
       )
     `)
-    .eq('id', registrationId)
+    .eq('id', registrationID)
     .eq('user_id', user.id)
     .single();
 
   if (pError || !participant) throw svelteError(404, 'Registration not found');
-  if (participant.status !== 'approved') throw redirect(303, `/profile/${registrationId}`);
+  if (participant.status !== 'approved') throw redirect(303, `/profile/${registrationID}`);
 
   const event = participant.events;
 
@@ -47,7 +47,7 @@ export const load: PageServerLoad = async ({ params, cookies, url }) => {
   const { data: existingBooking } = await supabase
     .from('hotel_bookings')
     .select('*')
-    .eq('participant_id', registrationId)
+    .eq('participant_id', registrationID)
     .maybeSingle();
 
   return {
@@ -60,7 +60,7 @@ export const load: PageServerLoad = async ({ params, cookies, url }) => {
 
 export const actions: Actions = {
   book: async ({ request, params, cookies, url }) => {
-    const { registrationId } = params;
+    const { registrationID } = params;
 
     const sbUser = cookies.get('sb_user');
     if (!sbUser) return fail(401, { message: 'Not authenticated' });
@@ -78,7 +78,7 @@ export const actions: Actions = {
           accommodation_deposit_percent, accommodation_final_payment_deadline
         )
       `)
-      .eq('id', registrationId)
+      .eq('id', registrationID)
       .eq('user_id', user.id)
       .single();
 
@@ -89,7 +89,7 @@ export const actions: Actions = {
     const { data: existingBooking } = await supabase
       .from('hotel_bookings')
       .select('id')
-      .eq('participant_id', registrationId)
+      .eq('participant_id', registrationID)
       .maybeSingle();
 
     if (existingBooking) return fail(400, { message: 'You already have a room booking' });
@@ -99,6 +99,16 @@ export const actions: Actions = {
     const payment_type = form.get('payment_type')?.toString(); // 'full' or 'deposit'
 
     if (!product_id || !payment_type) return fail(400, { message: 'Missing required fields' });
+
+    const check_in = form.get('check_in')?.toString() || null;
+    const check_out = form.get('check_out')?.toString() || null;
+    const nights = check_in && check_out
+      ? Math.max(0, Math.round((new Date(check_out).getTime() - new Date(check_in).getTime()) / (1000 * 60 * 60 * 24)))
+      : 1;
+
+    if (!check_in || !check_out || nights <= 0) {
+      return fail(400, { message: 'Please select valid check-in and check-out dates' });
+    }
 
     // Fetch room product
     const { data: room } = await supabase
@@ -116,11 +126,14 @@ export const actions: Actions = {
     }
 
     const event = participant.events as any;
-    const totalAmount = parseFloat(room.price);
+    const totalAmount = parseFloat(room.price) * nights;
     const depositPercent = event.accommodation_deposit_percent ?? 10;
     const depositAmount = parseFloat((totalAmount * depositPercent / 100).toFixed(2));
     const remainingAmount = parseFloat((totalAmount - depositAmount).toFixed(2));
     const currency = room.currency_type?.toLowerCase() ?? 'eur';
+    const roommate_names = form.getAll('roommate_names')
+      .map(v => v.toString().trim())
+      .filter(v => v.length > 0);
 
     const chargeAmount = payment_type === 'full' ? totalAmount : depositAmount;
     const stripeFeeModel = event.stripe_fee_model ?? 'on_top';
@@ -191,7 +204,7 @@ export const actions: Actions = {
     const { data: booking, error: bookingError } = await supabase
       .from('hotel_bookings')
       .insert({
-        participant_id: registrationId,
+        participant_id: registrationID,
         event_id: participant.event_id,
         product_id: room.id,
         room_name: room.name,
@@ -201,7 +214,12 @@ export const actions: Actions = {
         deposit_paid: false,
         remaining_paid: payment_type === 'full',
         currency: room.currency_type ?? 'EUR',
-        final_payment_deadline: event.accommodation_final_payment_deadline ?? null
+        final_payment_deadline: event.accommodation_final_payment_deadline ?? null,
+        roommate_names: roommate_names,
+        room_capacity: room.room_capacity ?? 1,
+        check_in,
+        check_out,
+        nights
       })
       .select()
       .single();
@@ -219,11 +237,11 @@ export const actions: Actions = {
       metadata: {
         type: payment_type === 'full' ? 'accommodation_full' : 'accommodation_deposit',
         hotel_booking_id: booking.id,
-        participant_id: registrationId,
+        participant_id: registrationID,
         user_id: user.id
       },
-      success_url: `${origin}/profile/${registrationId}/accommodation?success=true`,
-      cancel_url: `${origin}/profile/${registrationId}/accommodation?cancelled=true`
+      success_url: `${origin}/profile/${registrationID}/accommodation?success=true`,
+      cancel_url: `${origin}/profile/${registrationID}/accommodation?cancelled=true`
     });
 
     // Update booking with session id
@@ -242,7 +260,7 @@ export const actions: Actions = {
   },
 
   payRemaining: async ({ params, cookies, url }) => {
-    const { registrationId } = params;
+    const { registrationID } = params;
 
     const sbUser = cookies.get('sb_user');
     if (!sbUser) return fail(401, { message: 'Not authenticated' });
@@ -254,7 +272,7 @@ export const actions: Actions = {
     const { data: booking } = await supabase
       .from('hotel_bookings')
       .select('*, events(stripe_fee_model, platform_fee_percent, title)')
-      .eq('participant_id', registrationId)
+      .eq('participant_id', registrationID)
       .single();
 
     if (!booking) return fail(404, { message: 'Booking not found' });
@@ -264,7 +282,7 @@ export const actions: Actions = {
     const { data: participant } = await supabase
       .from('event_participants')
       .select('event_id, user_id')
-      .eq('id', registrationId)
+      .eq('id', registrationID)
       .single();
 
     if (!participant || participant.user_id !== user.id) return fail(403, { message: 'Access denied' });
@@ -338,11 +356,11 @@ export const actions: Actions = {
       metadata: {
         type: 'accommodation_remaining',
         hotel_booking_id: booking.id,
-        participant_id: registrationId,
+        participant_id: registrationID,
         user_id: user.id
       },
-      success_url: `${origin}/profile/${registrationId}/accommodation?success=true`,
-      cancel_url: `${origin}/profile/${registrationId}/accommodation?cancelled=true`
+      success_url: `${origin}/profile/${registrationID}/accommodation?success=true`,
+      cancel_url: `${origin}/profile/${registrationID}/accommodation?cancelled=true`
     });
 
     await supabase
@@ -351,5 +369,43 @@ export const actions: Actions = {
       .eq('id', booking.id);
 
     throw redirect(303, session.url!);
+  },
+  updateRoommates: async ({ request, params, cookies }) => {
+    const { registrationID } = params;
+
+    const sbUser = cookies.get('sb_user');
+    if (!sbUser) return fail(401, { message: 'Not authenticated' });
+
+    let user: any;
+    try { user = JSON.parse(sbUser); } catch { return fail(401, { message: 'Invalid session' }); }
+
+    const { data: participant } = await supabase
+      .from('event_participants')
+      .select('user_id')
+      .eq('id', registrationID)
+      .single();
+
+    if (!participant || participant.user_id !== user.id) return fail(403, { message: 'Access denied' });
+
+    const { data: booking } = await supabase
+      .from('hotel_bookings')
+      .select('id')
+      .eq('participant_id', registrationID)
+      .single();
+
+    if (!booking) return fail(404, { message: 'Booking not found' });
+
+    const form = await request.formData();
+    const roommate_names = form.getAll('roommate_names')
+      .map(v => v.toString().trim())
+      .filter(v => v.length > 0);
+
+    const { error } = await supabase
+      .from('hotel_bookings')
+      .update({ roommate_names, updated_at: new Date().toISOString() })
+      .eq('participant_id', registrationID);
+
+    if (error) return fail(500, { message: error.message });
+    return { success: true };
   }
 };

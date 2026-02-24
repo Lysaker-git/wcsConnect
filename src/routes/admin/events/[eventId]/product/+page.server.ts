@@ -68,8 +68,11 @@ export const actions: Actions = {
     const is_active = form.get('is_active') === 'on';
     const max_per_user = form.get('max_per_user')?.toString() ? parseInt(form.get('max_per_user')!.toString()) : null;
     const discount_percent = form.get('discount_percent')?.toString() 
-    ? parseFloat(form.get('discount_percent')!.toString()) 
-    : null;
+      ? parseFloat(form.get('discount_percent')!.toString()) 
+      : null;
+    const room_capacity = form.get('room_capacity')?.toString()
+      ? parseInt(form.get('room_capacity')!.toString())
+      : null;
 
     if (!name || !product_type || price < 0) return fail(400, { message: 'Missing required fields' });
 
@@ -90,7 +93,8 @@ export const actions: Actions = {
         follower_limit,
         is_active,
         max_per_user,
-        discount_percent
+        discount_percent,
+        room_capacity,
       });
 
     if (error) return fail(500, { message: error.message });
@@ -121,8 +125,11 @@ export const actions: Actions = {
     const is_active = form.get('is_active') === 'on';
     const max_per_user = form.get('max_per_user')?.toString() ? parseInt(form.get('max_per_user')!.toString()) : null;
     const discount_percent = form.get('discount_percent')?.toString() 
-    ? parseFloat(form.get('discount_percent')!.toString()) 
-    : null;
+      ? parseFloat(form.get('discount_percent')!.toString()) 
+      : null;
+    const room_capacity = form.get('room_capacity')?.toString()
+      ? parseInt(form.get('room_capacity')!.toString())
+      : null;
     if (!productId || !name || !product_type) return fail(400, { message: 'Missing required fields' });
 
     const { error } = await supabase
@@ -141,6 +148,7 @@ export const actions: Actions = {
         is_active, 
         max_per_user, 
         discount_percent,
+        room_capacity,
         updated_at: new Date().toISOString()
       })
       .eq('id', productId)

@@ -354,7 +354,7 @@ $: isProfileIncomplete = user && (!profile || (
             <h3 class="text-xl font-semibold mb-4 text-stone-100">Edit Profile</h3>
             <form on:submit|preventDefault={handleProfileSubmit} class="space-y-4">
               <div>
-                <label for="edit-username" class="block text-sm font-medium text-stone-100">Username</label>
+                <label for="edit-username" class="block text-sm font-medium text-stone-100">Full Name</label>
                 <input id="edit-username" bind:value={editUsername} type="text" name="username" required class="mt-1 block w-full rounded-md border-gray-200 shadow-sm bg-stone-700 text-stone-100" />
               </div>
 

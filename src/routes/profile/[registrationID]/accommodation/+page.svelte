@@ -19,7 +19,6 @@
   let paymentType = 'deposit';
 
   $: room = rooms.find(r => r.id === selectedRoom);
-  $: totalAmount = room ? parseFloat(room.price) : 0;
   $: depositPercent = event?.accommodation_deposit_percent ?? 10;
   $: depositAmount = parseFloat((totalAmount * depositPercent / 100).toFixed(2));
   $: remainingAmount = parseFloat((totalAmount - depositAmount).toFixed(2));
@@ -30,6 +29,11 @@
   $: grandTotal = chargeAmount + stripeFee + serviceFee;
   $: currency = room?.currency_type ?? existingBooking?.currency ?? 'EUR';
 
+  $: rem = existingBooking ? parseFloat(existingBooking.remaining_amount) : 0;
+  $: remStripeFee = stripeFeeModel === 'on_top' ? rem * 0.035 : 0;
+  $: remServiceFee = rem * ((event?.platform_fee_percent ?? 1) / 100);
+  $: remGrandTotal = rem + remStripeFee + remServiceFee;
+
   $: finalDeadline = event?.accommodation_final_payment_deadline
     ? new Date(event.accommodation_final_payment_deadline).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
     : null;
@@ -37,6 +41,28 @@
   $: isDeadlinePassed = event?.accommodation_final_payment_deadline
     ? new Date(event.accommodation_final_payment_deadline) < new Date()
     : false;
+
+  let checkIn = '';
+  let checkOut = '';
+  let roommateNames: string[] = existingBooking?.roommate_names ?? [];
+
+  $: roommateSlots = room ? Math.max(0, (room.room_capacity ?? 1) - 1) : 
+    existingBooking ? Math.max(0, (existingBooking.room_capacity ?? 1) - 1) : 0;
+
+  // Keep roommateNames array in sync with slot count
+  $: if (roommateSlots > 0 && roommateNames.length < roommateSlots) {
+    roommateNames = [
+      ...roommateNames,
+      ...Array(roommateSlots - roommateNames.length).fill('')
+    ];
+  }
+  $: datesValid = nights > 0 && checkIn && checkOut;
+
+  $: nights = checkIn && checkOut
+    ? Math.max(0, Math.round((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 60 * 60 * 24)))
+    : 0;
+
+  $: totalAmount = room ? parseFloat(room.price) * Math.max(nights, 1) : 0;
 </script>
 
 <div class="min-h-screen bg-stone-900 py-10 px-6">
@@ -83,7 +109,16 @@
             <span class="text-stone-400">Total price</span>
             <span class="text-stone-100">{parseFloat(existingBooking.total_amount).toFixed(2)} {existingBooking.currency}</span>
           </div>
-
+			{#if existingBooking.check_in && existingBooking.check_out}
+			<div class="flex justify-between text-sm">
+				<span class="text-stone-400">Dates</span>
+				<span class="text-stone-100">
+				{new Date(existingBooking.check_in).toLocaleDateString()} →
+				{new Date(existingBooking.check_out).toLocaleDateString()}
+				({existingBooking.nights} night{existingBooking.nights === 1 ? '' : 's'})
+				</span>
+			</div>
+			{/if}
           <div class="flex justify-between text-sm">
             <span class="text-stone-400">Deposit ({depositPercent}%)</span>
             <div class="flex items-center gap-2">
@@ -122,38 +157,34 @@
         </div>
 
         <!-- Pay remaining button -->
-        {#if existingBooking.deposit_paid && !existingBooking.remaining_paid && existingBooking.remaining_amount > 0 && !isDeadlinePassed}
-          <form method="POST" action="?/payRemaining" use:enhance class="mt-5">
-            {@const rem = parseFloat(existingBooking.remaining_amount)}
-            {@const sFee = stripeFeeModel === 'on_top' ? rem * 0.035 : 0}
-            {@const pFee = rem * ((event?.platform_fee_percent ?? 1) / 100)}
-            {@const total = rem + sFee + pFee}
-            <div class="bg-stone-900 rounded-xl p-4 space-y-1 mb-4 text-xs text-stone-400">
-              <div class="flex justify-between">
-                <span>Remaining balance</span>
-                <span>{rem.toFixed(2)} {existingBooking.currency}</span>
-              </div>
-              {#if stripeFeeModel === 'on_top'}
-                <div class="flex justify-between">
-                  <span>Payment handling (3.5%)</span>
-                  <span>{sFee.toFixed(2)} {existingBooking.currency}</span>
-                </div>
-              {/if}
-              <div class="flex justify-between">
-                <span>Service fee ({event?.platform_fee_percent ?? 1}%)</span>
-                <span>{pFee.toFixed(2)} {existingBooking.currency}</span>
-              </div>
-              <div class="flex justify-between border-t border-stone-700 pt-1 font-semibold text-stone-200">
-                <span>Total due</span>
-                <span class="text-amber-400">{total.toFixed(2)} {existingBooking.currency}</span>
-              </div>
-            </div>
-            <button type="submit"
-              class="w-full py-3 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl transition">
-              Pay remaining balance — {total.toFixed(2)} {existingBooking.currency}
-            </button>
-          </form>
-        {/if}
+		{#if existingBooking.deposit_paid && !existingBooking.remaining_paid && existingBooking.remaining_amount > 0 && !isDeadlinePassed}
+		<form method="POST" action="?/payRemaining" use:enhance class="mt-5">
+			<div class="bg-stone-900 rounded-xl p-4 space-y-1 mb-4 text-xs text-stone-400">
+			<div class="flex justify-between">
+				<span>Remaining balance</span>
+				<span>{rem.toFixed(2)} {existingBooking.currency}</span>
+			</div>
+			{#if stripeFeeModel === 'on_top'}
+				<div class="flex justify-between">
+				<span>Payment handling (3.5%)</span>
+				<span>{remStripeFee.toFixed(2)} {existingBooking.currency}</span>
+				</div>
+			{/if}
+			<div class="flex justify-between">
+				<span>Service fee ({event?.platform_fee_percent ?? 1}%)</span>
+				<span>{remServiceFee.toFixed(2)} {existingBooking.currency}</span>
+			</div>
+			<div class="flex justify-between border-t border-stone-700 pt-1 font-semibold text-stone-200">
+				<span>Total due</span>
+				<span class="text-amber-400">{remGrandTotal.toFixed(2)} {existingBooking.currency}</span>
+			</div>
+			</div>
+			<button type="submit"
+			class="w-full py-3 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl transition">
+			Pay remaining balance — {remGrandTotal.toFixed(2)} {existingBooking.currency}
+			</button>
+		</form>
+		{/if}
 
         {#if existingBooking.deposit_paid && existingBooking.remaining_paid}
           <div class="mt-4 p-3 bg-green-900/20 border border-green-800 rounded-xl text-center text-green-300 text-sm">
@@ -161,6 +192,32 @@
           </div>
         {/if}
       </div>
+      <!-- Roommate editor — always editable -->
+      {#if roommateSlots > 0}
+        <div class="bg-stone-800 rounded-2xl border border-stone-700 p-6 mt-4">
+          <h3 class="text-base font-semibold text-stone-100 mb-1">Roommates</h3>
+          <p class="text-stone-500 text-xs mb-3">
+            This room fits {(existingBooking.room_capacity ?? 1)} people — you can have {roommateSlots} roommate{roommateSlots === 1 ? '' : 's'}.
+          </p>
+          <form method="POST" action="?/updateRoommates" use:enhance={() => {
+            return async ({ update }) => { await update({ reset: false }); };
+          }} class="space-y-2">
+            {#each Array(roommateSlots) as _, i}
+              <input
+                type="text"
+                name="roommate_names"
+                bind:value={roommateNames[i]}
+                placeholder="Roommate {i + 1} name"
+                class="w-full px-4 py-2.5 rounded-xl bg-stone-900 border border-stone-700 text-stone-100 focus:outline-none focus:border-amber-500"
+              />
+            {/each}
+            <button type="submit"
+              class="w-full py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-xl transition mt-2">
+              Save Roommates
+            </button>
+          </form>
+        </div>
+      {/if}
 
     {:else}
       <!-- Room selection -->
@@ -209,74 +266,111 @@
               {/each}
             </div>
 
-            {#if selectedRoom}
-              <!-- Payment type -->
-              <div>
-                <p class="text-sm font-medium text-stone-300 mb-3">Payment option</p>
-                <div class="grid grid-cols-2 gap-3">
-                  <label class="cursor-pointer">
-                    <input type="radio" name="payment_type" value="deposit"
-                      bind:group={paymentType} class="sr-only" />
-                    <div class="p-3 rounded-xl border-2 text-center transition
-                      {paymentType === 'deposit'
-                        ? 'border-amber-500 bg-stone-900'
-                        : 'border-stone-700 bg-stone-900/50 hover:border-stone-500'}">
-                      <p class="font-semibold text-stone-100 text-sm">Reserve with deposit</p>
-                      <p class="text-amber-400 font-bold mt-1">{depositAmount.toFixed(2)} {currency}</p>
-                      <p class="text-xs text-stone-500 mt-0.5">{depositPercent}% now</p>
-                      {#if finalDeadline}
-                        <p class="text-xs text-stone-500">Rest due {finalDeadline}</p>
-                      {/if}
-                    </div>
-                  </label>
-                  <label class="cursor-pointer">
-                    <input type="radio" name="payment_type" value="full"
-                      bind:group={paymentType} class="sr-only" />
-                    <div class="p-3 rounded-xl border-2 text-center transition
-                      {paymentType === 'full'
-                        ? 'border-amber-500 bg-stone-900'
-                        : 'border-stone-700 bg-stone-900/50 hover:border-stone-500'}">
-                      <p class="font-semibold text-stone-100 text-sm">Pay in full</p>
-                      <p class="text-amber-400 font-bold mt-1">{totalAmount.toFixed(2)} {currency}</p>
-                      <p class="text-xs text-stone-500 mt-0.5">No further payments</p>
-                    </div>
-                  </label>
-                </div>
-              </div>
+    {#if selectedRoom}
+      <!-- Date fields stay visible always -->
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-stone-300 mb-1.5">Check-in</label>
+          <input type="date" name="check_in" bind:value={checkIn} required
+            class="w-full px-4 py-2.5 rounded-xl bg-stone-900 border border-stone-700 text-stone-100 focus:outline-none focus:border-amber-500" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-stone-300 mb-1.5">Check-out</label>
+          <input type="date" name="check_out" bind:value={checkOut} required
+            class="w-full px-4 py-2.5 rounded-xl bg-stone-900 border border-stone-700 text-stone-100 focus:outline-none focus:border-amber-500" />
+        </div>
+      </div>
 
-              <!-- Order summary -->
-              <div class="bg-stone-900 rounded-xl p-4 space-y-1.5 text-xs text-stone-400">
-                <div class="flex justify-between">
-                  <span>{paymentType === 'full' ? 'Full payment' : `Deposit (${depositPercent}%)`}</span>
-                  <span>{chargeAmount.toFixed(2)} {currency}</span>
-                </div>
-                {#if stripeFeeModel === 'on_top'}
-                  <div class="flex justify-between">
-                    <span>Payment handling (3.5%)</span>
-                    <span>{stripeFee.toFixed(2)} {currency}</span>
-                  </div>
-                {/if}
-                <div class="flex justify-between">
-                  <span>Service fee ({event?.platform_fee_percent ?? 1}%)</span>
-                  <span>{serviceFee.toFixed(2)} {currency}</span>
-                </div>
-                {#if paymentType === 'deposit'}
-                  <div class="flex justify-between text-stone-500 pt-1 border-t border-stone-800">
-                    <span>Remaining balance (due later)</span>
-                    <span>{remainingAmount.toFixed(2)} {currency}</span>
-                  </div>
-                {/if}
-                <div class="flex justify-between border-t border-stone-700 pt-1.5 font-semibold text-stone-200 text-sm">
-                  <span>Due now</span>
-                  <span class="text-amber-400">{grandTotal.toFixed(2)} {currency}</span>
-                </div>
-              </div>
+      {#if datesValid}
+        <p class="text-xs text-stone-400 -mt-2">
+          {nights} night{nights === 1 ? '' : 's'} ·
+          {parseFloat(room.price).toFixed(2)} {room.currency_type} per night ·
+          <span class="text-stone-200 font-semibold">{totalAmount.toFixed(2)} {room.currency_type} total</span>
+        </p>
 
-              <button type="submit"
-                class="w-full py-3 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl transition">
-                Book now — {grandTotal.toFixed(2)} {currency}
-              </button>
-            {/if}
+        <!-- Roommate field -->
+        {#if roommateSlots > 0}
+          <div class="space-y-2">
+            <label class="block text-sm font-medium text-stone-300">
+              Roommates <span class="text-stone-500 font-normal">(optional)</span>
+            </label>
+            {#each Array(roommateSlots) as _, i}
+              <input
+                type="text"
+                name="roommate_names"
+                bind:value={roommateNames[i]}
+                placeholder="Roommate {i + 1} name"
+                class="w-full px-4 py-2.5 rounded-xl bg-stone-900 border border-stone-700 text-stone-100 focus:outline-none focus:border-amber-500"
+              />
+            {/each}
+          </div>
+        {/if}
+
+        <!-- Payment type -->
+        <div>
+          <p class="text-sm font-medium text-stone-300 mb-3">Payment option</p>
+          <div class="grid grid-cols-2 gap-3">
+            <label class="cursor-pointer">
+              <input type="radio" name="payment_type" value="deposit" bind:group={paymentType} class="sr-only" />
+              <div class="p-3 rounded-xl border-2 text-center transition
+                {paymentType === 'deposit' ? 'border-amber-500 bg-stone-900' : 'border-stone-700 bg-stone-900/50 hover:border-stone-500'}">
+                <p class="font-semibold text-stone-100 text-sm">Reserve with deposit</p>
+                <p class="text-amber-400 font-bold mt-1">{depositAmount.toFixed(2)} {currency}</p>
+                <p class="text-xs text-stone-500 mt-0.5">{depositPercent}% now</p>
+                {#if finalDeadline}
+                  <p class="text-xs text-stone-500">Rest due {finalDeadline}</p>
+                {/if}
+              </div>
+            </label>
+            <label class="cursor-pointer">
+              <input type="radio" name="payment_type" value="full" bind:group={paymentType} class="sr-only" />
+              <div class="p-3 rounded-xl border-2 text-center transition
+                {paymentType === 'full' ? 'border-amber-500 bg-stone-900' : 'border-stone-700 bg-stone-900/50 hover:border-stone-500'}">
+                <p class="font-semibold text-stone-100 text-sm">Pay in full</p>
+                <p class="text-amber-400 font-bold mt-1">{totalAmount.toFixed(2)} {currency}</p>
+                <p class="text-xs text-stone-500 mt-0.5">No further payments</p>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Order summary -->
+        <div class="bg-stone-900 rounded-xl p-4 space-y-1.5 text-xs text-stone-400">
+          <div class="flex justify-between">
+            <span>{paymentType === 'full' ? 'Full payment' : `Deposit (${depositPercent}%)`}</span>
+            <span>{chargeAmount.toFixed(2)} {currency}</span>
+          </div>
+          {#if stripeFeeModel === 'on_top'}
+            <div class="flex justify-between">
+              <span>Payment handling (3.5%)</span>
+              <span>{stripeFee.toFixed(2)} {currency}</span>
+            </div>
+          {/if}
+          <div class="flex justify-between">
+            <span>Service fee ({event?.platform_fee_percent ?? 1}%)</span>
+            <span>{serviceFee.toFixed(2)} {currency}</span>
+          </div>
+          {#if paymentType === 'deposit'}
+            <div class="flex justify-between text-stone-500 pt-1 border-t border-stone-800">
+              <span>Remaining balance (due later)</span>
+              <span>{remainingAmount.toFixed(2)} {currency}</span>
+            </div>
+          {/if}
+          <div class="flex justify-between border-t border-stone-700 pt-1.5 font-semibold text-stone-200 text-sm">
+            <span>Due now</span>
+            <span class="text-amber-400">{grandTotal.toFixed(2)} {currency}</span>
+          </div>
+        </div>
+
+        <button type="submit"
+          class="w-full py-3 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl transition">
+          Book now — {grandTotal.toFixed(2)} {currency}
+        </button>
+
+      {:else}
+        <p class="text-xs text-stone-500 text-center py-2">Select check-in and check-out dates to continue</p>
+      {/if}
+    {/if}
           </form>
         </div>
       {/if}
