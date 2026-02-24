@@ -1,6 +1,8 @@
 import { selectFromSupabase, selectFromSupabaseDetailed } from '$lib/api/selectFromSupabase';
+import { supabase } from '$lib/server/supabaseServiceClient';
 import type { PageServerLoad } from './$types';
 import { error as svelteError } from '@sveltejs/kit';
+import { redirect } from '@sveltejs/kit';
 
 // The server load receives the 'params' and can read cookies to determine auth state.
 export const load: PageServerLoad = async ({ params, cookies }) => {
@@ -20,6 +22,17 @@ export const load: PageServerLoad = async ({ params, cookies }) => {
         user = null;
     }
 
+    const { data: existingRegistration } = await supabase
+        .from('event_participants')
+        .select('id')
+        .eq('event_id', eventId)
+        .eq('user_id', user.id)
+        .not('event_role', 'eq', 'Event Director')
+        .maybeSingle();
+
+        if (existingRegistration) {
+        throw redirect(303, `/profile/${existingRegistration.id}`);
+        }
 
     const { data: events, error } = await selectFromSupabase(
         'events',

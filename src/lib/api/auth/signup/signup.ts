@@ -25,6 +25,11 @@ export async function signUpUser({ email, password, profile }: {
   if (signUpError) throw signUpError;
   if (!data.user) throw new Error('User creation failed');
 
+  // Supabase returns identities: [] for duplicate emails instead of throwing
+  if (!data.user.identities || data.user.identities.length === 0) {
+    throw new Error('User already registered');
+  }
+
   // Use service role client for profile insert — bypasses RLS
   const profileRow = {
     id: data.user.id,
