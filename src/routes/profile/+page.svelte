@@ -133,37 +133,28 @@ $: isProfileIncomplete = user && (!profile || (
     e.preventDefault();
     const form = e.target as HTMLFormElement;
     const formData = new FormData(form);
-    console.log('Submitting profile update with data:', Object.fromEntries(formData.entries()));
-    isSavingProfile = true;
+    isSavingProfile = true; // show loading overlay immediately
+
     try {
       const res = await fetch('/profile?/updateProfile', {
         method: 'POST',
         body: formData,
-        headers: {
-          'accept': 'application/json'
-        }
+        headers: { 'accept': 'application/json' }
       });
-      console.log('Profile update response:', res);
+
       const result = await res.json();
-      console.log('Profile update result:', result);
+
       if (result.status === 200) {
-        showModal = false;
-        isSavingProfile = false;
-        // Wait 2 seconds for database to sync before refreshing
-        console.log('Wating for database sync...');
-        await new Promise(resolve => setTimeout(resolve, 5000));
-        // Refresh all data
+        // Don't close modal manually — reload handles it
         location.reload();
       } else {
         isSavingProfile = false;
         alert('Failed to update profile: ' + (result.message || 'Unknown error'));
-        location.reload();
       }
     } catch (err) {
       isSavingProfile = false;
       console.error('Profile update fetch error:', err);
       alert('Network error during profile update');
-      location.reload();
     }
   }
 </script>
