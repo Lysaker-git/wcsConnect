@@ -73,11 +73,17 @@ export async function sendRegistrationApprovedEmail({
           Great news — your registration for <strong>${eventTitle}</strong> has been approved.
           The event starts on <strong>${formattedDate}</strong>.
         </p>
-        <p style="color:#374151;line-height:1.6;margin:0 0 32px;">
-          You can now complete your payment to secure your spot.
-        </p>
+      <p style="color:#374151;line-height:1.6;margin:0 0 16px;">
+        To secure your spot, please complete your payment within <strong>14 days</strong> of receiving this email.
+      </p>
 
-        <a href="${manageUrl}"
+      <div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:16px;margin:0 0 32px;">
+        <p style="margin:0;color:#92400e;font-size:14px;line-height:1.5;">
+          ⚠️ <strong>Please note:</strong> Unpaid registrations may be cancelled at the event director's discretion after the payment deadline has passed.
+        </p>
+      </div>
+
+      <a href="${manageUrl}"
            style="display:inline-block;padding:14px 28px;background:#d97706;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:700;font-size:16px;">
           Complete Payment →
         </a>
