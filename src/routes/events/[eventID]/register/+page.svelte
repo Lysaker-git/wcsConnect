@@ -96,13 +96,17 @@
     $: stripeFeePreview = stripe_fee_model === 'on_top' ? cartSubtotal * 0.035 : 0;
     $: previewServiceFee = cartSubtotal * 0.01;
     $: previewTotal = cartSubtotal + stripeFeePreview + previewServiceFee;
+    $: selectedCount = 
+        (selectedTicket ? 1 : 0) +
+        Object.values(selectedIntensives).filter(Boolean).length +
+        Object.values(selectedProducts).reduce((sum, qty) => sum + (qty > 0 ? qty : 0), 0);
 
     async function goBack() {
         await goto('.');
     }
-
     async function handleRegister(e: Event) {
         e.preventDefault();
+        
 
         if (selectedCount === 0) {
             errorMessage = 'Please select at least one product';
