@@ -45,11 +45,9 @@ export const load: PageServerLoad = async ({ params, cookies }) => {
     .eq('event_id', eventId)
     .neq('event_role', 'Event Director');
 
-    console.log('🔗 [dashboard +page.server] Participants with profiles:', participants);
 
   // Fetch all participant_products for this event's participants
   const participantIds = (participants ?? []).map(p => p.id);
-  console.log('🔗 [dashboard +page.server] Participant IDs:', participantIds);
 
   let allProducts: any[] = [];
   if (participantIds.length > 0) {
@@ -58,10 +56,8 @@ export const load: PageServerLoad = async ({ params, cookies }) => {
       .select('*')
       .in('participant_id', participantIds);
     
-    console.log('🔗 [dashboard +page.server] Raw participant products:', products);
     allProducts = products ?? [];
 
-    console.log('🔗 [dashboard +page.server] Participant products:', allProducts);
   }
 
   // Build per-participant rows

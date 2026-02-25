@@ -163,7 +163,13 @@
     <!-- Unpaid products -->
     {#if unpaidProducts.length > 0}
       <div class="bg-stone-800 rounded-2xl border border-amber-700/50 p-6 mb-6">
+        {#if participant.status !== 'approved'}
+          <h2 class="mb-4 p-3 bg-yellow-900/30 border border-yellow-700 text-yellow-300 rounded-lg text-sm">
+            Your registration is pending approval. Payment will be available once approved.
+          </h2>
+        {:else}
         <h2 class="text-lg font-semibold text-stone-100 mb-4">⏳ Awaiting Payment</h2>
+        {/if}
         <div class="space-y-2">
           {#each unpaidProducts as p}
             <div class="flex justify-between text-sm">
