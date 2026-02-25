@@ -327,7 +327,7 @@ export const actions = {
                 
             }
             
-            // Update group quantity_sold
+            // Update group quantity_sold atomically via RPC
             const usedGroupIds = [...new Set(
                 productData
                     .filter(p => p.product_group_id)
@@ -340,17 +340,13 @@ export const actions = {
                 );
                 const totalSold = groupProducts.reduce((sum, sp) => sum + sp.quantity, 0);
 
-                const { data: group } = await supabase
-                    .from('product_groups')
-                    .select('quantity_sold')
-                    .eq('id', groupId)
-                    .single();
+                const { error: rpcError } = await supabase.rpc('increment_group_quantity_sold', {
+                    p_group_id: groupId,
+                    p_amount: totalSold
+                });
 
-                if (group) {
-                    await supabase
-                        .from('product_groups')
-                        .update({ quantity_sold: (group.quantity_sold ?? 0) + totalSold })
-                        .eq('id', groupId);
+                if (rpcError) {
+                    console.error('[registration] Failed to update group quantity:', rpcError);
                 }
             }
 
