@@ -6,6 +6,23 @@
     return n.toFixed(2);
   }
 
+  $: productSummary = (() => {
+    const map = new Map();
+    (participantRows ?? []).forEach((r: any) => {
+      [...(r.paidProducts ?? []), ...(r.pendingProducts ?? [])].forEach((p: any) => {
+        const name = p.product_name ?? p.name ?? 'Unknown';
+        const currency = p.currency_type ?? '';
+        const qty = parseInt(p.quantity_ordered ?? '1') || 0;
+        const key = `${name}|||${currency}`;
+        const existing = map.get(key) ?? { name, currency, count: 0, revenue: 0 };
+        existing.count += qty;
+        existing.revenue += parseFloat(p.subtotal ?? '0') || 0;
+        map.set(key, existing);
+      });
+    });
+    return Array.from(map.values()).sort((a: any, b: any) => b.count - a.count);
+  })();
+
   // Refund handler — we'll wire this up in the next step
   async function refundParticipant(participant_id: string, username: string) {
     if (!confirm(`Refund all paid items for ${username}? This cannot be undone.`)) return;
@@ -62,6 +79,28 @@
     </div>
 
     <!-- Paid participants -->
+    <!-- Product / Pass Overview -->
+    <div class="neomorph-card overflow-hidden">
+      <div class="px-6 py-4">
+        <h2 class="text-lg font-semibold text-stone-100">Product / Pass Overview</h2>
+        <p class="text-sm text-stone-400 mt-1">Counts of booked items across the event</p>
+      </div>
+      <div class="px-6 py-4 border-t bg-stone-900">
+        {#if productSummary.length === 0}
+          <p class="text-sm text-stone-400">No products booked yet</p>
+        {:else}
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+            {#each productSummary as p}
+              <div class="flex justify-between text-sm text-stone-100 p-2 bg-stone-800 rounded">
+                <div class="truncate">{p.name}</div>
+                <div class="text-stone-400">{p.count}</div>
+              </div>
+            {/each}
+          </div>
+        {/if}
+      </div>
+    </div>
+
     <div class="neomorph-card overflow-hidden">
       <div class="px-6 py-4">
         <h2 class="text-lg font-semibold text-stone-100">Paid Registrations</h2>

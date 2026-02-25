@@ -66,6 +66,13 @@ export const load: PageServerLoad = async ({ params, cookies }) => {
     products: participantProducts.filter(pp => pp.participant_id === p.id)
   }));
 
+  // Sort participants by username descending
+  enriched.sort((a: any, b: any) => {
+    const an = (a.profiles?.username ?? '').toString().toLowerCase();
+    const bn = (b.profiles?.username ?? '').toString().toLowerCase();
+    return bn.localeCompare(an);
+  });
+
   return { event, participants: enriched };
 };
 

@@ -66,14 +66,22 @@ export const load: PageServerLoad = async ({ params, cookies }) => {
     .from('products')
     .select('*')
     .eq('event_id', eventId)
-    .eq('is_active', true)
     .order('product_type', { ascending: true });
+
+  // Fetch active promo codes for this event
+  const { data: promoCodes } = await supabase
+    .from('promo_codes')
+    .select('*')
+    .eq('event_id', eventId)
+    .eq('is_active', true)
+    .order('created_at', { ascending: true });
 
   return {
     event,
     participant,
     participantProducts: participantProducts ?? [],
-    eventProducts: eventProducts ?? []
+    eventProducts: eventProducts ?? [],
+    promoCodes: promoCodes ?? []
   };
 };
 
@@ -128,6 +136,8 @@ export const actions: Actions = {
     const product_id = form.get('product_id')?.toString();
     const quantity = parseInt(form.get('quantity')?.toString() ?? '1');
     const override_price = form.get('override_price')?.toString();
+    const promo_code = form.get('promo_code')?.toString() || null;
+    const promo_discount = parseFloat(form.get('promo_discount')?.toString() || '0');
 
     if (!product_id) return fail(400, { message: 'Missing product' });
 
@@ -140,7 +150,11 @@ export const actions: Actions = {
 
     if (!product) return fail(404, { message: 'Product not found' });
 
-    const unitPrice = override_price ? parseFloat(override_price) : parseFloat(product.price);
+    let unitPrice = override_price ? parseFloat(override_price) : parseFloat(product.price);
+    // Apply promo discount to ticket-type products
+    if (promo_code && promo_discount > 0 && product.product_type === 'ticket') {
+      unitPrice = unitPrice * (1 - promo_discount / 100);
+    }
     const subtotal = unitPrice * quantity;
 
     const { error } = await supabase
@@ -155,7 +169,8 @@ export const actions: Actions = {
         currency_type: product.currency_type,
         subtotal,
         payment_status: 'pending',
-        confirmation_status: 'pending'
+        confirmation_status: 'pending',
+        promo_code_used: promo_code
       });
 
     if (error) return fail(500, { message: error.message });

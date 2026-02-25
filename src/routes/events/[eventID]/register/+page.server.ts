@@ -288,6 +288,15 @@ export const actions = {
                     return fail(500, { message: 'Failed to create participant products' });
                 }
 
+                if (participantProductsError) {
+                    console.error('[registration] participant_products insert error:', participantProductsError);
+                    // Clean up the participant record so they can re-register
+                    await supabase
+                        .from('event_participants')
+                        .delete()
+                        .eq('id', participantData.id);
+                    return fail(500, { message: 'Failed to create participant products — please try again' });
+                }
                 
             }
 
@@ -388,7 +397,6 @@ export const actions = {
             .lte('valid_from', today)
             .gte('valid_to', today)
             .single();
-        console.log('Promo fetch result:', { promo });
         if (!promo) return fail(400, { promoError: 'Invalid or expired promo code' });
 
         return { 

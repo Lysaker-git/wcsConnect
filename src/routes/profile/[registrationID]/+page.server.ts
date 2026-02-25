@@ -53,6 +53,7 @@ export const load: PageServerLoad = async ({ params, cookies }) => {
   // Fetch available products for this event (for adding more)
   // Only show if registration is approved
   let availableProducts: any[] = [];
+  let availableTickets: any[] = [];
   if (participant.status === 'approved') {
     const now = new Date().toISOString();
     const { data: eventProducts } = await supabase
@@ -60,20 +61,24 @@ export const load: PageServerLoad = async ({ params, cookies }) => {
       .select('*')
       .eq('event_id', participant.event_id)
       .eq('is_active', true)
-      .neq('product_type', 'ticket') // can't add another ticket
       .or(`sale_start.is.null,sale_start.lte.${now}`)
       .or(`sale_end.is.null,sale_end.gte.${now}`);
 
     // Filter out already purchased 1-per-user products
     const purchasedProductIds = new Set(allProducts.map(p => p.product_id));
 
-    availableProducts = (eventProducts ?? []).filter(p => {
+    const candidates = (eventProducts ?? []).filter(p => {
       // If max_per_user is 1, hide if already purchased
       if (p.max_per_user === 1 && purchasedProductIds.has(p.id)) return false;
       // Filter out sold out
       if (p.quantity_total && p.quantity_sold >= p.quantity_total) return false;
       return true;
     });
+
+    // Separate tickets from other products. Tickets are managed differently.
+    availableProducts = candidates.filter(p => p.product_type !== 'ticket');
+    // expose available tickets for optional adding if user has none
+    availableTickets = candidates.filter(p => p.product_type === 'ticket');
   }
 
   const stripe_fee_model = participant.events?.stripe_fee_model ?? 'on_top';
@@ -86,6 +91,7 @@ export const load: PageServerLoad = async ({ params, cookies }) => {
     unpaidTotal,
     paidTotal,
     availableProducts,
+    availableTickets: availableTickets ?? [],
     stripe_fee_model,
     event: participant.events
   };
@@ -115,6 +121,8 @@ export const actions: Actions = {
     const form = await request.formData();
     const product_id = form.get('product_id')?.toString();
     const quantity = parseInt(form.get('quantity')?.toString() ?? '1');
+    const promo_code = form.get('promo_code')?.toString() || null;
+    const promo_discount = parseFloat(form.get('promo_discount')?.toString() || '0');
 
     if (!product_id) return fail(400, { message: 'Missing product' });
 
@@ -127,7 +135,17 @@ export const actions: Actions = {
       .single();
 
     if (!product) return fail(404, { message: 'Product not found' });
-    if (product.product_type === 'ticket') return fail(400, { message: 'Cannot add another ticket' });
+    if (product.product_type === 'ticket') {
+      // Ensure user doesn't already have a ticket
+      const { data: existingTicket } = await supabase
+        .from('participant_products')
+        .select('id')
+        .eq('participant_id', registrationID)
+        .eq('product_type', 'ticket')
+        .single();
+
+      if (existingTicket) return fail(400, { message: 'You already have a ticket' });
+    }
 
     // Check max_per_user
     if (product.max_per_user === 1) {
@@ -146,7 +164,13 @@ export const actions: Actions = {
       return fail(400, { message: 'Product is sold out' });
     }
 
-    const subtotal = parseFloat(product.price) * quantity;
+    // Apply promo if this is a ticket
+    let unitPrice = parseFloat(product.price);
+    if (product.product_type === 'ticket' && promo_code && promo_discount > 0) {
+      unitPrice = unitPrice * (1 - promo_discount / 100);
+    }
+
+    const subtotal = unitPrice * quantity;
 
     // Insert participant_product
     const { error: insertError } = await supabase
@@ -157,11 +181,12 @@ export const actions: Actions = {
         product_name: product.name,
         product_type: product.product_type,
         quantity_ordered: quantity,
-        unit_price: parseFloat(product.price),
+        unit_price: unitPrice,
         currency_type: product.currency_type,
         subtotal,
         payment_status: 'pending',
-        confirmation_status: 'pending'
+        confirmation_status: 'pending',
+        promo_code_used: promo_code
       });
 
     if (insertError) return fail(500, { message: insertError.message });

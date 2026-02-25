@@ -28,15 +28,41 @@
     $: rejected = data.participants.filter(p => p.status === 'rejected');
 
     let filter: 'all' | 'pending' | 'approved' | 'rejected' = 'pending';
+    let productFilter: 'all' | 'has' | 'none' = 'all';
+    let search: string = '';
 
-    $: filtered = filter === 'all' 
-        ? data.participants 
+    $: filtered = (() => {
+      const statusFiltered = filter === 'all'
+        ? data.participants
         : data.participants.filter(p => {
-            if (filter === 'pending') return p.status === 'pending' || 
-                p.status === 'pending_couples_registration' ||
-                p.status === 'pending_single_registration';
-            return p.status === filter;
+          if (filter === 'pending') return p.status === 'pending' ||
+            p.status === 'pending_couples_registration' ||
+            p.status === 'pending_single_registration';
+          return p.status === filter;
         });
+
+      // Apply product presence filter independent from status
+      const productFiltered = productFilter === 'all'
+        ? statusFiltered
+        : statusFiltered.filter(p => {
+            const has = (p.products ?? []).length > 0;
+            return productFilter === 'has' ? has : !has;
+          });
+
+      const term = (search ?? '').toString().trim().toLowerCase();
+      if (!term) return productFiltered;
+
+      return productFiltered.filter(p => {
+        const username = p.profiles?.username?.toString()?.toLowerCase() ?? '';
+        const country = p.profiles?.country?.toString()?.toLowerCase() ?? '';
+        const role = p.profiles?.role?.toString()?.toLowerCase() ?? '';
+        const eventRole = p.event_role?.toString()?.toLowerCase() ?? '';
+        const products = (p.products ?? []).map((x: any) => (x.product_name ?? '').toString().toLowerCase()).join(' ');
+
+        const combined = `${username} ${country} ${role} ${eventRole} ${products}`;
+        return combined.includes(term);
+      });
+    })();
 
   function fmt(n: number) { return parseFloat(n?.toString() ?? '0').toFixed(2); }
 </script>
@@ -49,6 +75,38 @@
     </a>
     <h1 class="text-3xl font-bold text-stone-100 mt-2">Participants</h1>
     <p class="text-stone-400 text-sm mt-1">{data.event?.title}</p>
+  </div>
+
+  <!-- Search -->
+  <div class="mb-6">
+    <input
+      type="search"
+      bind:value={search}
+      placeholder="Search participants by name, country, role or product..."
+      class="w-full px-4 py-2 rounded bg-stone-900 text-stone-100 border border-stone-700 focus:outline-none"
+    />
+  </div>
+
+  <!-- Product presence filter (independent) -->
+  <div class="flex gap-2 mb-4">
+    <button
+      on:click={() => productFilter = 'all'}
+      class="px-3 py-1 rounded-full text-sm font-medium {productFilter === 'all' ? 'bg-amber-700 text-amber-100' : 'bg-stone-100 text-stone-600 border border-stone-200 hover:bg-stone-50'}"
+    >
+      All
+    </button>
+    <button
+      on:click={() => productFilter = 'has'}
+      class="px-3 py-1 rounded-full text-sm font-medium {productFilter === 'has' ? 'bg-amber-700 text-amber-100' : 'bg-stone-100 text-stone-600 border border-stone-200 hover:bg-stone-50'}"
+    >
+      With products
+    </button>
+    <button
+      on:click={() => productFilter = 'none'}
+      class="px-3 py-1 rounded-full text-sm font-medium {productFilter === 'none' ? 'bg-amber-700 text-amber-100' : 'bg-stone-100 text-stone-600 border border-stone-200 hover:bg-stone-50'}"
+    >
+      No products
+    </button>
   </div>
 
   <!-- Stats -->
