@@ -1,95 +1,85 @@
 import { createEvent } from '$lib/api/createEvent';
 import { fail, redirect } from '@sveltejs/kit';
-import { supabase } from "$lib/server/supabaseServiceClient";
+import { getUserClient } from '$lib/server/supabaseUserClient';
 
 export const load = async ({ cookies }) => {
   const sbUser = cookies.get('sb_user');
-  let user = null;
-  let profile = null;
-  if (sbUser) {
-    try {
-      user = JSON.parse(sbUser);
-      // fetch profile row
-      try {
-        const { data, error } = await supabase.from('profiles').select('*').eq('id', user.id).single();
-        if (!error) profile = data; 
-      } catch (pe) {
-        console.warn('[profile load] profile fetch error', pe);
-      }
-    } catch (e) {
-      user = null;
-    }
-  }
+  if (!sbUser) throw redirect(303, '/signin');
 
-  if (!user) {
+  let user: any = null;
+  try {
+    user = JSON.parse(sbUser);
+  } catch {
     throw redirect(303, '/signin');
   }
 
-  // Load user's events where they are Event Director
-  let myEvents: any[] = [];
-  if (user && profile) {
-    
-    // First, let's check if user has ANY event_participants records
-    const { data: allRecords, error: allError } = await supabase
-      .from('event_participants')
-      .select('*')
-      .eq('user_id', user.id);
-        
-    try {
-      const { data, error } = await supabase
-        .from('event_participants')
-        .select(`
-          event_id,
-          events (
-            id,
-            title,
-            start_date,
-            end_date
-          )
-        `)
-        .eq('user_id', user.id)
-        .eq('event_role', 'Event Director');
+  // Use user client for all reads — RLS ensures they only see their own data
+  const db = getUserClient(cookies);
+  if (!db) throw redirect(303, '/signin');
 
-      if (!error && data) {
-        myEvents = data.map(item => item.events).filter(Boolean);
-      } else {
-        console.warn('[DEBUG myEvents] Supabase error fetching events:', error);
-      }
-    } catch (e) {
-      console.warn('[DEBUG myEvents] fetch exception:', e);}
-  } else {
-    console.warn('[DEBUG myEvents] Skipping fetch - user or profile missing');
+  // Fetch profile
+  let profile = null;
+  try {
+    const { data, error } = await db
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single();
+    if (!error) profile = data;
+  } catch (e) {
+    console.warn('[profile load] profile fetch error', e);
   }
 
-  // Fetch user's registrations (event_participants) to show on profile
-  let myRegistrations: any[] = [];
-  if (user) {
-    try {
-      console.warn('[DEBUG myRegistrations] Fetching registrations for user:', user.id);
-      const { data: regsData, error: regsError } = await supabase
-        .from('event_participants')
-        .select(`
+  // Fetch events where user is Event Director
+  let myEvents: any[] = [];
+  try {
+    const { data, error } = await db
+      .from('event_participants')
+      .select(`
+        event_id,
+        events (
           id,
-          event_id,
-          status,
-          created_at,
-          events ( id, title, start_date, end_date )
-        `)
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+          title,
+          start_date,
+          end_date
+        )
+      `)
+      .eq('user_id', user.id)
+      .eq('event_role', 'Event Director');
 
-      if (!regsError && regsData) {
-        myRegistrations = regsData.map(r => ({
-          id: r.id,
-          event_id: r.event_id,
-          status: r.status,
-          created_at: r.created_at,
-          event: r.events
-        }));
-      }
-    } catch (e) {
-      console.warn('[DEBUG myRegistrations] fetch exception:', e);
+    if (!error && data) {
+      myEvents = data.map((item: any) => item.events).filter(Boolean);
     }
+  } catch (e) {
+    console.warn('[profile load] myEvents fetch error', e);
+  }
+
+  // Fetch user's registrations
+  let myRegistrations: any[] = [];
+  try {
+    const { data, error } = await db
+      .from('event_participants')
+      .select(`
+        id,
+        event_id,
+        status,
+        created_at,
+        events ( id, title, start_date, end_date )
+      `)
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
+
+    if (!error && data) {
+      myRegistrations = data.map((r: any) => ({
+        id: r.id,
+        event_id: r.event_id,
+        status: r.status,
+        created_at: r.created_at,
+        event: r.events
+      }));
+    }
+  } catch (e) {
+    console.warn('[profile load] registrations fetch error', e);
   }
 
   return { user, profile, myEvents, myRegistrations };
@@ -98,6 +88,11 @@ export const load = async ({ cookies }) => {
 export const actions = {
   createEvent: async ({ request, cookies }) => {
     try {
+      const sbUser = cookies.get('sb_user');
+      if (!sbUser) return fail(401, { success: false, message: 'Not authenticated' });
+
+      const user = JSON.parse(sbUser);
+
       const contentType = request.headers.get('content-type') ?? '';
       let title: string | undefined;
       let start_date: string | undefined;
@@ -119,48 +114,30 @@ export const actions = {
         return fail(400, { success: false, message: 'Missing required fields' });
       }
 
-      // determine current user's profile id from cookies
-      let organizerProfileId: string | null = null;
-      try {
-        const sbUser = cookies.get('sb_user');
-        if (sbUser) {
-          const user = JSON.parse(sbUser);
-          // attempt to confirm profile exists in profiles table
-          try {
-            const { data: profileData, error: profileError } = await supabase
-              .from('profiles')
-              .select('id')
-              .eq('id', user.id)
-              .single();
-            if (!profileError && profileData?.id) organizerProfileId = profileData.id;
-            else organizerProfileId = user.id; // fallback to user.id
-          } catch (pe) {
-            organizerProfileId = user.id;
-          }
-        }
-      } catch (e) {
-        console.warn('[profile action] unable to parse sb_user cookie', e);
-      }
+      // Service role needed here — createEvent inserts on behalf of user
+      const result = await createEvent({ title, start_date, end_date }, user.id);
 
-      if (!organizerProfileId) {
-        return fail(400, { success: false, message: 'Not authenticated or profile missing' });
-      }
-
-      const result = await createEvent({ title, start_date, end_date }, organizerProfileId);
-
-      // createEvent returns { data, error }
       if ((result as any).error) {
-        const msg = (result as any).error?.message ?? JSON.stringify(result.error);
+        const msg = (result as any).error?.message ?? JSON.stringify((result as any).error);
         return fail(500, { success: false, message: msg });
       }
 
-      return { success: true, event: result.data };
+      return { success: true, event: (result as any).data };
     } catch (err) {
       return fail(500, { success: false, message: (err as any)?.message ?? String(err) });
     }
   },
+
   updateProfile: async ({ request, cookies }) => {
     try {
+      // Use user client — RLS allows users to update their own profile
+      const db = getUserClient(cookies);
+      if (!db) return fail(401, { success: false, message: 'Not authenticated' });
+
+      const sbUser = cookies.get('sb_user');
+      if (!sbUser) return fail(401, { success: false, message: 'Not authenticated' });
+      const user = JSON.parse(sbUser);
+
       const form = await request.formData();
       const username = form.get('username')?.toString();
       const role = form.get('role')?.toString();
@@ -171,31 +148,7 @@ export const actions = {
       const age = form.get('age')?.toString();
       const avatar_url = form.get('avatar')?.toString();
 
-      // Get user id from cookies
-      let userId: string | null = null;
-      try {
-        const sbUser = cookies.get('sb_user');
-        if (sbUser) {
-          const user = JSON.parse(sbUser);
-          userId = user.id;
-        }
-      } catch (e) {
-        console.warn('[updateProfile] unable to parse sb_user cookie', e);
-      }
-
-      if (!userId) {
-        return fail(400, { success: false, message: 'Not authenticated' });
-      }
-
-      // Set auth session for supabase client
-      const accessToken = cookies.get('sb_access_token');
-      console.error('[updateProfile] sb_access_token cookie:', accessToken);
-      if (accessToken) {
-        await supabase.auth.setSession({ access_token: accessToken, refresh_token: '' });
-      }
-
-
-      const { error } = await supabase
+      const { error } = await db
         .from('profiles')
         .update({
           username,
@@ -208,7 +161,8 @@ export const actions = {
           age: age || null,
           updated_at: new Date().toISOString()
         })
-        .eq('id', userId);
+        .eq('id', user.id);
+
       if (error) {
         return fail(500, { success: false, message: error.message });
       }
