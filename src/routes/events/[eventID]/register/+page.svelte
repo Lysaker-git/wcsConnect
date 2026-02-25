@@ -166,24 +166,28 @@
             });
 
             const result = await res.json();
-
             const parsedData = JSON.parse(result.data);
-            const participantId = parsedData[2]
 
             if (parsedData?.partial) {
                 isLoading = false;
                 soldOutProducts = parsedData.soldOutProducts || [];
                 showSoldOutModal = true;
             } else if (result.status === 200) {
+                const indexMap = parsedData.find((x: any) => typeof x === 'object' && x !== null) ?? {};
+                const participantId = parsedData[indexMap.participantId];
                 await goto(`/events/${$page.params.eventID}/register/success?participantId=${participantId}`);
-            } else if (result.error) {
+            } else {
+                // Catches ALL failure cases including 400, 500
                 isLoading = false;
-                errorMessage = result.error.message || 'Registration failed';
+                isSubmitting = false;
+                const errorData = parsedData.find((x: any) => typeof x === 'object' && x !== null) ?? {};
+                errorMessage = errorData.message || 'Registration failed. Please try again.';
             }
         } catch (err) {
             console.error('Registration error:', err);
             isLoading = false;
-            errorMessage = 'An error occurred during registration';
+            isSubmitting = false;
+            errorMessage = 'An error occurred during registration. Please try again.';
         } finally {
             isSubmitting = false;
         }
@@ -255,7 +259,6 @@
             const result = await res.json();
             const parsed = JSON.parse(result.data);
             
-            console.log(parsed)
             // SvelteKit fail() returns status 400, success returns 200
             if (result.status === 200) {
                 const indexMap = parsed.find((x: any) => typeof x === 'object' && x !== null) ?? {};

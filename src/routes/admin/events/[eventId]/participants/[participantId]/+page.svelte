@@ -33,11 +33,13 @@
   let addProductId = '';
   let addQuantity = 1;
   let addOverridePrice = '';
+  let addPromoCode = '';
 
   // Edit product state
   let editingProductId: string | null = null;
 
   $: selectedAddProduct = data.eventProducts.find(p => p.id === addProductId);
+  $: selectedAddPromo = data.promoCodes?.find((c: any) => c.code === addPromoCode) ?? null;
 
   const statusColors: Record<string, string> = {
     approved: 'bg-green-900 text-green-300',
@@ -199,6 +201,17 @@
             </select>
           </div>
 
+          <div>
+            <label class="block text-xs text-stone-400 mb-1">Promo Code (optional)</label>
+            <select name="promo_code" bind:value={addPromoCode}
+              class="w-full px-3 py-2 rounded-lg bg-stone-800 border border-stone-600 text-stone-100 focus:outline-none focus:border-amber-500 text-sm">
+              <option value="">No code</option>
+              {#each data.promoCodes as pc}
+                <option value={pc.code}>{pc.code} — {pc.discount_percent}% off</option>
+              {/each}
+            </select>
+          </div>
+
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="block text-xs text-stone-400 mb-1">Quantity</label>
@@ -214,6 +227,18 @@
               <p class="text-xs text-stone-600 mt-0.5">Leave empty to use product price</p>
             </div>
           </div>
+
+          {#if selectedAddProduct}
+            {#if addPromoCode}
+              {#if selectedAddPromo && selectedAddProduct.product_type === 'ticket'}
+                <div class="mt-2 text-sm text-stone-300">
+                  <div>Original: {parseFloat(selectedAddProduct.price).toFixed(2)} {selectedAddProduct.currency_type}</div>
+                  <div>Discount: {selectedAddPromo.discount_percent}% → <strong class="text-amber-300">{(parseFloat(selectedAddProduct.price) * (1 - selectedAddPromo.discount_percent/100)).toFixed(2)} {selectedAddProduct.currency_type}</strong></div>
+                </div>
+              {/if}
+            {/if}
+            <input type="hidden" name="promo_discount" value={selectedAddPromo?.discount_percent ?? ''} />
+          {/if}
 
           <div class="flex gap-2">
             <button type="button" on:click={() => showAddProduct = false}

@@ -19,6 +19,7 @@
     unpaidProducts,
     paidProducts,
     availableProducts,
+    availableTickets,
     stripe_fee_model,
     event
   } = data;
@@ -57,11 +58,13 @@
   };
 
   $: availableByType = Object.entries(
-    availableProducts.reduce((acc: Record<string, any[]>, p) => {
-      if (!acc[p.product_type]) acc[p.product_type] = [];
-      acc[p.product_type].push(p);
-      return acc;
-    }, {})
+    availableProducts
+      .filter(p => p.product_type !== 'accommodation')
+      .reduce((acc: Record<string, any[]>, p) => {
+        if (!acc[p.product_type]) acc[p.product_type] = [];
+        acc[p.product_type].push(p);
+        return acc;
+      }, {})
   );
 
   // Quantity state for merch/other
@@ -71,6 +74,15 @@
       quantities[p.id] = 1;
     }
   });
+
+  // Ticket/promo state for adding a ticket
+  let promoInputTicket = '';
+  let promoCodeTicket = '';
+  let promoDiscountTicket = 0;
+  let promoErrorTicket = '';
+  let promoCheckingTicket = false;
+
+  const hasTicket = participantProducts.some(p => p.product_type === 'ticket');
 
   async function checkout() {
     isCheckingOut = true;
