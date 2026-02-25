@@ -21,6 +21,10 @@
     accessToken = params.get('access_token') ?? '';
     refreshToken = params.get('refresh_token') ?? '';
     const type = params.get('type');
+    console.log('Reset password params:', { accessToken: accessToken ? '[present]' : '[missing]', refreshToken: refreshToken ? '[present]' : '[missing]', type });
+    console.log('raw hash:', hash)
+
+    
 
     if (!accessToken || type !== 'recovery') {
       error = 'Invalid or expired reset link. Please request a new one.';
@@ -39,25 +43,27 @@
 
     try {
       const supabaseClient = createClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_API_KEY);
+      console.log('Supabase client:', { url: PUBLIC_SUPABASE_URL, hasKey: !!PUBLIC_SUPABASE_API_KEY });
+      console.log('Calling setSession with tokens (access/token presence only):', { accessToken: !!accessToken, refreshToken: !!refreshToken });
 
       // Set the session from the reset link tokens
-      const { error: sessionError } = await supabaseClient.auth.setSession({
+      const sessionResult = await supabaseClient.auth.setSession({
         access_token: accessToken,
         refresh_token: refreshToken
       });
-
-      if (sessionError) {
-        error = 'Session error: ' + sessionError.message;
+      console.log('setSession result:', sessionResult);
+      if (sessionResult?.error) {
+        console.error('setSession error:', sessionResult.error);
+        error = 'Session error: ' + sessionResult.error.message;
         return;
       }
 
       // Update the password
-      const { error: updateError } = await supabaseClient.auth.updateUser({
-        password
-      });
-
-      if (updateError) {
-        error = updateError.message;
+      const updateResult = await supabaseClient.auth.updateUser({ password });
+      console.log('updateUser result:', updateResult);
+      if (updateResult?.error) {
+        console.error('updateUser error:', updateResult.error);
+        error = updateResult.error.message;
         return;
       }
 

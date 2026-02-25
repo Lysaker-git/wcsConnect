@@ -1,0 +1,9 @@
+import { createClient } from '@supabase/supabase-js';
+import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_API_KEY } from '$env/static/public';
+
+export const supabaseAnon = createClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_API_KEY, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false
+  }
+});

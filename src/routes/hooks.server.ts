@@ -1,8 +1,7 @@
 import type { Handle } from '@sveltejs/kit';
 import { redirect } from '@sveltejs/kit';
-import { supabase } from '$lib/server/supabaseServiceClient';
+import { supabaseAnon } from '$lib/server/supabaseAnonClient';
 
-// Routes that don't need auth checks
 const PUBLIC_ROUTES = [
   '/signin',
   '/signup',
@@ -23,40 +22,66 @@ function isPublicRoute(path: string): boolean {
 export const handle: Handle = async ({ event, resolve }) => {
   const path = event.url.pathname;
   const sbUser = event.cookies.get('sb_user');
-  const sbAccessToken = event.cookies.get('sb_access_token');
+  const accessToken = event.cookies.get('sb_access_token');
+  const refreshToken = event.cookies.get('sb_refresh_token');
 
-  // If no cookie at all — nothing to check
-  if (!sbUser && !sbAccessToken) {
+  // Nothing to check
+  if (!sbUser && !accessToken) {
     return resolve(event);
   }
 
-  // If we have a user cookie, verify the access token is still valid
-  if (sbAccessToken) {
+  if (accessToken) {
     try {
-      const { data, error } = await supabase.auth.getUser(sbAccessToken);
+      const { data, error } = await supabaseAnon.auth.getUser(accessToken);
 
       if (error || !data.user) {
-        // Token is invalid or expired — clear both cookies
+        // Try to refresh the session before giving up
+        if (refreshToken) {
+          const { data: refreshData, error: refreshError } = await supabaseAnon.auth.refreshSession({
+            refresh_token: refreshToken
+          });
+
+          if (!refreshError && refreshData.session) {
+            // Refresh succeeded — update cookies with new tokens
+            const maxAge = 60 * 60 * 24 * 7;
+            event.cookies.set('sb_access_token', refreshData.session.access_token, {
+              httpOnly: true,
+              path: '/',
+              sameSite: 'lax',
+              secure: process.env.NODE_ENV === 'production',
+              maxAge
+            });
+            event.cookies.set('sb_refresh_token', refreshData.session.refresh_token, {
+              httpOnly: true,
+              path: '/',
+              sameSite: 'lax',
+              secure: process.env.NODE_ENV === 'production',
+              maxAge
+            });
+            // Continue with the refreshed session
+            return resolve(event);
+          }
+        }
+
+        // Refresh failed or no refresh token — session is dead
         event.cookies.delete('sb_user', { path: '/' });
         event.cookies.delete('sb_access_token', { path: '/' });
+        event.cookies.delete('sb_refresh_token', { path: '/' });
 
-        // Only redirect if they're on a protected route
         if (!isPublicRoute(path)) {
           throw redirect(303, '/signin?expired=true');
         }
       }
     } catch (e: any) {
-      // Let redirects through
       if (e?.status === 303) throw e;
-
-      // On unexpected errors, clear cookies and continue
+      // On unexpected errors clear cookies and continue
       event.cookies.delete('sb_user', { path: '/' });
       event.cookies.delete('sb_access_token', { path: '/' });
+      event.cookies.delete('sb_refresh_token', { path: '/' });
     }
-  } else if (sbUser && !sbAccessToken) {
-    // sb_user exists but access token is gone — session is dead
+  } else if (sbUser && !accessToken) {
+    // sb_user exists but token is gone — dead session
     event.cookies.delete('sb_user', { path: '/' });
-
     if (!isPublicRoute(path)) {
       throw redirect(303, '/signin?expired=true');
     }
