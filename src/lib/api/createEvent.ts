@@ -1,20 +1,16 @@
-import { supabase } from './supabaseClient';
+import { supabase } from './../server/supabaseServiceClient';
 
 export interface NewEvent {
   id?: string;
-  start_date: string | Date; // YYYY-MM-DD or Date
-  end_date: string | Date; // YYYY-MM-DD or Date
+  start_date: string | Date;
+  end_date: string | Date;
   title: string;
 }
 
-/**
- * Generate a UUID v4. Uses crypto.randomUUID if available, otherwise falls back to a v4 implementation.
- */
 function generateUUID(): string {
   if (typeof crypto !== 'undefined' && typeof (crypto as any).randomUUID === 'function') {
     return (crypto as any).randomUUID();
   }
-  // fallback UUID v4 generator
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
     const r = (Math.random() * 16) | 0;
     const v = c === 'x' ? r : (r & 0x3) | 0x8;
@@ -22,23 +18,10 @@ function generateUUID(): string {
   });
 }
 
-async function fallbackInsert(payload: any) {
-  // Fallback removed - supabase client should handle this properly
-  return { data: null, error: new Error('Fallback not implemented') };
-}
-
-/**
- * Create a new event row in the `events` table.
- * @param ev NewEvent object (id optional)
- * @returns { data, error } - data contains the inserted row on success
- */
 export async function createEvent(ev: NewEvent, organizerProfileId?: string) {
   try {
-
     const toDateString = (d: string | Date) => {
-      if (d instanceof Date) {
-        return d.toISOString().slice(0, 10);
-      }
+      if (d instanceof Date) return d.toISOString().slice(0, 10);
       return d;
     };
 
@@ -49,47 +32,30 @@ export async function createEvent(ev: NewEvent, organizerProfileId?: string) {
       title: ev.title
     };
 
-
-    // Try inserting with Supabase JS client
     const { data, error } = await supabase
       .from('events')
       .insert([payload])
       .select()
       .single();
 
-
     if (error) {
-      console.error('[createEvent] supabase error object:', JSON.stringify(error));
-
-      // If it's an unsupported media type or otherwise, try fallback
-      const msg = (error as any)?.message ?? '';
-      if (msg.includes('Unsupported Media Type') || (error as any)?.status === 415) {
-        const fallback = await fallbackInsert(payload);
-        return fallback;
-      }
-
+      console.error('[createEvent] insert error:', error);
       return { data: null, error };
     }
 
-   // If an organizer profile id was provided, insert them into event_participants
     if (organizerProfileId) {
-      try {
-        const participant = {
+      const { error: participantError } = await supabase
+        .from('event_participants')
+        .insert([{
           id: generateUUID(),
           event_id: (data as any).id,
           user_id: organizerProfileId,
           event_role: 'Event Director'
-        };
+        }]);
 
-        const { error: participantError } = await supabase.from('event_participants').insert([participant]);
-        if (participantError) {
-          console.error('[createEvent] failed to insert event_participants row:', participantError);
-          // Not rolling back the event insert here. Return the participant error to caller.
-          return { data, error: participantError };
-        }
-      } catch (pe) {
-        console.error('[createEvent] unexpected error inserting participant:', pe);
-        return { data, error: pe };
+      if (participantError) {
+        console.error('[createEvent] participant insert error:', participantError);
+        return { data, error: participantError };
       }
     }
 
