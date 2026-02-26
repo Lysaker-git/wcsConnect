@@ -1,4 +1,5 @@
 import { supabase } from '$lib/server/supabaseServiceClient';
+import { getUserClient } from '$lib/server/supabaseUserClient';
 import { error as svelteError, fail } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 
@@ -11,22 +12,15 @@ export const load: PageServerLoad = async ({ params, cookies }) => {
   let user: any;
   try { user = JSON.parse(sbUser); } catch { throw svelteError(401, 'Invalid session'); }
 
-  // Fetch participant record — must belong to this user
-  const { data: participant, error: participantError } = await supabase
+  const db = getUserClient(cookies);
+  if (!db) throw svelteError(401, 'Session expired');
+
+  // Fetch participant — RLS ensures it belongs to this user
+  const { data: participant, error: participantError } = await db
     .from('event_participants')
     .select(`
-      id,
-      event_id,
-      user_id,
-      status,
-      event_role,
-      wsdcLevel,
-      wsdcID,
-      role,
-      country,
-      age,
-      partner_name,
-      created_at,
+      id, event_id, user_id, status, event_role,
+      wsdcLevel, wsdcID, role, country, age, partner_name, created_at,
       events ( id, title, start_date, end_date, stripe_fee_model )
     `)
     .eq('id', registrationID)
@@ -37,8 +31,8 @@ export const load: PageServerLoad = async ({ params, cookies }) => {
     throw svelteError(404, 'Registration not found');
   }
 
-  // Fetch products already on this registration
-  const { data: participantProducts } = await supabase
+  // Fetch participant's products
+  const { data: participantProducts } = await db
     .from('participant_products')
     .select('*')
     .eq('participant_id', registrationID)
@@ -53,8 +47,8 @@ export const load: PageServerLoad = async ({ params, cookies }) => {
   const now = new Date().toISOString();
   const purchasedProductIds = new Set(allProducts.map(p => p.product_id));
 
-  // Always fetch available tickets (needed for pending swap too)
-  const { data: eventTickets } = await supabase
+  // Fetch available tickets
+  const { data: eventTickets } = await db
     .from('products')
     .select('*')
     .eq('event_id', participant.event_id)
@@ -69,10 +63,10 @@ export const load: PageServerLoad = async ({ params, cookies }) => {
     return true;
   });
 
-  // Only fetch non-ticket products if approved
+  // Fetch non-ticket products if approved
   let availableProducts: any[] = [];
   if (participant.status === 'approved') {
-    const { data: eventProducts } = await supabase
+    const { data: eventProducts } = await db
       .from('products')
       .select('*')
       .eq('event_id', participant.event_id)
@@ -88,8 +82,6 @@ export const load: PageServerLoad = async ({ params, cookies }) => {
     });
   }
 
-  const stripe_fee_model = (participant.events as any)?.stripe_fee_model ?? 'on_top';
-
   return {
     participant,
     participantProducts: allProducts,
@@ -99,14 +91,13 @@ export const load: PageServerLoad = async ({ params, cookies }) => {
     paidTotal,
     availableProducts,
     availableTickets,
-    stripe_fee_model,
+    stripe_fee_model: (participant.events as any)?.stripe_fee_model ?? 'on_top',
     event: participant.events
   };
 };
 
 export const actions: Actions = {
 
-  // ─── Add product to an approved registration ──────────────────────────────
   addProduct: async ({ request, params, cookies }) => {
     const { registrationID } = params;
 
@@ -115,7 +106,11 @@ export const actions: Actions = {
     let user: any;
     try { user = JSON.parse(sbUser); } catch { return fail(401, { message: 'Invalid session' }); }
 
-    const { data: participant } = await supabase
+    const db = getUserClient(cookies);
+    if (!db) return fail(401, { message: 'Session expired' });
+
+    // Verify ownership via user client
+    const { data: participant } = await db
       .from('event_participants')
       .select('id, event_id, status, user_id')
       .eq('id', registrationID)
@@ -133,7 +128,8 @@ export const actions: Actions = {
 
     if (!product_id) return fail(400, { message: 'Missing product' });
 
-    const { data: product } = await supabase
+    // Fetch product via user client (public read)
+    const { data: product } = await db
       .from('products')
       .select('*')
       .eq('id', product_id)
@@ -142,9 +138,9 @@ export const actions: Actions = {
 
     if (!product) return fail(404, { message: 'Product not found' });
 
-    // Prevent duplicate ticket
+    // Check for duplicate ticket
     if (product.product_type === 'ticket') {
-      const { data: existingTicket } = await supabase
+      const { data: existingTicket } = await db
         .from('participant_products')
         .select('id')
         .eq('participant_id', registrationID)
@@ -153,9 +149,9 @@ export const actions: Actions = {
       if (existingTicket) return fail(400, { message: 'You already have a ticket' });
     }
 
-    // Prevent duplicate max_per_user=1 products
+    // Check for duplicate max_per_user=1
     if (product.max_per_user === 1) {
-      const { data: existing } = await supabase
+      const { data: existing } = await db
         .from('participant_products')
         .select('id')
         .eq('participant_id', registrationID)
@@ -164,7 +160,6 @@ export const actions: Actions = {
       if (existing) return fail(400, { message: 'You already have this product' });
     }
 
-    // Check availability
     if (product.quantity_total && (product.quantity_sold + quantity) > product.quantity_total) {
       return fail(400, { message: 'Product is sold out' });
     }
@@ -174,6 +169,7 @@ export const actions: Actions = {
       unitPrice = unitPrice * (1 - promo_discount / 100);
     }
 
+    // Insert + quantity update via service role (inventory management)
     const { error: insertError } = await supabase
       .from('participant_products')
       .insert({
@@ -200,7 +196,6 @@ export const actions: Actions = {
     return { success: true };
   },
 
-  // ─── Update a pending registration ───────────────────────────────────────
   updateRegistration: async ({ request, params, cookies }) => {
     const { registrationID } = params;
 
@@ -209,7 +204,11 @@ export const actions: Actions = {
     let user: any;
     try { user = JSON.parse(sbUser); } catch { return fail(401, { message: 'Invalid session' }); }
 
-    const { data: participant } = await supabase
+    const db = getUserClient(cookies);
+    if (!db) return fail(401, { message: 'Session expired' });
+
+    // Verify ownership via user client
+    const { data: participant } = await db
       .from('event_participants')
       .select('id, event_id, user_id, status')
       .eq('id', registrationID)
@@ -234,7 +233,6 @@ export const actions: Actions = {
     const promo_discount = parseFloat(form.get('promo_discount')?.toString() || '0');
     const ticket_product_id = form.get('ticket_product_id')?.toString() || null;
 
-    // Build participant update payload
     const updatePayload: Record<string, any> = {
       role: role ?? undefined,
       event_role: role ?? undefined,
@@ -245,28 +243,28 @@ export const actions: Actions = {
       partner_name: partner_name ?? null
     };
 
-    // Auto-set couples status when partner is provided
     if (partner_name && partner_name.trim().length > 0) {
       updatePayload.status = 'pending_couples_registration';
     }
 
-    const { error: updateError } = await supabase
+    // Update own participant record via user client — RLS allows this
+    const { error: updateError } = await db
       .from('event_participants')
       .update(updatePayload)
       .eq('id', registrationID);
 
     if (updateError) return fail(500, { message: updateError.message });
 
-    // ── Ticket swap / addition ──────────────────────────────────────────────
+    // Ticket swap — service role for inventory management
     if (ticket_product_id) {
-      const { data: existingTicket } = await supabase
+      const { data: existingTicket } = await db
         .from('participant_products')
         .select('*')
         .eq('participant_id', registrationID)
         .eq('product_type', 'ticket')
         .maybeSingle();
 
-      const { data: newProduct } = await supabase
+      const { data: newProduct } = await db
         .from('products')
         .select('*')
         .eq('id', ticket_product_id)
@@ -286,17 +284,19 @@ export const actions: Actions = {
       }
 
       if (existingTicket && existingTicket.product_id === newProduct.id) {
-        // Same ticket — only apply promo if provided
+        // Same ticket — apply promo only
         if (promo_code && promo_discount > 0) {
-          const subtotal = newUnitPrice * (existingTicket.quantity_ordered ?? 1);
           await supabase
             .from('participant_products')
-            .update({ unit_price: newUnitPrice, subtotal, promo_code_used: promo_code })
+            .update({
+              unit_price: newUnitPrice,
+              subtotal: newUnitPrice * (existingTicket.quantity_ordered ?? 1),
+              promo_code_used: promo_code
+            })
             .eq('id', existingTicket.id);
         }
       } else if (existingTicket) {
-        // Swap: update the existing participant_product row
-        const subtotal = newUnitPrice * (existingTicket.quantity_ordered ?? 1);
+        // Swap ticket
         const { error: ppError } = await supabase
           .from('participant_products')
           .update({
@@ -304,24 +304,26 @@ export const actions: Actions = {
             product_name: newProduct.name,
             unit_price: newUnitPrice,
             currency_type: newProduct.currency_type,
-            subtotal,
+            subtotal: newUnitPrice * (existingTicket.quantity_ordered ?? 1),
             promo_code_used: promo_code
           })
           .eq('id', existingTicket.id);
 
         if (ppError) return fail(500, { message: ppError.message });
 
-        // Adjust quantity_sold on both old and new product
+        // Adjust quantities on both products
         const { data: oldProduct } = await supabase
           .from('products').select('quantity_sold').eq('id', existingTicket.product_id).single();
-        const decrementBy = existingTicket.quantity_ordered ?? 1;
+        const qty = existingTicket.quantity_ordered ?? 1;
+
         await supabase
           .from('products')
-          .update({ quantity_sold: Math.max((oldProduct?.quantity_sold ?? 0) - decrementBy, 0) })
+          .update({ quantity_sold: Math.max((oldProduct?.quantity_sold ?? 0) - qty, 0) })
           .eq('id', existingTicket.product_id);
+
         await supabase
           .from('products')
-          .update({ quantity_sold: (newProduct.quantity_sold ?? 0) + decrementBy })
+          .update({ quantity_sold: (newProduct.quantity_sold ?? 0) + qty })
           .eq('id', newProduct.id);
 
       } else {
@@ -351,7 +353,7 @@ export const actions: Actions = {
       }
     }
 
-    // ── Apply promo to existing tickets when no ticket swap ─────────────────
+    // Apply promo to existing tickets when no swap
     if (promo_code && promo_discount > 0 && !ticket_product_id) {
       const { data: tickets } = await supabase
         .from('participant_products')
@@ -359,17 +361,19 @@ export const actions: Actions = {
         .eq('participant_id', registrationID)
         .eq('product_type', 'ticket');
 
-      if (tickets && tickets.length > 0) {
-        for (const t of tickets) {
-          const { data: product } = await supabase
-            .from('products').select('price').eq('id', t.product_id).single();
-          if (product) {
-            const unitPrice = parseFloat(product.price) * (1 - promo_discount / 100);
-            await supabase
-              .from('participant_products')
-              .update({ unit_price: unitPrice, subtotal: unitPrice * (t.quantity_ordered ?? 1), promo_code_used: promo_code })
-              .eq('id', t.id);
-          }
+      for (const t of tickets ?? []) {
+        const { data: product } = await supabase
+          .from('products').select('price').eq('id', t.product_id).single();
+        if (product) {
+          const unitPrice = parseFloat(product.price) * (1 - promo_discount / 100);
+          await supabase
+            .from('participant_products')
+            .update({
+              unit_price: unitPrice,
+              subtotal: unitPrice * (t.quantity_ordered ?? 1),
+              promo_code_used: promo_code
+            })
+            .eq('id', t.id);
         }
       }
     }
