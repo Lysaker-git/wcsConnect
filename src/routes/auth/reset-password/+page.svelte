@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { createClient } from '@supabase/supabase-js';
   import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_API_KEY } from '$env/static/public';
-  import { createAnonClient } from '$lib/server/supabaseAnonClient';
+  
 
   let password = '';
   let passwordConfirm = '';
@@ -43,7 +43,7 @@
     error = '';
 
     try {
-      const supabaseClient = createAnonClient();
+      const supabaseClient = createClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_API_KEY);
       console.log('Supabase client:', { url: PUBLIC_SUPABASE_URL, hasKey: !!PUBLIC_SUPABASE_API_KEY });
       console.log('Calling setSession with tokens (access/token presence only):', { accessToken: !!accessToken, refreshToken: !!refreshToken });
 
