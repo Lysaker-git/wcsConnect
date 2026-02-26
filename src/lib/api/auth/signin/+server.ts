@@ -1,9 +1,10 @@
-import { supabaseAnon } from '$lib/server/supabaseAnonClient';
+import { createAnonClient } from '$lib/server/supabaseAnonClient';
 import { supabase } from '$lib/server/supabaseServiceClient';
 import { json, redirect } from '@sveltejs/kit';
 
 export async function POST({ request, cookies }) {
   try {
+    const supabaseAnon = createAnonClient();
     const contentType = request.headers.get('content-type') ?? '';
     let email: string | undefined;
     let password: string | undefined;

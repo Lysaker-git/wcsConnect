@@ -1,6 +1,7 @@
 import type { Handle } from '@sveltejs/kit';
 import { redirect } from '@sveltejs/kit';
-import { supabaseAnon } from '$lib/server/supabaseAnonClient';
+import { createClient } from '@supabase/supabase-js';
+import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_API_KEY } from '$env/static/public';
 
 const PUBLIC_ROUTES = [
   '/signin',
@@ -25,24 +26,37 @@ export const handle: Handle = async ({ event, resolve }) => {
   const accessToken = event.cookies.get('sb_access_token');
   const refreshToken = event.cookies.get('sb_refresh_token');
 
-  // Nothing to check
   if (!sbUser && !accessToken) {
     return resolve(event);
   }
 
   if (accessToken) {
+    // Create a fresh client per request — never use a singleton for auth operations
+    const requestClient = createClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_API_KEY, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    });
+
     try {
-      const { data, error } = await supabaseAnon.auth.getUser(accessToken);
+      const { data, error } = await requestClient.auth.getUser(accessToken);
 
       if (error || !data.user) {
-        // Try to refresh the session before giving up
         if (refreshToken) {
-          const { data: refreshData, error: refreshError } = await supabaseAnon.auth.refreshSession({
+          // Fresh client for refresh too
+          const refreshClient = createClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_API_KEY, {
+            auth: {
+              autoRefreshToken: false,
+              persistSession: false
+            }
+          });
+
+          const { data: refreshData, error: refreshError } = await refreshClient.auth.refreshSession({
             refresh_token: refreshToken
           });
 
           if (!refreshError && refreshData.session) {
-            // Refresh succeeded — update cookies with new tokens
             const maxAge = 60 * 60 * 24 * 7;
             event.cookies.set('sb_access_token', refreshData.session.access_token, {
               httpOnly: true,
@@ -58,12 +72,11 @@ export const handle: Handle = async ({ event, resolve }) => {
               secure: process.env.NODE_ENV === 'production',
               maxAge
             });
-            // Continue with the refreshed session
             return resolve(event);
           }
         }
 
-        // Refresh failed or no refresh token — session is dead
+        // Session dead — clear everything
         event.cookies.delete('sb_user', { path: '/' });
         event.cookies.delete('sb_access_token', { path: '/' });
         event.cookies.delete('sb_refresh_token', { path: '/' });
@@ -74,13 +87,14 @@ export const handle: Handle = async ({ event, resolve }) => {
       }
     } catch (e: any) {
       if (e?.status === 303) throw e;
-      // On unexpected errors clear cookies and continue
       event.cookies.delete('sb_user', { path: '/' });
       event.cookies.delete('sb_access_token', { path: '/' });
       event.cookies.delete('sb_refresh_token', { path: '/' });
+      if (!isPublicRoute(path)) {
+        throw redirect(303, '/signin?expired=true');
+      }
     }
   } else if (sbUser && !accessToken) {
-    // sb_user exists but token is gone — dead session
     event.cookies.delete('sb_user', { path: '/' });
     if (!isPublicRoute(path)) {
       throw redirect(303, '/signin?expired=true');
