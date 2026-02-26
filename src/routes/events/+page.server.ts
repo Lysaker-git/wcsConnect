@@ -1,5 +1,6 @@
 import { selectAllFromSupabase } from '$lib/api/selectFromSupabase';
 import { supabase } from '$lib/server/supabaseServiceClient';
+import { error as svelteError } from '@sveltejs/kit';
 
 export async function load() {
   const { data: events, error } = await supabase
