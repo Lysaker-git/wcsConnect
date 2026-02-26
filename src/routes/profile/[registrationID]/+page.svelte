@@ -101,6 +101,7 @@
   let showPartnerDropdown = false;
   let partnerSearchTimeout: any = null;
   let isPartnerSearching = false;
+  let addingProduct: string | null = null; // tracks which product_id is being added
 
   async function searchPartnerProfiles(query: string) {
     if (query.length < 3) { partnerSuggestions = []; showPartnerDropdown = false; isPartnerSearching = false; return; }
@@ -443,21 +444,7 @@
       </div>
     {/if}
 
-    <!-- Accommodation (approved only) -->
-    {#if participant.status === 'approved'}
-      <div class="bg-stone-800 rounded-2xl border border-stone-700 p-5 neomorph-card">
-        <div class="flex justify-between items-center">
-          <div>
-            <h2 class="text-base font-semibold text-stone-100">🏨 Accommodation</h2>
-            <p class="text-stone-500 text-xs mt-0.5">Book your room for this event</p>
-          </div>
-          <a href="/profile/{participant.id}/accommodation"
-            class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold rounded-xl transition">
-            View rooms →
-          </a>
-        </div>
-      </div>
-    {/if}
+
 
     <!-- Unpaid products -->
     {#if unpaidProducts.length > 0}
@@ -551,7 +538,16 @@
                     </span>
                   </div>
                   <form method="POST" action="?/addProduct"
-                    use:enhance={() => { return async ({ update }) => { await update(); }; }}
+                    use:enhance={() => {
+                      addingProduct = product.id;
+                      return async ({ result, update }) => {
+                        await update({ reset: false });
+                        addingProduct = null;
+                        if (result.type === 'success') {
+                          location.reload();
+                        }
+                      };
+                    }}
                     class="flex items-center gap-2">
                     <input type="hidden" name="product_id" value={product.id} />
                     {#if product.product_type === 'merchandise'}
@@ -561,9 +557,17 @@
                     {:else}
                       <input type="hidden" name="quantity" value="1" />
                     {/if}
-                    <button type="submit"
-                      class="flex-1 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold rounded-lg transition">
-                      Add
+                    <button type="submit" disabled={addingProduct === product.id}
+                      class="flex-1 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold rounded-lg transition disabled:opacity-50 flex items-center justify-center gap-1">
+                      {#if addingProduct === product.id}
+                        <svg class="animate-spin h-3 w-3" fill="none" viewBox="0 0 24 24">
+                          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                        </svg>
+                        Adding…
+                      {:else}
+                        Add
+                      {/if}
                     </button>
                   </form>
                 </div>
@@ -579,9 +583,25 @@
         Additional products will be available once your registration is approved.
       </div>
     {/if}
+    <!-- Accommodation (approved only) -->
+    {#if participant.status === 'approved'}
+      <div class="bg-stone-800 rounded-2xl border border-stone-700 p-5 neomorph-card">
+        <div class="flex justify-between items-center">
+          <div>
+            <h2 class="text-base font-semibold text-stone-100">🏨 Accommodation</h2>
+            <p class="text-stone-500 text-xs mt-0.5">Book your room for this event</p>
+          </div>
+          <a href="/profile/{participant.id}/accommodation"
+            class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold rounded-xl transition">
+            View rooms →
+          </a>
+        </div>
+      </div>
+    {/if}
 
   </div>
 </div>
+
 
 <style>
   .neomorph-card {
