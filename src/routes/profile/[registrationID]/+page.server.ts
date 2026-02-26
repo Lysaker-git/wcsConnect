@@ -21,8 +21,10 @@ export const load: PageServerLoad = async ({ params, cookies }) => {
       status,
       event_role,
       wsdcLevel,
+      wsdcID,
       role,
       country,
+      age,
       partner_name,
       created_at,
       events ( id, title, start_date, end_date, stripe_fee_model )
@@ -42,20 +44,34 @@ export const load: PageServerLoad = async ({ params, cookies }) => {
     .eq('participant_id', registrationID)
     .order('created_at', { ascending: true });
 
-  // Calculate totals
   const allProducts = participantProducts ?? [];
   const unpaidProducts = allProducts.filter(p => p.payment_status === 'pending');
   const paidProducts = allProducts.filter(p => p.payment_status === 'paid');
-
   const unpaidTotal = unpaidProducts.reduce((sum, p) => sum + parseFloat(p.subtotal), 0);
   const paidTotal = paidProducts.reduce((sum, p) => sum + parseFloat(p.subtotal), 0);
 
-  // Fetch available products for this event (for adding more)
-  // Only show if registration is approved
+  const now = new Date().toISOString();
+  const purchasedProductIds = new Set(allProducts.map(p => p.product_id));
+
+  // Always fetch available tickets (needed for pending swap too)
+  const { data: eventTickets } = await supabase
+    .from('products')
+    .select('*')
+    .eq('event_id', participant.event_id)
+    .eq('product_type', 'ticket')
+    .eq('is_active', true)
+    .or(`sale_start.is.null,sale_start.lte.${now}`)
+    .or(`sale_end.is.null,sale_end.gte.${now}`);
+
+  const availableTickets = (eventTickets ?? []).filter(p => {
+    if (p.max_per_user === 1 && purchasedProductIds.has(p.id)) return false;
+    if (p.quantity_total && p.quantity_sold >= p.quantity_total) return false;
+    return true;
+  });
+
+  // Only fetch non-ticket products if approved
   let availableProducts: any[] = [];
-  let availableTickets: any[] = [];
   if (participant.status === 'approved') {
-    const now = new Date().toISOString();
     const { data: eventProducts } = await supabase
       .from('products')
       .select('*')
@@ -64,24 +80,15 @@ export const load: PageServerLoad = async ({ params, cookies }) => {
       .or(`sale_start.is.null,sale_start.lte.${now}`)
       .or(`sale_end.is.null,sale_end.gte.${now}`);
 
-    // Filter out already purchased 1-per-user products
-    const purchasedProductIds = new Set(allProducts.map(p => p.product_id));
-
-    const candidates = (eventProducts ?? []).filter(p => {
-      // If max_per_user is 1, hide if already purchased
+    availableProducts = (eventProducts ?? []).filter(p => {
+      if (p.product_type === 'ticket') return false;
       if (p.max_per_user === 1 && purchasedProductIds.has(p.id)) return false;
-      // Filter out sold out
       if (p.quantity_total && p.quantity_sold >= p.quantity_total) return false;
       return true;
     });
-
-    // Separate tickets from other products. Tickets are managed differently.
-    availableProducts = candidates.filter(p => p.product_type !== 'ticket');
-    // expose available tickets for optional adding if user has none
-    availableTickets = candidates.filter(p => p.product_type === 'ticket');
   }
 
-  const stripe_fee_model = participant.events?.stripe_fee_model ?? 'on_top';
+  const stripe_fee_model = (participant.events as any)?.stripe_fee_model ?? 'on_top';
 
   return {
     participant,
@@ -91,23 +98,23 @@ export const load: PageServerLoad = async ({ params, cookies }) => {
     unpaidTotal,
     paidTotal,
     availableProducts,
-    availableTickets: availableTickets ?? [],
+    availableTickets,
     stripe_fee_model,
     event: participant.events
   };
 };
 
 export const actions: Actions = {
+
+  // ─── Add product to an approved registration ──────────────────────────────
   addProduct: async ({ request, params, cookies }) => {
     const { registrationID } = params;
 
     const sbUser = cookies.get('sb_user');
     if (!sbUser) return fail(401, { message: 'Not authenticated' });
-
     let user: any;
     try { user = JSON.parse(sbUser); } catch { return fail(401, { message: 'Invalid session' }); }
 
-    // Verify this registration belongs to this user and is approved
     const { data: participant } = await supabase
       .from('event_participants')
       .select('id, event_id, status, user_id')
@@ -126,7 +133,6 @@ export const actions: Actions = {
 
     if (!product_id) return fail(400, { message: 'Missing product' });
 
-    // Fetch product details
     const { data: product } = await supabase
       .from('products')
       .select('*')
@@ -135,27 +141,26 @@ export const actions: Actions = {
       .single();
 
     if (!product) return fail(404, { message: 'Product not found' });
+
+    // Prevent duplicate ticket
     if (product.product_type === 'ticket') {
-      // Ensure user doesn't already have a ticket
       const { data: existingTicket } = await supabase
         .from('participant_products')
         .select('id')
         .eq('participant_id', registrationID)
         .eq('product_type', 'ticket')
-        .single();
-
+        .maybeSingle();
       if (existingTicket) return fail(400, { message: 'You already have a ticket' });
     }
 
-    // Check max_per_user
+    // Prevent duplicate max_per_user=1 products
     if (product.max_per_user === 1) {
       const { data: existing } = await supabase
         .from('participant_products')
         .select('id')
         .eq('participant_id', registrationID)
         .eq('product_id', product_id)
-        .single();
-
+        .maybeSingle();
       if (existing) return fail(400, { message: 'You already have this product' });
     }
 
@@ -164,15 +169,11 @@ export const actions: Actions = {
       return fail(400, { message: 'Product is sold out' });
     }
 
-    // Apply promo if this is a ticket
     let unitPrice = parseFloat(product.price);
     if (product.product_type === 'ticket' && promo_code && promo_discount > 0) {
       unitPrice = unitPrice * (1 - promo_discount / 100);
     }
 
-    const subtotal = unitPrice * quantity;
-
-    // Insert participant_product
     const { error: insertError } = await supabase
       .from('participant_products')
       .insert({
@@ -183,7 +184,7 @@ export const actions: Actions = {
         quantity_ordered: quantity,
         unit_price: unitPrice,
         currency_type: product.currency_type,
-        subtotal,
+        subtotal: unitPrice * quantity,
         payment_status: 'pending',
         confirmation_status: 'pending',
         promo_code_used: promo_code
@@ -191,11 +192,187 @@ export const actions: Actions = {
 
     if (insertError) return fail(500, { message: insertError.message });
 
-    // Update quantity_sold
     await supabase
       .from('products')
       .update({ quantity_sold: (product.quantity_sold ?? 0) + quantity })
       .eq('id', product.id);
+
+    return { success: true };
+  },
+
+  // ─── Update a pending registration ───────────────────────────────────────
+  updateRegistration: async ({ request, params, cookies }) => {
+    const { registrationID } = params;
+
+    const sbUser = cookies.get('sb_user');
+    if (!sbUser) return fail(401, { message: 'Not authenticated' });
+    let user: any;
+    try { user = JSON.parse(sbUser); } catch { return fail(401, { message: 'Invalid session' }); }
+
+    const { data: participant } = await supabase
+      .from('event_participants')
+      .select('id, event_id, user_id, status')
+      .eq('id', registrationID)
+      .eq('user_id', user.id)
+      .single();
+
+    if (!participant) return fail(404, { message: 'Registration not found' });
+
+    const allowedStatuses = ['pending', 'pending_single_registration', 'pending_couples_registration'];
+    if (!allowedStatuses.includes(participant.status)) {
+      return fail(400, { message: 'Registration cannot be edited in its current status' });
+    }
+
+    const form = await request.formData();
+    const role = form.get('role')?.toString() || null;
+    const wsdcID = form.get('wsdcID')?.toString() || null;
+    const wsdcLevel = form.get('wsdcLevel')?.toString() || null;
+    const country = form.get('country')?.toString() || null;
+    const age = form.get('age')?.toString() || null;
+    const partner_name = form.get('partner_name')?.toString() || null;
+    const promo_code = form.get('promo_code')?.toString() || null;
+    const promo_discount = parseFloat(form.get('promo_discount')?.toString() || '0');
+    const ticket_product_id = form.get('ticket_product_id')?.toString() || null;
+
+    // Build participant update payload
+    const updatePayload: Record<string, any> = {
+      role: role ?? undefined,
+      event_role: role ?? undefined,
+      wsdcID: wsdcID ? parseInt(wsdcID) : null,
+      wsdcLevel: wsdcLevel ?? null,
+      country: country ?? null,
+      age: age || null,
+      partner_name: partner_name ?? null
+    };
+
+    // Auto-set couples status when partner is provided
+    if (partner_name && partner_name.trim().length > 0) {
+      updatePayload.status = 'pending_couples_registration';
+    }
+
+    const { error: updateError } = await supabase
+      .from('event_participants')
+      .update(updatePayload)
+      .eq('id', registrationID);
+
+    if (updateError) return fail(500, { message: updateError.message });
+
+    // ── Ticket swap / addition ──────────────────────────────────────────────
+    if (ticket_product_id) {
+      const { data: existingTicket } = await supabase
+        .from('participant_products')
+        .select('*')
+        .eq('participant_id', registrationID)
+        .eq('product_type', 'ticket')
+        .maybeSingle();
+
+      const { data: newProduct } = await supabase
+        .from('products')
+        .select('*')
+        .eq('id', ticket_product_id)
+        .eq('event_id', participant.event_id)
+        .eq('is_active', true)
+        .single();
+
+      if (!newProduct) return fail(400, { message: 'Selected ticket not available' });
+
+      if (newProduct.quantity_total && (newProduct.quantity_sold + 1) > newProduct.quantity_total) {
+        return fail(400, { message: 'Selected ticket is sold out' });
+      }
+
+      let newUnitPrice = parseFloat(newProduct.price);
+      if (promo_code && promo_discount > 0) {
+        newUnitPrice = newUnitPrice * (1 - promo_discount / 100);
+      }
+
+      if (existingTicket && existingTicket.product_id === newProduct.id) {
+        // Same ticket — only apply promo if provided
+        if (promo_code && promo_discount > 0) {
+          const subtotal = newUnitPrice * (existingTicket.quantity_ordered ?? 1);
+          await supabase
+            .from('participant_products')
+            .update({ unit_price: newUnitPrice, subtotal, promo_code_used: promo_code })
+            .eq('id', existingTicket.id);
+        }
+      } else if (existingTicket) {
+        // Swap: update the existing participant_product row
+        const subtotal = newUnitPrice * (existingTicket.quantity_ordered ?? 1);
+        const { error: ppError } = await supabase
+          .from('participant_products')
+          .update({
+            product_id: newProduct.id,
+            product_name: newProduct.name,
+            unit_price: newUnitPrice,
+            currency_type: newProduct.currency_type,
+            subtotal,
+            promo_code_used: promo_code
+          })
+          .eq('id', existingTicket.id);
+
+        if (ppError) return fail(500, { message: ppError.message });
+
+        // Adjust quantity_sold on both old and new product
+        const { data: oldProduct } = await supabase
+          .from('products').select('quantity_sold').eq('id', existingTicket.product_id).single();
+        const decrementBy = existingTicket.quantity_ordered ?? 1;
+        await supabase
+          .from('products')
+          .update({ quantity_sold: Math.max((oldProduct?.quantity_sold ?? 0) - decrementBy, 0) })
+          .eq('id', existingTicket.product_id);
+        await supabase
+          .from('products')
+          .update({ quantity_sold: (newProduct.quantity_sold ?? 0) + decrementBy })
+          .eq('id', newProduct.id);
+
+      } else {
+        // No existing ticket — insert new
+        const { error: insertError } = await supabase
+          .from('participant_products')
+          .insert({
+            participant_id: registrationID,
+            product_id: newProduct.id,
+            product_name: newProduct.name,
+            product_type: 'ticket',
+            quantity_ordered: 1,
+            unit_price: newUnitPrice,
+            currency_type: newProduct.currency_type,
+            subtotal: newUnitPrice,
+            payment_status: 'pending',
+            confirmation_status: 'pending',
+            promo_code_used: promo_code
+          });
+
+        if (insertError) return fail(500, { message: insertError.message });
+
+        await supabase
+          .from('products')
+          .update({ quantity_sold: (newProduct.quantity_sold ?? 0) + 1 })
+          .eq('id', newProduct.id);
+      }
+    }
+
+    // ── Apply promo to existing tickets when no ticket swap ─────────────────
+    if (promo_code && promo_discount > 0 && !ticket_product_id) {
+      const { data: tickets } = await supabase
+        .from('participant_products')
+        .select('id, product_id, quantity_ordered')
+        .eq('participant_id', registrationID)
+        .eq('product_type', 'ticket');
+
+      if (tickets && tickets.length > 0) {
+        for (const t of tickets) {
+          const { data: product } = await supabase
+            .from('products').select('price').eq('id', t.product_id).single();
+          if (product) {
+            const unitPrice = parseFloat(product.price) * (1 - promo_discount / 100);
+            await supabase
+              .from('participant_products')
+              .update({ unit_price: unitPrice, subtotal: unitPrice * (t.quantity_ordered ?? 1), promo_code_used: promo_code })
+              .eq('id', t.id);
+          }
+        }
+      }
+    }
 
     return { success: true };
   }
