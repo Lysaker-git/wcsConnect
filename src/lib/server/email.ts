@@ -83,11 +83,13 @@ export async function sendRegistrationApprovedEmail({
         </p>
       </div>
 
-      <a href="${manageUrl}"
-           style="display:inline-block;padding:14px 28px;background:#d97706;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:700;font-size:16px;">
-          Complete Payment →
-        </a>
-      </div>
+    <a href="${manageUrl}"
+      style="display:inline-block;padding:14px 28px;background:#d97706;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:700;font-size:16px;">
+      Complete Payment →
+    </a>
+    <p style="color:#9ca3af;font-size:12px;margin:16px 0 0;">
+      You may be asked to sign in before being redirected to your registration.
+    </p>
 
       <!-- Footer -->
       <div style="padding:24px 32px;border-top:1px solid #e5e7eb;text-align:center;">
@@ -186,4 +188,56 @@ export async function sendPaymentConfirmedEmail({
 </html>
     `
   });
+}
+
+
+export async function sendMassEmail({
+  recipients,
+  subject,
+  html
+}: {
+  recipients: { email: string; username: string }[];
+  subject: string;
+  html: string;
+}) {
+  const CHUNK_SIZE = 100;
+  const results = { sent: 0, failed: 0, errors: [] as string[] };
+
+  // Split into chunks of 100
+  for (let i = 0; i < recipients.length; i += CHUNK_SIZE) {
+    const chunk = recipients.slice(i, i + CHUNK_SIZE);
+
+    // Resend batch API
+    const res = await fetch('https://api.resend.com/emails/batch', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${RESEND_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(
+        chunk.map(r => ({
+          from: FROM,
+          to: r.email,
+          subject,
+          html: html.replaceAll('{{username}}', r.username)
+        }))
+      )
+    });
+
+    if (!res.ok) {
+      const error = await res.text();
+      console.error(`[mass email] Resend batch error (chunk ${i}):`, error);
+      results.failed += chunk.length;
+      results.errors.push(`Chunk ${i}–${i + chunk.length}: ${error}`);
+    } else {
+      results.sent += chunk.length;
+    }
+
+    // Small delay between chunks to be kind to the API
+    if (i + CHUNK_SIZE < recipients.length) {
+      await new Promise(resolve => setTimeout(resolve, 200));
+    }
+  }
+
+  return results;
 }

@@ -2,12 +2,18 @@ import { supabase } from '$lib/server/supabaseServiceClient';
 import { getUserClient } from '$lib/server/supabaseUserClient';
 import { error as svelteError, fail } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
+import { redirect } from '@sveltejs/kit';
 
 export const load: PageServerLoad = async ({ params, cookies }) => {
   const { registrationID } = params;
 
   const sbUser = cookies.get('sb_user');
-  if (!sbUser) throw svelteError(401, 'Not authenticated');
+  if (!sbUser) throw redirect(
+    303, 
+    params.registrationID ? `/signin?redirect=/profile/${params.registrationID}` : '/signin'
+  );
+
+  
 
   let user: any;
   try { user = JSON.parse(sbUser); } catch { throw svelteError(401, 'Invalid session'); }
