@@ -167,36 +167,161 @@ export const POST: RequestHandler = async ({ request }) => {
   }
 
   // Accommodation payment handling
-  if (type === 'accommodation_full') {
-    await supabase
-      .from('hotel_bookings')
-      .update({
-        deposit_paid: true,
-        remaining_paid: true,
-        remaining_amount: 0,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', session.metadata?.hotel_booking_id);
-  }
+  if (isAccommodationPayment) {
+    const hotelBookingId = session.metadata?.hotel_booking_id;
 
-  if (type === 'accommodation_deposit') {
-    await supabase
-      .from('hotel_bookings')
-      .update({
-        deposit_paid: true,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', session.metadata?.hotel_booking_id);
-  }
+    if (!hotelBookingId) {
+      console.error('Webhook missing hotel_booking_id in metadata');
+      return json({ error: 'Missing hotel_booking_id' }, { status: 400 });
+    }
 
-  if (type === 'accommodation_remaining') {
-    await supabase
-      .from('hotel_bookings')
-      .update({
-        remaining_paid: true,
+    // Update booking status
+    let bookingUpdateError: any = null;
+    if (type === 'accommodation_full') {
+      const { error } = await supabase.from('hotel_bookings').update({
+        deposit_paid: true, remaining_paid: true, remaining_amount: 0,
         updated_at: new Date().toISOString()
-      })
-      .eq('id', session.metadata?.hotel_booking_id);
+      }).eq('id', hotelBookingId);
+      bookingUpdateError = error;
+    } else if (type === 'accommodation_deposit') {
+      const { error } = await supabase.from('hotel_bookings').update({
+        deposit_paid: true, updated_at: new Date().toISOString()
+      }).eq('id', hotelBookingId);
+      bookingUpdateError = error;
+    } else if (type === 'accommodation_remaining') {
+      const { error } = await supabase.from('hotel_bookings').update({
+        remaining_paid: true, updated_at: new Date().toISOString()
+      }).eq('id', hotelBookingId);
+      bookingUpdateError = error;
+    }
+
+    if (bookingUpdateError) {
+      console.error('Failed to update hotel_bookings status:', bookingUpdateError);
+    }
+
+    // Create invoice + send receipt for accommodation payments
+    if (hotelBookingId && participant_id) {
+      try {
+        // Fetch booking with product MVA rate
+        const { data: hotelBooking } = await supabase
+          .from('hotel_bookings')
+          .select('*, products ( mva_rate )')
+          .eq('id', hotelBookingId)
+          .single();
+
+        if (hotelBooking) {
+          // Determine what was charged in this transaction
+          let chargedAmount: number;
+          let lineItemName: string;
+
+          if (type === 'accommodation_full') {
+            chargedAmount = parseFloat(hotelBooking.total_amount);
+            lineItemName = `${hotelBooking.room_name} — Full Payment`;
+          } else if (type === 'accommodation_deposit') {
+            chargedAmount = parseFloat(hotelBooking.deposit_amount);
+            lineItemName = `${hotelBooking.room_name} — Deposit`;
+          } else {
+            chargedAmount = parseFloat(hotelBooking.remaining_amount);
+            lineItemName = `${hotelBooking.room_name} — Remaining Balance`;
+          }
+          if (hotelBooking.nights) {
+            lineItemName += ` (${hotelBooking.nights} night${hotelBooking.nights === 1 ? '' : 's'})`;
+          }
+
+          const mvaRate       = Number((hotelBooking.products as any)?.mva_rate ?? 0);
+          const mvaAmount     = Math.round(chargedAmount * mvaRate / (100 + mvaRate) * 100) / 100;
+          const amountExclMva = Math.round((chargedAmount - mvaAmount) * 100) / 100;
+          const currency      = hotelBooking.currency ?? 'NOK';
+
+          // Create invoice record
+          const { data: hotelInvoice } = await supabase
+            .from('invoices')
+            .insert({
+              participant_id,
+              hotel_booking_id: hotelBookingId,
+              stripe_payment_intent_id: session.payment_intent as string,
+              stripe_session_id: session.id,
+              buyer_name:  session.metadata?.buyer_name ?? null,
+              buyer_email: session.customer_details?.email ?? null,
+              total_excl_mva: amountExclMva,
+              total_mva:      mvaAmount,
+              total_incl_mva: chargedAmount,
+              currency
+            })
+            .select('id, invoice_number')
+            .single();
+
+          // Fetch participant for email + seller lookup
+          const { data: hotelParticipant } = await supabase
+            .from('event_participants')
+            .select('user_id, event_id, profiles ( username ), events ( title )')
+            .eq('id', participant_id)
+            .single();
+
+          const { data: hotelAuthUser } = await supabase.auth.admin.getUserById(
+            hotelParticipant?.user_id ?? ''
+          );
+          const hotelEmail = hotelAuthUser?.user?.email ?? session.customer_details?.email;
+
+          // Fetch Stripe-connected ED for seller block
+          let hotelSeller = { name: 'Event Organizer' as string, orgNumber: null as string | null, address: null as string | null, email: null as string | null };
+          if (hotelParticipant?.event_id) {
+            const { data: edRows } = await supabase
+              .from('event_participants')
+              .select('user_id')
+              .eq('event_id', hotelParticipant.event_id)
+              .eq('event_role', 'Event Director');
+
+            const edUserIds = (edRows ?? []).map(r => r.user_id);
+            if (edUserIds.length > 0) {
+              const { data: stripeProfiles } = await supabase
+                .from('profiles')
+                .select('id, username, organizer_name, organizer_org_number, organizer_address, organizer_email')
+                .in('id', edUserIds)
+                .eq('stripe_onboarding_complete', true)
+                .not('stripe_account_id', 'is', null)
+                .limit(1);
+
+              const edProfile = stripeProfiles?.[0];
+              if (edProfile) {
+                hotelSeller = {
+                  name:      edProfile.organizer_name || edProfile.username || 'Event Organizer',
+                  orgNumber: edProfile.organizer_org_number ?? null,
+                  address:   edProfile.organizer_address ?? null,
+                  email:     edProfile.organizer_email ?? null
+                };
+              }
+            }
+          }
+
+          if (hotelEmail && hotelInvoice) {
+            await sendReceiptEmail({
+              to:            hotelEmail,
+              invoiceNumber: hotelInvoice.invoice_number,
+              buyerName:     (hotelParticipant?.profiles as any)?.username ?? session.metadata?.buyer_name ?? 'Guest',
+              eventTitle:    (hotelParticipant?.events as any)?.title ?? 'Accommodation',
+              seller:        hotelSeller,
+              products: [{
+                name:      lineItemName,
+                quantity:  1,
+                unitPrice: chargedAmount,
+                subtotal:  chargedAmount,
+                mvaRate,
+                mvaAmount
+              }],
+              totalExclMva:  amountExclMva,
+              totalMva:      mvaAmount,
+              totalInclMva:  chargedAmount,
+              currency,
+              stripeRef:     session.payment_intent as string,
+              participantId: participant_id
+            });
+          }
+        }
+      } catch (hotelReceiptErr) {
+        console.error('Failed to create hotel invoice/receipt:', hotelReceiptErr);
+      }
+    }
   }
 }
 

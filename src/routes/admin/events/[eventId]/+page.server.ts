@@ -203,7 +203,7 @@ export const actions = {
     const is_active = form.get('is_active') === 'on';
 
     if (!productId || !name || !product_type || price < 0) {
-      throw error(400, 'Missing required fields or invalid price');
+      throw svelteError(400, 'Missing required fields or invalid price');
     }
 
     // Update product

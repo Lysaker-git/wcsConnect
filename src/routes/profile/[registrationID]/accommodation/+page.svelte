@@ -44,6 +44,7 @@
 
   let checkIn = '';
   let checkOut = '';
+  let hotelMembershipId = existingBooking?.hotel_membership_id ?? '';
   let roommateNames: string[] = existingBooking?.roommate_names ?? [];
 
   $: roommateSlots = room ? Math.max(0, (room.room_capacity ?? 1) - 1) : 
@@ -119,6 +120,12 @@
 				</span>
 			</div>
 			{/if}
+          {#if existingBooking.hotel_membership_id}
+            <div class="flex justify-between text-sm">
+              <span class="text-stone-400">Membership ID</span>
+              <span class="text-stone-100 font-mono">{existingBooking.hotel_membership_id}</span>
+            </div>
+          {/if}
           <div class="flex justify-between text-sm">
             <span class="text-stone-400">Deposit ({depositPercent}%)</span>
             <div class="flex items-center gap-2">
@@ -305,6 +312,17 @@
             {/each}
           </div>
         {/if}
+
+        <!-- Hotel membership ID -->
+        <div>
+          <label class="block text-sm font-medium text-stone-300 mb-1.5">
+            Hotel Membership ID <span class="text-stone-500 font-normal">(optional)</span>
+          </label>
+          <input type="text" name="hotel_membership_id" bind:value={hotelMembershipId}
+            placeholder="e.g. Scandic Friends, Nordic Choice Club..."
+            class="w-full px-4 py-2.5 rounded-xl bg-stone-900 border border-stone-700 text-stone-100 focus:outline-none focus:border-amber-500" />
+          <p class="text-xs text-stone-500 mt-1">Enter your hotel loyalty membership number if you have one</p>
+        </div>
 
         <!-- Payment type -->
         <div>

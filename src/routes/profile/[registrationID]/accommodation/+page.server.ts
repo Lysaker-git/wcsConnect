@@ -96,6 +96,7 @@ export const actions: Actions = {
 
     if (!product_id || !payment_type) return fail(400, { message: 'Missing required fields' });
 
+    const hotel_membership_id = form.get('hotel_membership_id')?.toString().trim() || null;
     const check_in = form.get('check_in')?.toString() || null;
     const check_out = form.get('check_out')?.toString() || null;
     const nights = check_in && check_out
@@ -220,6 +221,7 @@ export const actions: Actions = {
         final_payment_deadline: event.accommodation_final_payment_deadline ?? null,
         roommate_names: roommate_names,
         room_capacity: room.room_capacity ?? 1,
+        hotel_membership_id,
         check_in,
         check_out,
         nights
