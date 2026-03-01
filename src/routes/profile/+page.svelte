@@ -8,6 +8,7 @@
 
   $: isSuperUser = (data.profile?.userRole ?? []).includes('Super User');
   $: stripeConnected = data.profile?.stripe_onboarding_complete === true;
+  $: isOrganizer = isSuperUser || (data.myEvents && data.myEvents.length > 0);
 
   // Use static public URLs (moved to static/images/avatar/)
   const maleAvatar = '/images/avatar/male.png';
@@ -89,6 +90,12 @@ $: isProfileIncomplete = user && (!profile || (
   let editAge = profile?.age ?? '';
   // default to static male avatar so the image URL is valid
   let editAvatar = profile?.avatar_url ?? maleAvatar;
+
+  // Organizer info (for receipts)
+  let editOrganizerName      = profile?.organizer_name ?? '';
+  let editOrganizerOrgNumber = profile?.organizer_org_number ?? '';
+  let editOrganizerAddress   = profile?.organizer_address ?? '';
+  let editOrganizerEmail     = profile?.organizer_email ?? '';
   let isSavingProfile = false;
 
   // Modal state
@@ -400,10 +407,47 @@ $: isProfileIncomplete = user && (!profile || (
                 </div>
               </fieldset>
 
+              {#if isOrganizer}
+                <div class="pt-2">
+                  <div class="border-t border-stone-600 pt-4 mb-3">
+                    <h4 class="text-xs font-semibold text-stone-400 uppercase tracking-wider mb-1">Organizer Info</h4>
+                    <p class="text-xs text-stone-500">Shown as the seller on participant receipts.</p>
+                  </div>
+                  <div class="space-y-3">
+                    <div>
+                      <label for="edit-org-name" class="block text-sm font-medium text-stone-100">Organization / Name</label>
+                      <input id="edit-org-name" bind:value={editOrganizerName} type="text" name="organizer_name"
+                        placeholder="e.g. Lysaker Dance Club"
+                        class="mt-1 block w-full rounded-md border-gray-200 shadow-sm bg-stone-700 text-stone-100" />
+                    </div>
+                    <div>
+                      <label for="edit-org-number" class="block text-sm font-medium text-stone-100">Org.nr (incl. MVA if applicable)</label>
+                      <input id="edit-org-number" bind:value={editOrganizerOrgNumber} type="text" name="organizer_org_number"
+                        placeholder="e.g. 987 654 321 MVA"
+                        class="mt-1 block w-full rounded-md border-gray-200 shadow-sm bg-stone-700 text-stone-100" />
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                      <div>
+                        <label for="edit-org-address" class="block text-sm font-medium text-stone-100">Address / City</label>
+                        <input id="edit-org-address" bind:value={editOrganizerAddress} type="text" name="organizer_address"
+                          placeholder="e.g. Oslo, Norge"
+                          class="mt-1 block w-full rounded-md border-gray-200 shadow-sm bg-stone-700 text-stone-100" />
+                      </div>
+                      <div>
+                        <label for="edit-org-email" class="block text-sm font-medium text-stone-100">Contact Email</label>
+                        <input id="edit-org-email" bind:value={editOrganizerEmail} type="email" name="organizer_email"
+                          placeholder="post@myclub.no"
+                          class="mt-1 block w-full rounded-md border-gray-200 shadow-sm bg-stone-700 text-stone-100" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              {/if}
+
               <div class="flex justify-end gap-2 pt-4">
                 <button type="button" on:click={() => showModal = false} class="px-4 py-2 bg-stone-700 text-stone-100 rounded-md">Cancel</button>
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   disabled={isSavingProfile}
                   class="px-4 py-2 bg-amber-600 text-white rounded-md transition-all duration-200 font-semibold {isSavingProfile ? 'bg-amber-500 cursor-not-allowed flex items-center gap-2' : 'hover:bg-amber-700 active:scale-95'}"
                 >

@@ -99,11 +99,12 @@ export const POST: RequestHandler = async ({ request, locals, url }) => {
       quantity: item.quantity_ordered
   }));
 
-  // 8. Add fees as line items
-  const serviceFeeAmount = Math.round(ticketSubtotal * 0.01 * 100); // 1% in cents
+  // 8. Calculate fees
+  const serviceFeeAmount = Math.round(ticketSubtotal * 0.01 * 100); // 1% platform fee in cents
+  const stripeFeeAmount = Math.round(ticketSubtotal * 0.035 * 100); // 3.5% Stripe recovery in cents
 
+  // on_top: add Stripe recovery as a visible line item for the customer
   if (stripeFeeModel === 'on_top') {
-      const stripeFeeAmount = Math.round(ticketSubtotal * 0.035 * 100); // 3.5% in cents
       lineItems.push({
           price_data: {
               currency,
@@ -123,8 +124,14 @@ export const POST: RequestHandler = async ({ request, locals, url }) => {
       quantity: 1
   });
 
-  // 9. application_fee is 1% of ticket subtotal only — goes to your platform account
-  const applicationFee = serviceFeeAmount;
+  // 9. application_fee:
+  // on_top: platform captures both 3.5% (Stripe recovery) + 1% (platform fee)
+  //         so ED receives exactly the ticket subtotal
+  // included: organizer baked Stripe cost into ticket price, platform takes only 1%
+  //           ED absorbs Stripe's actual processing fee
+  const applicationFee = stripeFeeModel === 'on_top'
+      ? serviceFeeAmount + stripeFeeAmount
+      : serviceFeeAmount;
 
   // 10. Create Stripe Checkout Session
   const origin = url.origin.includes('localhost') 
