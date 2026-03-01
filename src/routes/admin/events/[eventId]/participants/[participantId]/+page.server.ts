@@ -22,14 +22,11 @@ async function verifyAccess(eventId: string, userId: string) {
   return !!ed;
 }
 
-export const load: PageServerLoad = async ({ params, cookies }) => {
+export const load: PageServerLoad = async ({ params, locals }) => {
   const { eventId, participantId } = params;
 
-  const sbUser = cookies.get('sb_user');
-  if (!sbUser) throw svelteError(401, 'Not authenticated');
-
-  let user: any;
-  try { user = JSON.parse(sbUser); } catch { throw svelteError(401, 'Invalid session'); }
+  const { user } = await locals.safeGetSession();
+  if (!user) throw svelteError(401, 'Not authenticated');
 
   if (!(await verifyAccess(eventId, user.id))) throw svelteError(403, 'Access denied');
 
@@ -86,13 +83,10 @@ export const load: PageServerLoad = async ({ params, cookies }) => {
 };
 
 export const actions: Actions = {
-  updateParticipant: async ({ request, params, cookies }) => {
+  updateParticipant: async ({ request, params, locals }) => {
     const { eventId, participantId } = params;
-    const sbUser = cookies.get('sb_user');
-    if (!sbUser) return fail(401, { message: 'Not authenticated' });
-
-    let user: any;
-    try { user = JSON.parse(sbUser); } catch { return fail(401, { message: 'Invalid session' }); }
+    const { user } = await locals.safeGetSession();
+    if (!user) return fail(401, { message: 'Not authenticated' });
     if (!(await verifyAccess(eventId, user.id))) return fail(403, { message: 'Access denied' });
 
     const form = await request.formData();
@@ -123,13 +117,10 @@ export const actions: Actions = {
     return { success: true, action: 'updateParticipant' };
   },
 
-  addProduct: async ({ request, params, cookies }) => {
+  addProduct: async ({ request, params, locals }) => {
     const { eventId, participantId } = params;
-    const sbUser = cookies.get('sb_user');
-    if (!sbUser) return fail(401, { message: 'Not authenticated' });
-
-    let user: any;
-    try { user = JSON.parse(sbUser); } catch { return fail(401, { message: 'Invalid session' }); }
+    const { user } = await locals.safeGetSession();
+    if (!user) return fail(401, { message: 'Not authenticated' });
     if (!(await verifyAccess(eventId, user.id))) return fail(403, { message: 'Access denied' });
 
     const form = await request.formData();
@@ -184,13 +175,10 @@ export const actions: Actions = {
     return { success: true, action: 'addProduct' };
   },
 
-  removeProduct: async ({ request, params, cookies }) => {
+  removeProduct: async ({ request, params, locals }) => {
     const { eventId, participantId } = params;
-    const sbUser = cookies.get('sb_user');
-    if (!sbUser) return fail(401, { message: 'Not authenticated' });
-
-    let user: any;
-    try { user = JSON.parse(sbUser); } catch { return fail(401, { message: 'Invalid session' }); }
+    const { user } = await locals.safeGetSession();
+    if (!user) return fail(401, { message: 'Not authenticated' });
     if (!(await verifyAccess(eventId, user.id))) return fail(403, { message: 'Access denied' });
 
     const form = await request.formData();
@@ -231,15 +219,10 @@ export const actions: Actions = {
     return { success: true, action: 'removeProduct' };
   },
 
-  updateProduct: async ({ request, params, cookies }) => {
+  updateProduct: async ({ request, params, locals }) => {
     const { eventId, participantId } = params;
-    const sbUser = cookies.get('sb_user');
-    if (!sbUser) return fail(401, { message: 'Not authenticated' });
-
-
-
-    let user: any;
-    try { user = JSON.parse(sbUser); } catch { return fail(401, { message: 'Invalid session' }); }
+    const { user } = await locals.safeGetSession();
+    if (!user) return fail(401, { message: 'Not authenticated' });
     if (!(await verifyAccess(eventId, user.id))) return fail(403, { message: 'Access denied' });
 
     const form = await request.formData();

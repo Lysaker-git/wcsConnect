@@ -1,13 +1,13 @@
-import { supabase } from '$lib/api/supabaseClient';
 import { json, type RequestHandler } from '@sveltejs/kit';
 
-export const POST: RequestHandler = async ({ params, request }) => {
+export const POST: RequestHandler = async ({ params, request, locals }) => {
   try {
     const { eventId } = params;
     const { eventData, eventDetailsData } = await request.json();
+    const db = locals.supabase;
 
     // Update events table
-    const { data: eventUpdate, error: eventError } = await supabase
+    const { data: eventUpdate, error: eventError } = await db
       .from('events')
       .update({
         title: eventData.title,
@@ -24,7 +24,7 @@ export const POST: RequestHandler = async ({ params, request }) => {
     }
 
     // Update or insert event_details
-    const { data: detailsUpdate, error: detailsError } = await supabase
+    const { data: detailsUpdate, error: detailsError } = await db
       .from('event_details')
       .upsert({
         event_id: eventId,

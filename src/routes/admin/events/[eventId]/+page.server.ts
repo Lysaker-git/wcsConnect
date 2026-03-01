@@ -5,30 +5,13 @@ import { error as svelteError } from '@sveltejs/kit';
 
 
 
-export const load = async ({ params, cookies }) => {
+export const load = async ({ params, locals }) => {
   const { eventId } = params;
 
-  // Get user from cookies
-  const sbUser = cookies.get('sb_user');
-  let user = null;
-  if (sbUser) {
-    try {
-      user = JSON.parse(sbUser);
-    } catch (e) {
-      throw svelteError(401, 'Invalid user session');
-    }
-  } else {
-    throw svelteError(401, 'Not authenticated');
-  }
+  const { user } = await locals.safeGetSession();
+  if (!user) throw svelteError(401, 'Not authenticated');
 
-  // Check if user is Owner
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('userRole')
-    .eq('id', user.id)
-    .single();
-
-  const isOwner = (profile?.userRole ?? []).includes('Owner');
+  const isOwner = locals.userRole.includes('Owner');
 
 
   // Check if user is Event Director for this event
@@ -81,21 +64,11 @@ export const load = async ({ params, cookies }) => {
 };
 
 export const actions = {
-  createProduct: async ({ request, params, cookies }) => {
+  createProduct: async ({ request, params, locals }) => {
     const { eventId } = params;
 
-    // Verify user is Event Director
-    const sbUser = cookies.get('sb_user');
-    if (!sbUser) {
-      throw svelteError(401, 'Not authenticated');
-    }
-    
-    let user;
-    try {
-      user = JSON.parse(sbUser);
-    } catch (e) {
-      throw svelteError(401, 'Invalid user session');
-    }
+    const { user } = await locals.safeGetSession();
+    if (!user) throw svelteError(401, 'Not authenticated');
 
     const { data: participant } = await supabase
       .from('event_participants')
@@ -156,21 +129,11 @@ export const actions = {
 
     return { success: true, product: data };
   },
-  deleteProduct: async ({ request, params, cookies }) => {
+  deleteProduct: async ({ request, params, locals }) => {
     const { eventId } = params;
 
-    // Verify user is Event Director
-    const sbUser = cookies.get('sb_user');
-    if (!sbUser) {
-      throw error(401, 'Not authenticated');
-    }
-    
-    let user;
-    try {
-      user = JSON.parse(sbUser);
-    } catch (e) {
-      throw error(401, 'Invalid user session');
-    }
+    const { user } = await locals.safeGetSession();
+    if (!user) throw svelteError(401, 'Not authenticated');
 
     const { data: participant } = await supabase
       .from('event_participants')
@@ -206,21 +169,11 @@ export const actions = {
 
     return { success: true };
   },
-  updateProduct: async ({ request, params, cookies }) => {
+  updateProduct: async ({ request, params, locals }) => {
     const { eventId } = params;
 
-    // Verify user is Event Director
-    const sbUser = cookies.get('sb_user');
-    if (!sbUser) {
-      throw svelteError(401, 'Not authenticated');
-    }
-    
-    let user;
-    try {
-      user = JSON.parse(sbUser);
-    } catch (e) {
-      throw svelteError(401, 'Invalid user session');
-    }
+    const { user } = await locals.safeGetSession();
+    if (!user) throw svelteError(401, 'Not authenticated');
 
     const { data: participant } = await supabase
       .from('event_participants')
@@ -283,21 +236,11 @@ export const actions = {
     return { success: true, product: data };
   },
 
-  updateEventDetails: async ({ request, params, cookies }) => {
+  updateEventDetails: async ({ request, params, locals }) => {
     const { eventId } = params;
 
-    // Verify user is Event Director
-    const sbUser = cookies.get('sb_user');
-    if (!sbUser) {
-      throw svelteError(401, 'Not authenticated');
-    }
-
-    let user;
-    try {
-      user = JSON.parse(sbUser);
-    } catch (e) {
-      throw svelteError(401, 'Invalid user session');
-    }
+    const { user } = await locals.safeGetSession();
+    if (!user) throw svelteError(401, 'Not authenticated');
 
     const { data: participant } = await supabase
       .from('event_participants')
@@ -354,21 +297,11 @@ export const actions = {
     return { event: eventUpdate, eventDetails: detailsUpdate };
   },
 
-  getEventParticipants: async ({ params, cookies }) => {
+  getEventParticipants: async ({ params, locals }) => {
     const { eventId } = params;
 
-    // Verify user is Event Director
-    const sbUser = cookies.get('sb_user');
-    if (!sbUser) {
-      throw svelteError(401, 'Not authenticated');
-    }
-
-    let user;
-    try {
-      user = JSON.parse(sbUser);
-    } catch (e) {
-      throw svelteError(401, 'Invalid user session');
-    }
+    const { user } = await locals.safeGetSession();
+    if (!user) throw svelteError(401, 'Not authenticated');
 
     const { data: participant } = await supabase
       .from('event_participants')
@@ -404,21 +337,11 @@ export const actions = {
     return data;
   },
 
-  updateParticipantRole: async ({ request, params, cookies }) => {
+  updateParticipantRole: async ({ request, params, locals }) => {
     const { eventId } = params;
 
-    // Verify user is Event Director
-    const sbUser = cookies.get('sb_user');
-    if (!sbUser) {
-      throw svelteError(401, 'Not authenticated');
-    }
-
-    let user;
-    try {
-      user = JSON.parse(sbUser);
-    } catch (e) {
-      throw svelteError(401, 'Invalid user session');
-    }
+    const { user } = await locals.safeGetSession();
+    if (!user) throw svelteError(401, 'Not authenticated');
 
     const { data: participant } = await supabase
       .from('event_participants')
@@ -450,14 +373,11 @@ export const actions = {
 
     return data;
   },
-  togglePublish: async ({ params, cookies }) => {
+  togglePublish: async ({ params, locals }) => {
     const { eventId } = params;
 
-    const sbUser = cookies.get('sb_user');
-    if (!sbUser) throw svelteError(401, 'Not authenticated');
-
-    let user: any;
-    try { user = JSON.parse(sbUser); } catch { throw svelteError(401, 'Invalid session'); }
+    const { user } = await locals.safeGetSession();
+    if (!user) throw svelteError(401, 'Not authenticated');
 
     // Verify Event Director
     const { data: participant } = await supabase
@@ -489,25 +409,13 @@ export const actions = {
 
     return { success: true, is_published: !event?.is_published };
   },
-  updatePlatformFee: async ({ request, params, cookies }) => {
+  updatePlatformFee: async ({ request, params, locals }) => {
     const { eventId } = params;
 
-    const sbUser = cookies.get('sb_user');
-    if (!sbUser) throw svelteError(401, 'Not authenticated');
+    const { user } = await locals.safeGetSession();
+    if (!user) throw svelteError(401, 'Not authenticated');
 
-    let user: any;
-    try { user = JSON.parse(sbUser); } catch { throw svelteError(401, 'Invalid session'); }
-
-    // Owner only
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('userRole')
-      .eq('id', user.id)
-      .single();
-
-    if (!(profile?.userRole ?? []).includes('Owner')) {
-      throw svelteError(403, 'Owner access required');
-    }
+    if (!locals.userRole.includes('Owner')) throw svelteError(403, 'Owner access required');
 
     const form = await request.formData();
     const platform_fee_percent = parseFloat(form.get('platform_fee_percent')?.toString() ?? '1');
@@ -525,23 +433,13 @@ export const actions = {
 
     return { success: true, platform_fee_percent };
   },
-  updateAccommodationSettings: async ({ request, params, cookies }) => {
+  updateAccommodationSettings: async ({ request, params, locals }) => {
     const { eventId } = params;
-    const sbUser = cookies.get('sb_user');
-    if (!sbUser) throw svelteError(401, 'Not authenticated');
 
-    let user: any;
-    try { user = JSON.parse(sbUser); } catch { throw svelteError(401, 'Invalid session'); }
+    const { user } = await locals.safeGetSession();
+    if (!user) throw svelteError(401, 'Not authenticated');
 
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('userRole')
-      .eq('id', user.id)
-      .single();
-
-    if (!(profile?.userRole ?? []).includes('Owner')) {
-      throw svelteError(403, 'Owner access required');
-    }
+    if (!locals.userRole.includes('Owner')) throw svelteError(403, 'Owner access required');
 
     const form = await request.formData();
     const accommodation_deposit_percent = parseFloat(form.get('accommodation_deposit_percent')?.toString() ?? '10');

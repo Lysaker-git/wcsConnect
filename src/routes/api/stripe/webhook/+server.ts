@@ -1,8 +1,7 @@
 import Stripe from 'stripe';
-import { STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, SUPABASE_SERVICE_ROLE_KEY } from '$env/static/private';
-import { PUBLIC_SUPABASE_URL } from '$env/static/public';
+import { STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET } from '$env/static/private';
 import { sendPaymentConfirmedEmail } from '$lib/server/email';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '$lib/server/supabaseServiceClient';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
@@ -19,9 +18,6 @@ export const POST: RequestHandler = async ({ request }) => {
     console.error('Webhook signature verification failed:', err);
     return json({ error: 'Invalid signature' }, { status: 400 });
   }
-
-  // Use one supabase client throughout
-  const supabase = createClient(PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
   if (event.type === 'checkout.session.completed' ||
     event.type === 'checkout.session.async_payment_succeeded') {

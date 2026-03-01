@@ -1,8 +1,11 @@
 import { supabase } from "$lib/server/supabaseServiceClient";
 import { fail, redirect } from '@sveltejs/kit';
 
-export const load = async ({ cookies, params }) => {
-    const sbUser = cookies.get("sb_user");
+export const load = async ({ cookies, params, locals }) => {
+    const { user } = await locals.safeGetSession();
+    if (!user) {
+        throw redirect(303, '/signin?redirect=/admin/events');
+    }
     const eventId = params.eventId;
 
     const { data: eventDetails, error: eventError } = await supabase

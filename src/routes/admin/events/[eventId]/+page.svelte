@@ -251,6 +251,7 @@
             <div class="absolute right-0 mt-2 w-48 bg-stone-800 border border-stone-700 rounded-md shadow-lg z-20">
               <a href={`/admin/events/${data.event.id}/edit`} on:click={() => showActions = false} class="block w-full text-left px-4 py-2 text-stone-100 hover:bg-stone-700">Edit Event</a>
               <a href={`/admin/events/${data.event.id}/participants`} on:click={() => showActions = false} class="block w-full text-left px-4 py-2 text-stone-100 hover:bg-stone-700">Participants</a>
+              <a href={`/admin/events/${data.event.id}/approval`} on:click={() => showActions = false} class="block w-full text-left px-4 py-2 text-stone-100 hover:bg-stone-700">Approval Queue</a>
               <a href={`/admin/events/${data.event.id}/dashboard`} on:click={() => showActions = false} class="block w-full text-left px-4 py-2 text-stone-100 hover:bg-stone-700">Dashboard</a>
               <a href={`/admin/events/${data.event.id}/product`} on:click={() => showActions = false} class="block w-full text-left px-4 py-2 text-stone-100 hover:bg-stone-700">Products</a>
               <a href={`/admin/events/${data.event.id}/promo-codes`} on:click={() => showActions = false} class="block w-full text-left px-4 py-2 text-stone-100 hover:bg-stone-700">Promo Codes</a>

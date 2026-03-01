@@ -1,22 +1,12 @@
 import type { PageServerLoad } from './$types';
 import { supabase } from "$lib/server/supabaseServiceClient";
 
-export const load: PageServerLoad = async ({ cookies }) => {
+export const load: PageServerLoad = async ({ locals }) => {
   let myEvents: Array<{ id: string; title: string; start_date?: string; end_date?: string }> = [];
 
   try {
-    const sbUser = cookies.get('sb_user');
-    if (!sbUser) return { myEvents };
-
-    let user: { id?: string } | null = null;
-    try {
-      user = JSON.parse(sbUser);
-    } catch (e) {
-      console.warn('[admin/events] failed to parse sb_user cookie', e);
-      return { myEvents };
-    }
-
-    if (!user?.id) return { myEvents };
+    const { user } = await locals.safeGetSession();
+    if (!user) return { myEvents };
 
     const { data, error } = await supabase
       .from('event_participants')

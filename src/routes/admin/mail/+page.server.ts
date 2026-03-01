@@ -2,12 +2,10 @@ import { supabase } from '$lib/server/supabaseServiceClient';
 import { sendMassEmail } from '$lib/server/email';
 import { fail, redirect } from '@sveltejs/kit';
 
-export const load = async ({ cookies }) => {
-  const sbUser = cookies.get('sb_user');
-  if (!sbUser) throw redirect(303, '/signin');
-
-  const user = JSON.parse(sbUser);
-  if (!user.userRole?.includes('Owner')) throw redirect(303, '/');
+export const load = async ({ locals }) => {
+  const { user } = await locals.safeGetSession();
+  if (!user) throw redirect(303, '/signin');
+  if (!locals.userRole.includes('Owner')) throw redirect(303, '/');
 
   // Fetch all events for the selector
   const { data: events } = await supabase
@@ -20,11 +18,10 @@ export const load = async ({ cookies }) => {
 
 export const actions = {
   // Load recipients for selected event — called on event select
-getRecipients: async ({ request, cookies }) => {
-  const sbUser = cookies.get('sb_user');
-  if (!sbUser) return fail(401, { message: 'Not authenticated' });
-  const user = JSON.parse(sbUser);
-  if (!user.userRole?.includes('Owner')) return fail(403, { message: 'Access denied' });
+getRecipients: async ({ request, locals }) => {
+  const { user } = await locals.safeGetSession();
+  if (!user) return fail(401, { message: 'Not authenticated' });
+  if (!locals.userRole.includes('Owner')) return fail(403, { message: 'Access denied' });
 
   const form = await request.formData();
   const eventId = form.get('event_id')?.toString();
@@ -73,11 +70,10 @@ getRecipients: async ({ request, cookies }) => {
 },
 
   // Actually send the mass email
-  send: async ({ request, cookies }) => {
-    const sbUser = cookies.get('sb_user');
-    if (!sbUser) return fail(401, { message: 'Not authenticated' });
-    const user = JSON.parse(sbUser);
-    if (!user.userRole?.includes('Owner')) return fail(403, { message: 'Access denied' });
+  send: async ({ request, locals }) => {
+    const { user } = await locals.safeGetSession();
+    if (!user) return fail(401, { message: 'Not authenticated' });
+    if (!locals.userRole.includes('Owner')) return fail(403, { message: 'Access denied' });
 
     const form = await request.formData();
     const subject = form.get('subject')?.toString();

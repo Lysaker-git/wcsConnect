@@ -3,14 +3,11 @@ import { error as svelteError, fail } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { sendRegistrationApprovedEmail } from '$lib/server/email';
 
-export const load: PageServerLoad = async ({ params, cookies }) => {
+export const load: PageServerLoad = async ({ params, locals }) => {
   const { eventId } = params;
 
-  const sbUser = cookies.get('sb_user');
-  if (!sbUser) throw svelteError(401, 'Not authenticated');
-
-  let user: any;
-  try { user = JSON.parse(sbUser); } catch { throw svelteError(401, 'Invalid session'); }
+  const { user } = await locals.safeGetSession();
+  if (!user) throw svelteError(401, 'Not authenticated');
 
   // Verify ED
   const { data: edCheck } = await supabase
@@ -77,14 +74,11 @@ export const load: PageServerLoad = async ({ params, cookies }) => {
 };
 
 export const actions: Actions = {
-  approve: async ({ request, params, cookies }) => {
+  approve: async ({ request, params, locals }) => {
     const { eventId } = params;
 
-    const sbUser = cookies.get('sb_user');
-    if (!sbUser) return fail(401, { message: 'Not authenticated' });
-
-    let user: any;
-    try { user = JSON.parse(sbUser); } catch { return fail(401, { message: 'Invalid session' }); }
+    const { user } = await locals.safeGetSession();
+    if (!user) return fail(401, { message: 'Not authenticated' });
 
     const { data: edCheck } = await supabase
       .from('event_participants')
@@ -142,13 +136,11 @@ export const actions: Actions = {
     return { success: true };
   },
 
-  reject: async ({ request, params, cookies }) => {
+  reject: async ({ request, params, locals }) => {
     const { eventId } = params;
-    const sbUser = cookies.get('sb_user');
-    if (!sbUser) return fail(401, { message: 'Not authenticated' });
 
-    let user: any;
-    try { user = JSON.parse(sbUser); } catch { return fail(401, { message: 'Invalid session' }); }
+    const { user } = await locals.safeGetSession();
+    if (!user) return fail(401, { message: 'Not authenticated' });
 
     const { data: edCheck } = await supabase
       .from('event_participants')

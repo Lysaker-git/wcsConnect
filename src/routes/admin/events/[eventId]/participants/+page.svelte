@@ -77,6 +77,11 @@
     <p class="text-stone-400 text-sm mt-1">{data.event?.title}</p>
   </div>
 
+  <a href="/admin/events/{data.event?.id}/approval"
+    class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-bold rounded-xl transition">
+    Open approval queue →
+  </a>
+
   <!-- Search -->
   <div class="mb-6">
     <input
@@ -208,7 +213,7 @@
 
           <!-- Right: action buttons -->
           <div class="flex gap-2 flex-shrink-0">
-            {#if participant.status !== 'approved'}
+            <!-- {#if participant.status !== 'approved'}
               <form
                 method="POST"
                 action="?/approve"
@@ -224,7 +229,7 @@
                   Approve
                 </button>
               </form>
-            {/if}
+            {/if} -->
 
             {#if participant.status !== 'rejected'}
               <form

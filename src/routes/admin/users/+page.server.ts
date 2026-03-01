@@ -2,16 +2,12 @@ import { error, fail } from '@sveltejs/kit';
 import { supabase } from '$lib/server/supabaseServiceClient';
 import type { PageServerLoad, Actions } from './$types';
 
-export const load: PageServerLoad = async ({ cookies }) => {
-  const sbUser = cookies.get('sb_user');
-  if (!sbUser) throw error(401, 'Not authenticated');
-
-  let user: any;
-  try { user = JSON.parse(sbUser); } catch { throw error(401, 'Invalid session'); }
+export const load: PageServerLoad = async ({ locals }) => {
+  const { user } = await locals.safeGetSession();
+  if (!user) throw error(401, 'Not authenticated');
 
   // Only Owners can access this page
-  const roles: string[] = user.userRole ?? [];
-  if (!roles.includes('Owner')) throw error(403, 'Not authorized');
+  if (!locals.userRole.includes('Owner')) throw error(403, 'Not authorized');
 
   // Fetch all profiles
   const { data: profiles, error: profilesError } = await supabase
@@ -25,15 +21,10 @@ export const load: PageServerLoad = async ({ cookies }) => {
 };
 
 export const actions: Actions = {
-  updateRole: async ({ request, cookies }) => {
-    const sbUser = cookies.get('sb_user');
-    if (!sbUser) return fail(401, { message: 'Not authenticated' });
-
-    let user: any;
-    try { user = JSON.parse(sbUser); } catch { return fail(401, { message: 'Invalid session' }); }
-
-    const roles: string[] = user.userRole ?? [];
-    if (!roles.includes('Owner')) return fail(403, { message: 'Not authorized' });
+  updateRole: async ({ request, locals }) => {
+    const { user } = await locals.safeGetSession();
+    if (!user) return fail(401, { message: 'Not authenticated' });
+    if (!locals.userRole.includes('Owner')) return fail(403, { message: 'Not authorized' });
 
     const form = await request.formData();
     const profile_id = form.get('profile_id')?.toString();

@@ -1,24 +1,17 @@
-import { supabase } from '$lib/server/supabaseServiceClient';
-import { getUserClient } from '$lib/server/supabaseUserClient';
 import { error as svelteError, fail } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { redirect } from '@sveltejs/kit';
 
-export const load: PageServerLoad = async ({ params, cookies }) => {
+export const load: PageServerLoad = async ({ params, locals }) => {
+  const db = locals.supabase;
   const { registrationID } = params;
 
-  const sbUser = cookies.get('sb_user');
-  if (!sbUser) throw redirect(
+  const { user } = await locals.safeGetSession();
+  if (!user) throw redirect(
     303, 
     params.registrationID ? `/signin?redirect=/profile/${params.registrationID}` : '/signin'
   );
 
-  
-
-  let user: any;
-  try { user = JSON.parse(sbUser); } catch { throw svelteError(401, 'Invalid session'); }
-
-  const db = getUserClient(cookies);
   if (!db) throw svelteError(401, 'Session expired');
 
   // Fetch participant — RLS ensures it belongs to this user
@@ -104,15 +97,13 @@ export const load: PageServerLoad = async ({ params, cookies }) => {
 
 export const actions: Actions = {
 
-  addProduct: async ({ request, params, cookies }) => {
+  addProduct: async ({ request, params, cookies, locals }) => {
+      const db = locals.supabase;
     const { registrationID } = params;
 
-    const sbUser = cookies.get('sb_user');
-    if (!sbUser) return fail(401, { message: 'Not authenticated' });
-    let user: any;
-    try { user = JSON.parse(sbUser); } catch { return fail(401, { message: 'Invalid session' }); }
+    const { user } = await locals.safeGetSession();
+    if (!user) return fail(401, { message: 'Not authenticated' });
 
-    const db = getUserClient(cookies);
     if (!db) return fail(401, { message: 'Session expired' });
 
     // Verify ownership via user client
@@ -176,7 +167,7 @@ export const actions: Actions = {
     }
 
     // Insert + quantity update via service role (inventory management)
-    const { error: insertError } = await supabase
+    const { error: insertError } = await db
       .from('participant_products')
       .insert({
         participant_id: registrationID,
@@ -194,7 +185,7 @@ export const actions: Actions = {
 
     if (insertError) return fail(500, { message: insertError.message });
 
-    await supabase
+    await db
       .from('products')
       .update({ quantity_sold: (product.quantity_sold ?? 0) + quantity })
       .eq('id', product.id);
@@ -202,16 +193,12 @@ export const actions: Actions = {
     return { success: true };
   },
 
-  updateRegistration: async ({ request, params, cookies }) => {
+  updateRegistration: async ({ request, params, cookies, locals }) => {
+    const db = locals.supabase;
     const { registrationID } = params;
 
-    const sbUser = cookies.get('sb_user');
-    if (!sbUser) return fail(401, { message: 'Not authenticated' });
-    let user: any;
-    try { user = JSON.parse(sbUser); } catch { return fail(401, { message: 'Invalid session' }); }
-
-    const db = getUserClient(cookies);
-    if (!db) return fail(401, { message: 'Session expired' });
+    const { user } = await locals.safeGetSession();
+    if (!user) return fail(401, { message: 'Not authenticated' });
 
     // Verify ownership via user client
     const { data: participant } = await db
@@ -292,7 +279,7 @@ export const actions: Actions = {
       if (existingTicket && existingTicket.product_id === newProduct.id) {
         // Same ticket — apply promo only
         if (promo_code && promo_discount > 0) {
-          await supabase
+          await db
             .from('participant_products')
             .update({
               unit_price: newUnitPrice,
@@ -303,7 +290,7 @@ export const actions: Actions = {
         }
       } else if (existingTicket) {
         // Swap ticket
-        const { error: ppError } = await supabase
+        const { error: ppError } = await db
           .from('participant_products')
           .update({
             product_id: newProduct.id,
@@ -318,23 +305,23 @@ export const actions: Actions = {
         if (ppError) return fail(500, { message: ppError.message });
 
         // Adjust quantities on both products
-        const { data: oldProduct } = await supabase
+        const { data: oldProduct } = await db
           .from('products').select('quantity_sold').eq('id', existingTicket.product_id).single();
         const qty = existingTicket.quantity_ordered ?? 1;
 
-        await supabase
+        await db
           .from('products')
           .update({ quantity_sold: Math.max((oldProduct?.quantity_sold ?? 0) - qty, 0) })
           .eq('id', existingTicket.product_id);
 
-        await supabase
+        await db
           .from('products')
           .update({ quantity_sold: (newProduct.quantity_sold ?? 0) + qty })
           .eq('id', newProduct.id);
 
       } else {
         // No existing ticket — insert new
-        const { error: insertError } = await supabase
+        const { error: insertError } = await db
           .from('participant_products')
           .insert({
             participant_id: registrationID,
@@ -352,7 +339,7 @@ export const actions: Actions = {
 
         if (insertError) return fail(500, { message: insertError.message });
 
-        await supabase
+        await db
           .from('products')
           .update({ quantity_sold: (newProduct.quantity_sold ?? 0) + 1 })
           .eq('id', newProduct.id);
@@ -361,18 +348,18 @@ export const actions: Actions = {
 
     // Apply promo to existing tickets when no swap
     if (promo_code && promo_discount > 0 && !ticket_product_id) {
-      const { data: tickets } = await supabase
+      const { data: tickets } = await db
         .from('participant_products')
         .select('id, product_id, quantity_ordered')
         .eq('participant_id', registrationID)
         .eq('product_type', 'ticket');
 
       for (const t of tickets ?? []) {
-        const { data: product } = await supabase
+        const { data: product } = await db
           .from('products').select('price').eq('id', t.product_id).single();
         if (product) {
           const unitPrice = parseFloat(product.price) * (1 - promo_discount / 100);
-          await supabase
+          await db
             .from('participant_products')
             .update({
               unit_price: unitPrice,

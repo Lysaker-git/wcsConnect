@@ -4,15 +4,11 @@ import type { PageServerLoad } from './$types';
 
 const PLATFORM_FEE_PERCENT = 0.01;
 
-export const load: PageServerLoad = async ({ params, cookies }) => {
+export const load: PageServerLoad = async ({ params, locals }) => {
   const { eventId } = params;
 
-  // Auth check
-  const sbUser = cookies.get('sb_user');
-  if (!sbUser) throw error(401, 'Not authenticated');
-
-  let user: any;
-  try { user = JSON.parse(sbUser); } catch { throw error(401, 'Invalid session'); }
+  const { user } = await locals.safeGetSession();
+  if (!user) throw error(401, 'Not authenticated');
 
   // Verify this user is the Event Director for this event
   const { data: edCheck } = await supabase
