@@ -29,6 +29,14 @@ export const POST: RequestHandler = async ({ request }) => {
     return json({ error: 'Missing metadata' }, { status: 400 });
   }
 
+  // Resolve the py_ charge ID (what Stripe dashboard shows) from the pi_ payment intent
+  const paymentIntentId = session.payment_intent as string;
+  let chargeId: string | null = null;
+  if (paymentIntentId) {
+    const pi = await stripe.paymentIntents.retrieve(paymentIntentId);
+    chargeId = typeof pi.latest_charge === 'string' ? pi.latest_charge : (pi.latest_charge as any)?.id ?? null;
+  }
+
   const isAccommodationPayment = type?.startsWith('accommodation_');
 
   // Only mark participant_products as paid for ticket/product payments
@@ -52,7 +60,7 @@ export const POST: RequestHandler = async ({ request }) => {
 
     await supabase
       .from('event_participants')
-      .update({ stripe_payment_intent_id: session.payment_intent as string })
+      .update({ stripe_payment_intent_id: paymentIntentId })
       .eq('id', participant_id);
 
     // Build totals for the invoice
@@ -67,7 +75,8 @@ export const POST: RequestHandler = async ({ request }) => {
       .from('invoices')
       .insert({
         participant_id,
-        stripe_payment_intent_id: session.payment_intent as string,
+        stripe_payment_intent_id: paymentIntentId,
+        stripe_charge_id: chargeId,
         stripe_session_id: session.id,
         buyer_name: session.metadata?.buyer_name ?? null,
         buyer_email: session.customer_details?.email ?? null,
@@ -239,7 +248,8 @@ export const POST: RequestHandler = async ({ request }) => {
             .insert({
               participant_id,
               hotel_booking_id: hotelBookingId,
-              stripe_payment_intent_id: session.payment_intent as string,
+              stripe_payment_intent_id: paymentIntentId,
+              stripe_charge_id: chargeId,
               stripe_session_id: session.id,
               buyer_name:  session.metadata?.buyer_name ?? null,
               buyer_email: session.customer_details?.email ?? null,

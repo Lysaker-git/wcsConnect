@@ -103,3 +103,7 @@ ALTER TABLE hotel_bookings
 -- 11. Link invoices to hotel_bookings (accommodation payments get their own invoice per transaction)
 ALTER TABLE invoices
   ADD COLUMN IF NOT EXISTS hotel_booking_id uuid REFERENCES hotel_bookings(id) ON DELETE SET NULL;
+
+-- 12. Store Stripe charge ID (py_xxx) alongside payment intent (pi_xxx) for easy dashboard lookup
+ALTER TABLE invoices
+  ADD COLUMN IF NOT EXISTS stripe_charge_id text;
