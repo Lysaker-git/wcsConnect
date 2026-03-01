@@ -106,6 +106,28 @@
     $: stripeFeePreview = stripe_fee_model === 'on_top' ? (cartSubtotal - ticketSaving) * 0.035 : 0;
     $: previewServiceFee = (cartSubtotal - ticketSaving) * 0.01;
     $: previewTotal = cartSubtotal - ticketSaving + stripeFeePreview + previewServiceFee;
+
+    // MVA breakdown — informational only, already included in prices
+    $: totalMVA = [
+        ...(selectedTicket ? [{
+            price: discountedTicketPrice,
+            mva_rate: products.find(p => p.id === selectedTicket)?.mva_rate ?? 0
+        }] : []),
+        ...products
+            .filter(p => selectedIntensives[p.id])
+            .map(p => ({
+                price: p.discount_percent ? parseFloat(p.price) * (1 - p.discount_percent / 100) : parseFloat(p.price),
+                mva_rate: p.mva_rate ?? 0
+            })),
+        ...products
+            .filter(p => (selectedProducts[p.id] ?? 0) > 0)
+            .map(p => ({
+                price: (p.discount_percent ? parseFloat(p.price) * (1 - p.discount_percent / 100) : parseFloat(p.price)) * (selectedProducts[p.id] || 0),
+                mva_rate: p.mva_rate ?? 0
+            }))
+    ].reduce((sum, item) => item.mva_rate > 0
+        ? sum + item.price * item.mva_rate / (100 + item.mva_rate)
+        : sum, 0);
     $: selectedCount = 
         (selectedTicket ? 1 : 0) +
         Object.values(selectedIntensives).filter(Boolean).length +
@@ -591,6 +613,12 @@
                         <span>Estimated total</span>
                         <span class="text-blue-600">{previewTotal.toFixed(2)} {products[0]?.currency_type || 'EUR'}</span>
                         </div>
+                        {#if totalMVA > 0}
+                        <div class="flex justify-between text-xs text-stone-500 pt-1">
+                            <span>of which MVA (incl.)</span>
+                            <span>{totalMVA.toFixed(2)} {products[0]?.currency_type || 'EUR'}</span>
+                        </div>
+                        {/if}
                     </div>
                 {/if}
 

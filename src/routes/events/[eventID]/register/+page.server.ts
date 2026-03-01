@@ -126,7 +126,7 @@ export const actions = {
             // Everything below uses service role — inventory management
             const { data: productData, error: productError } = await db
                 .from('products')
-                .select('id, name, quantity_total, quantity_sold, currency_type, price, product_type, product_group_id')
+                .select('id, name, quantity_total, quantity_sold, currency_type, price, product_type, product_group_id, mva_rate')
                 .in('id', selectedProducts.map(p => p.productID));
 
             if (productError || !productData) {
@@ -197,6 +197,11 @@ export const actions = {
                 if (promo_code && promo_discount > 0 && product.product_type === 'ticket') {
                     unitPrice = unitPrice * (1 - promo_discount / 100);
                 }
+                const subtotal = unitPrice * sp.quantity;
+                const mva_rate = parseFloat(product.mva_rate?.toString() || '0');
+                const mva_amount = mva_rate > 0
+                    ? Math.round((subtotal * mva_rate / (100 + mva_rate)) * 100) / 100
+                    : 0;
                 return {
                     participant_id: participantData.id,
                     product_id: product.id,
@@ -204,11 +209,13 @@ export const actions = {
                     product_type: product.product_type || 'Other',
                     quantity_ordered: sp.quantity,
                     currency_type: product.currency_type,
-                    subtotal: unitPrice * sp.quantity,
+                    subtotal,
                     payment_status: 'pending',
                     confirmation_status: 'pending',
                     unit_price: unitPrice,
-                    promo_code_used: promo_code
+                    promo_code_used: promo_code,
+                    mva_rate,
+                    mva_amount
                 };
             });
 

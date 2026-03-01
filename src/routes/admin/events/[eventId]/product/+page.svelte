@@ -37,6 +37,7 @@
   let max_per_user = '';
   let discount_percent = '';
   let room_capacity = '';
+  let mva_rate = 0;
   let showCreateGroup = false;
   let newGroupName = '';
   let newGroupQuantity = '';
@@ -58,6 +59,7 @@ $: remaining = (g: any) => g.quantity_total - (g.quantity_sold ?? 0);
     is_active = true; max_per_user = '';
     discount_percent = '';
     room_capacity = '';
+    mva_rate = 0;
     product_group_id = '';
   }
 
@@ -80,6 +82,7 @@ $: remaining = (g: any) => g.quantity_total - (g.quantity_sold ?? 0);
     showEdit = true;
     discount_percent = product.discount_percent?.toString() ?? '';
     room_capacity = product.room_capacity?.toString() ?? '';
+    mva_rate = product.mva_rate ?? 0;
     product_group_id = product.product_group_id ?? '';
   }
 
@@ -298,6 +301,16 @@ $: remaining = (g: any) => g.quantity_total - (g.quantity_sold ?? 0);
     </p>
     </div>
   <div>
+    <label class="block text-sm font-medium text-stone-300 mb-1">MVA / Moms rate (%)</label>
+    <select name="mva_rate" bind:value={mva_rate}
+      class="w-full px-4 py-2.5 rounded-xl bg-stone-900 border border-stone-700 text-stone-100 focus:outline-none focus:border-amber-500">
+      <option value={0}>0% — No MVA (courses, intensives, etc.)</option>
+      <option value={25}>25% — Standard MVA (party passes, social events)</option>
+    </select>
+    <p class="text-xs text-stone-500 mt-1">MVA is calculated inclusive of price (e.g. 1000 NOK at 25% = 200 NOK MVA)</p>
+  </div>
+
+  <div>
     <label class="block text-sm font-medium text-stone-300 mb-1">Product Type *</label>
     <select name="product_type" bind:value={product_type} required
       class="w-full px-4 py-2.5 rounded-xl bg-stone-900 border border-stone-700 text-stone-100 focus:outline-none focus:border-amber-500">
@@ -486,6 +499,9 @@ $: remaining = (g: any) => g.quantity_total - (g.quantity_sold ?? 0);
               Unlimited
             {/if}
           </span>
+          {#if product.mva_rate > 0}
+            <span class="text-amber-400">MVA {product.mva_rate}%</span>
+          {/if}
         </div>
 
         <!-- Group assignment dropdown -->

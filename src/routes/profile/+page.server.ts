@@ -125,6 +125,10 @@ export const actions = {
       const country = form.get('country')?.toString();
       const age = form.get('age')?.toString();
       const avatar_url = form.get('avatar')?.toString();
+      const organizer_name       = form.get('organizer_name')?.toString() || null;
+      const organizer_org_number = form.get('organizer_org_number')?.toString() || null;
+      const organizer_address    = form.get('organizer_address')?.toString() || null;
+      const organizer_email      = form.get('organizer_email')?.toString() || null;
 
       const { error } = await db
         .from('profiles')
@@ -137,6 +141,10 @@ export const actions = {
           wsdcLevel,
           country,
           age: age || null,
+          organizer_name,
+          organizer_org_number,
+          organizer_address,
+          organizer_email,
           updated_at: new Date().toISOString()
         })
         .eq('id', user.id);

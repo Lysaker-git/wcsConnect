@@ -72,6 +72,7 @@ export const actions: Actions = {
       ? parseInt(form.get('room_capacity')!.toString())
       : null;
     const product_group_id = form.get('product_group_id')?.toString() || null;
+    const mva_rate = parseFloat(form.get('mva_rate')?.toString() || '0');
 
     if (!name || !product_type || price < 0) return fail(400, { message: 'Missing required fields' });
 
@@ -94,7 +95,8 @@ export const actions: Actions = {
         max_per_user,
         discount_percent,
         room_capacity,
-        product_group_id
+        product_group_id,
+        mva_rate
       });
 
     if (error) return fail(500, { message: error.message });
@@ -128,26 +130,28 @@ export const actions: Actions = {
       ? parseInt(form.get('room_capacity')!.toString())
       : null;
     const product_group_id = form.get('product_group_id')?.toString() || null;
+    const mva_rate = parseFloat(form.get('mva_rate')?.toString() || '0');
     if (!productId || !name || !product_type) return fail(400, { message: 'Missing required fields' });
 
     const { error } = await supabase
       .from('products')
       .update({
-        name, 
-        description, 
-        price, 
-        product_type, 
+        name,
+        description,
+        price,
+        product_type,
         currency_type,
-        sale_start, 
-        sale_end, 
-        quantity_total, 
+        sale_start,
+        sale_end,
+        quantity_total,
         leader_limit,
-        follower_limit, 
-        is_active, 
-        max_per_user, 
+        follower_limit,
+        is_active,
+        max_per_user,
         discount_percent,
         room_capacity,
         product_group_id,
+        mva_rate,
       })
       .eq('id', productId)
       .eq('event_id', eventId);

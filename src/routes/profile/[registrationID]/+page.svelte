@@ -51,6 +51,10 @@
   $: serviceFee = unpaidTotal * 0.01;
   $: grandTotal = unpaidTotal + stripeFee + serviceFee;
 
+  // ─── MVA breakdown — informational only, already included in prices ───────
+  $: unpaidMVA = unpaidProducts.reduce((sum, p) => sum + parseFloat(p.mva_amount ?? '0'), 0);
+  $: paidMVA = paidProducts.reduce((sum, p) => sum + parseFloat(p.mva_amount ?? '0'), 0);
+
   // ─── Product grouping ─────────────────────────────────────────────────────
   const productTypeLabels: Record<string, string> = {
     intensive: '🎓 Intensives',
@@ -437,6 +441,12 @@
           <span class="text-stone-400">Total paid</span>
           <span class="text-green-400">{data.paidTotal.toFixed(2)} {paidProducts[0]?.currency_type}</span>
         </div>
+        {#if paidMVA > 0}
+          <div class="flex justify-between text-xs text-stone-500 mt-1">
+            <span>of which MVA (incl.)</span>
+            <span>{paidMVA.toFixed(2)} {paidProducts[0]?.currency_type}</span>
+          </div>
+        {/if}
       </div>
     {/if}
 
@@ -475,6 +485,12 @@
             <span>Total due</span>
             <span class="text-amber-400">{grandTotal.toFixed(2)} {unpaidProducts[0]?.currency_type}</span>
           </div>
+          {#if unpaidMVA > 0}
+            <div class="flex justify-between text-xs text-stone-500 mt-1">
+              <span>of which MVA (incl.)</span>
+              <span>{unpaidMVA.toFixed(2)} {unpaidProducts[0]?.currency_type}</span>
+            </div>
+          {/if}
         </div>
 
         {#if checkoutError}
