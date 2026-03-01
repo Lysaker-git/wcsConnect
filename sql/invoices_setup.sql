@@ -95,3 +95,11 @@ ALTER TABLE profiles
 --     mva_amount = ROUND(subtotal * 25.0 / 125.0, 2)
 -- WHERE product_name ILIKE '%party pass%'
 --   AND mva_rate = 0;
+
+-- 10. Hotel membership ID on hotel_bookings
+ALTER TABLE hotel_bookings
+  ADD COLUMN IF NOT EXISTS hotel_membership_id text;
+
+-- 11. Link invoices to hotel_bookings (accommodation payments get their own invoice per transaction)
+ALTER TABLE invoices
+  ADD COLUMN IF NOT EXISTS hotel_booking_id uuid REFERENCES hotel_bookings(id) ON DELETE SET NULL;
