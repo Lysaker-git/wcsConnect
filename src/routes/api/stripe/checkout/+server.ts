@@ -1,35 +1,24 @@
 import Stripe from 'stripe';
-import { STRIPE_SECRET_KEY, SUPABASE_SERVICE_ROLE_KEY } from '$env/static/private';
-import { PUBLIC_SUPABASE_URL } from '$env/static/public';
-import { createClient } from '@supabase/supabase-js';
-import { json, redirect } from '@sveltejs/kit';
+import { STRIPE_SECRET_KEY } from '$env/static/private';
+import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
 const stripe = new Stripe(STRIPE_SECRET_KEY);
-const PLATFORM_FEE_PERCENT = 0.01; // 1%
 
-export const POST: RequestHandler = async ({ request, cookies, url }) => {
-  // 1. Get user from cookies
-  const sbUser = cookies.get('sb_user');
-  if (!sbUser) return json({ error: 'Not authenticated' }, { status: 401 });
-
-  let user: any;
-  try {
-    user = JSON.parse(sbUser);
-  } catch {
-    return json({ error: 'Invalid session' }, { status: 401 });
-  }
+export const POST: RequestHandler = async ({ request, locals, url }) => {
+  const db = locals.supabase;
+  // 1. Get user from session
+  const { user } = await locals.safeGetSession();
+  if (!user) return json({ error: 'Not authenticated' }, { status: 401 });
 
   // 2. Get the participant_id from the request body
   const { participant_id } = await request.json();
   if (!participant_id) return json({ error: 'Missing participant_id' }, { status: 400 });
 
-  const supabase = createClient(PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-
   // 3. Verify this participant row belongs to this user
-  const { data: participant, error: participantError } = await supabase
+  const { data: participant, error: participantError } = await db
     .from('event_participants')
-    .select('id, event_id, user_id')
+    .select('id, event_id, user_id, events ( title )')
     .eq('id', participant_id)
     .eq('user_id', user.id)
     .single();
@@ -38,8 +27,18 @@ export const POST: RequestHandler = async ({ request, cookies, url }) => {
     return json({ error: 'Participant not found' }, { status: 404 });
   }
 
+  // Fetch buyer's display name
+  const { data: buyerProfile } = await db
+    .from('profiles')
+    .select('username')
+    .eq('id', user.id)
+    .single();
+
+  const buyerName = buyerProfile?.username ?? user.email ?? 'Unknown';
+  const eventTitle = (participant.events as any)?.title ?? 'Event';
+
   // 4. Get all pending products in their cart
-  const { data: cartItems, error: cartError } = await supabase
+  const { data: cartItems, error: cartError } = await db
     .from('participant_products')
     .select('id, product_name, unit_price, quantity_ordered, subtotal, currency_type')
     .eq('participant_id', participant_id)
@@ -51,7 +50,7 @@ export const POST: RequestHandler = async ({ request, cookies, url }) => {
 
   // 5. Find the event organizer with a connected Stripe account
   // Look for Event Director first — they own the Stripe account
-  const { data: edParticipants, error: edError } = await supabase
+  const { data: edParticipants, error: edError } = await db
     .from('event_participants')
     .select('user_id')
     .eq('event_id', participant.event_id)
@@ -64,7 +63,7 @@ export const POST: RequestHandler = async ({ request, cookies, url }) => {
   // Find the ED who has Stripe connected
   const edUserIds = edParticipants.map(ep => ep.user_id);
 
-  const { data: organizers } = await supabase
+  const { data: organizers } = await db
     .from('profiles')
     .select('id, stripe_account_id, stripe_onboarding_complete')
     .in('id', edUserIds)
@@ -79,7 +78,7 @@ export const POST: RequestHandler = async ({ request, cookies, url }) => {
   }
 
   // 6. Fetch event's stripe_fee_model
-  const { data: eventData } = await supabase
+  const { data: eventData } = await db
       .from('events')
       .select('stripe_fee_model')
       .eq('id', participant.event_id)
@@ -133,17 +132,27 @@ export const POST: RequestHandler = async ({ request, cookies, url }) => {
     : url.origin;
   const session = await stripe.checkout.sessions.create({
     mode: 'payment',
+    payment_method_types: ['card'],
     line_items: lineItems,
     payment_intent_data: {
       application_fee_amount: applicationFee,
       transfer_data: {
         destination: organizer.stripe_account_id
+      },
+      description: `${eventTitle} — ${buyerName}`,
+      metadata: {
+        participant_id,
+        user_id: user.id,
+        buyer_name: buyerName,
+        event_title: eventTitle
       }
     },
     // Pass participant_id so the webhook knows what to update
     metadata: {
       participant_id,
-      user_id: user.id
+      user_id: user.id,
+      buyer_name: buyerName,
+      event_title: eventTitle
     },
     success_url: `${origin}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${origin}/checkout/cancel`

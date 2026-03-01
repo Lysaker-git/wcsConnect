@@ -1,4 +1,3 @@
-import { supabase } from '$lib/api/supabaseClient';
 import { json, type RequestHandler } from '@sveltejs/kit';
 
 export const POST: RequestHandler = async ({ params, request, locals }) => {
