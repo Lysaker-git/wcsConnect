@@ -1,9 +1,8 @@
 import { selectAllFromSupabase } from '$lib/api/selectFromSupabase';
-import { supabase } from '$lib/server/supabaseServiceClient';
-import { error as svelteError } from '@sveltejs/kit';
 
-export async function load() {
-  const { data: events, error } = await supabase
+export async function load( { locals } ) {
+  const db = locals.supabase;
+  const { data: events, error } = await db
     .from('events')
     .select('*')
     .eq('is_published', true)

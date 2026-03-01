@@ -418,10 +418,6 @@
         <div class="text-stone-400">Country</div>
         <div class="text-stone-100 font-medium">{participant.country ?? '—'}</div>
 
-        {#if participant.partner_name}
-          <div class="text-stone-400">Partner</div>
-          <div class="text-stone-100 font-medium">{participant.partner_name}</div>
-        {/if}
       </div>
     </div>
 

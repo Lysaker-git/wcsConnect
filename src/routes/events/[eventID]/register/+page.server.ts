@@ -1,20 +1,13 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { supabase } from '$lib/server/supabaseServiceClient';
-import { getUserClient } from '$lib/server/supabaseUserClient';
 
-export const load = async ({ params, cookies }) => {
-    const sbUser = cookies.get('sb_user');
+export const load = async ({ params, locals }) => {
+    const db = locals.supabase;
+    const { user } = await locals.safeGetSession();
     const eventID = params.eventID;
 
-    if (!sbUser) {
-        throw redirect(303, `/profile?redirect=/events/${params.eventID}/register`);
-    }
-
-    let user: any = null;
-    try {
-        user = JSON.parse(sbUser);
-    } catch {
-        throw redirect(303, '/signin');
+    if (!user) {
+        throw redirect(303, `/signin?redirect=/events/${params.eventID}/register`);
     }
 
     // auth.admin requires service role
@@ -24,7 +17,7 @@ export const load = async ({ params, cookies }) => {
         throw redirect(303, '/signup/verify-email?reason=unverified');
     }
 
-    // Check for existing registration — redirect if already registered
+    // Check for existing registration
     const { data: existingRegistration } = await supabase
         .from('event_participants')
         .select('id')
@@ -37,10 +30,7 @@ export const load = async ({ params, cookies }) => {
         throw redirect(303, `/profile/${existingRegistration.id}`);
     }
 
-    // Use user client for public reads
-    const db = getUserClient(cookies);
-    if (!db) throw redirect(303, '/signin');
-
+    // Profile fetch — user client via db
     let profile = null;
     try {
         const { data, error } = await db
@@ -53,7 +43,7 @@ export const load = async ({ params, cookies }) => {
         console.warn('[registration load] profile fetch error', e);
     }
 
-    // Check if registration is open
+    // Event data — public read via db
     const { data: eventData } = await db
         .from('events')
         .select('registration_opens, stripe_fee_model')
@@ -64,7 +54,7 @@ export const load = async ({ params, cookies }) => {
         throw redirect(303, `/events/${eventID}`);
     }
 
-    // Fetch products
+    // Products — public read via db
     let products: any[] = [];
     try {
         const now = new Date().toISOString();
@@ -77,7 +67,7 @@ export const load = async ({ params, cookies }) => {
             .or(`sale_end.is.null,sale_end.gte.${now}`);
 
         if (!error && data) {
-            products = data.filter(p => {
+            products = data.filter((p: any) => {
                 if (typeof p.quantity_total === 'number' && typeof p.quantity_sold === 'number') {
                     if (p.quantity_sold >= p.quantity_total) return false;
                 }
@@ -92,7 +82,7 @@ export const load = async ({ params, cookies }) => {
     }
 
     return {
-        user,
+        user: { id: user.id, email: user.email },
         profile,
         products,
         stripe_fee_model: eventData?.stripe_fee_model ?? 'on_top'
@@ -100,15 +90,15 @@ export const load = async ({ params, cookies }) => {
 };
 
 export const actions = {
-    register: async ({ request, params, cookies }) => {
+    register: async ({ request, params, locals }) => {
+        const db = locals.supabase;
         try {
             const formData = await request.formData();
             const eventID = params.eventID;
 
-            const sbUser = cookies.get('sb_user');
-            if (!sbUser) return fail(401, { message: 'Not authenticated' });
-
-            const user = JSON.parse(sbUser);
+            // Get user from session
+            const { user } = await locals.safeGetSession();
+            if (!user) return fail(401, { message: 'Not authenticated' });
             const userID = user.id;
 
             const role = formData.get('role')?.toString();
@@ -120,7 +110,6 @@ export const actions = {
             const promo_code = formData.get('promo_code')?.toString() || null;
             const promo_discount = parseFloat(formData.get('promo_discount')?.toString() || '0');
 
-            // Parse selected products
             const selectedProducts: Array<{ productID: string; quantity: number }> = [];
             Array.from(formData.entries()).forEach(([key, value]) => {
                 if (key.startsWith('product_')) {
@@ -134,8 +123,8 @@ export const actions = {
                 return fail(400, { message: 'Please select at least one product' });
             }
 
-            // Fetch products for availability check — service role for accurate counts
-            const { data: productData, error: productError } = await supabase
+            // Everything below uses service role — inventory management
+            const { data: productData, error: productError } = await db
                 .from('products')
                 .select('id, name, quantity_total, quantity_sold, currency_type, price, product_type, product_group_id')
                 .in('id', selectedProducts.map(p => p.productID));
@@ -144,7 +133,6 @@ export const actions = {
                 return fail(500, { message: 'Failed to fetch product information' });
             }
 
-            // Check individual product availability
             const soldOutProducts: string[] = [];
             for (const product of productData) {
                 const selectedQuantity = selectedProducts.find(p => p.productID === product.id)?.quantity || 0;
@@ -156,13 +144,12 @@ export const actions = {
                 return fail(400, { message: 'Some products are sold out', soldOutProducts, partial: true });
             }
 
-            // Check group pool availability
             const groupIds = [...new Set(
                 productData.filter(p => p.product_group_id).map(p => p.product_group_id)
             )];
 
             if (groupIds.length > 0) {
-                const { data: groups } = await supabase
+                const { data: groups } = await db
                     .from('product_groups')
                     .select('id, name, quantity_total, quantity_sold')
                     .in('id', groupIds);
@@ -182,8 +169,7 @@ export const actions = {
                 }
             }
 
-            // Insert participant
-            const { data: participantData, error: participantError } = await supabase
+            const { data: participantData, error: participantError } = await db
                 .from('event_participants')
                 .insert({
                     event_id: eventID,
@@ -205,7 +191,6 @@ export const actions = {
                 return fail(500, { message: 'Failed to create participant record' });
             }
 
-            // Build participant_products
             const participantProductsToInsert = selectedProducts.map(sp => {
                 const product = productData.find(p => p.id === sp.productID)!;
                 let unitPrice = parseFloat(product.price.toString());
@@ -227,31 +212,24 @@ export const actions = {
                 };
             });
 
-            const { error: ppError } = await supabase
+            const { error: ppError } = await db
                 .from('participant_products')
                 .insert(participantProductsToInsert);
 
             if (ppError) {
                 console.error('[registration] participant_products insert error:', ppError);
-                // Clean up participant record so they can re-register
-                await supabase.from('event_participants').delete().eq('id', participantData.id);
+                await db.from('event_participants').delete().eq('id', participantData.id);
                 return fail(500, { message: 'Failed to create participant products — please try again' });
             }
 
-            // Update individual product quantity_sold
             for (const sp of selectedProducts) {
                 const product = productData.find(p => p.id === sp.productID)!;
-                const { error: updateError } = await supabase
+                await db
                     .from('products')
                     .update({ quantity_sold: (product.quantity_sold || 0) + sp.quantity })
                     .eq('id', product.id);
-
-                if (updateError) {
-                    console.error(`[registration] quantity update error for ${product.name}:`, updateError);
-                }
             }
 
-            // Update group quantity_sold atomically
             const usedGroupIds = [...new Set(
                 productData.filter(p => p.product_group_id).map(p => p.product_group_id)
             )];
@@ -261,14 +239,10 @@ export const actions = {
                     .filter(sp => productData.find(p => p.id === sp.productID)?.product_group_id === groupId)
                     .reduce((sum, sp) => sum + sp.quantity, 0);
 
-                const { error: rpcError } = await supabase.rpc('increment_group_quantity_sold', {
+                await supabase.rpc('increment_group_quantity_sold', {
                     p_group_id: groupId,
                     p_amount: totalSold
                 });
-
-                if (rpcError) {
-                    console.error('[registration] group quantity RPC error:', rpcError);
-                }
             }
 
             const total = selectedProducts.reduce((sum, sp) => {
@@ -290,14 +264,15 @@ export const actions = {
         }
     },
 
-    validatePromo: async ({ request, params }) => {
+    validatePromo: async ({ request, params, locals }) => {
+        const db = locals.supabase;
         const form = await request.formData();
         const code = form.get('code')?.toString().toUpperCase().trim();
         if (!code) return fail(400, { promoError: 'Enter a promo code' });
 
         const today = new Date().toISOString().split('T')[0];
 
-        const { data: promo } = await supabase
+        const { data: promo } = await db
             .from('promo_codes')
             .select('*')
             .eq('event_id', params.eventID)

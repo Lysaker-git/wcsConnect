@@ -1,6 +1,7 @@
 import { supabase } from "$lib/server/supabaseServiceClient";
 
-export const load = async ({ params, url }) => {
+export const load = async ({ params, url, locals }) => {
+    const db = locals.supabase;
     const participantId = url.searchParams.get('participantId');
     const eventID = params.eventID;
 
@@ -13,7 +14,7 @@ export const load = async ({ params, url }) => {
 
     // Fetch event details to get event name
     try {
-        const { data: eventData, error: eventError } = await supabase
+        const { data: eventData, error: eventError } = await db
             .from('events')
             .select('id, title, stripe_fee_model')
             .eq('id', eventID)
@@ -31,7 +32,7 @@ export const load = async ({ params, url }) => {
     if (participantId) {
         // Fetch participant details
         try {
-            const { data: participantData, error: participantError } = await supabase
+            const { data: participantData, error: participantError } = await db
                 .from('event_participants')
                 .select('*')
                 .eq('id', participantId)
@@ -41,7 +42,7 @@ export const load = async ({ params, url }) => {
                 participant = participantData;
                 // Fetch username from profiles table using user_id
                 if (participant.user_id) {
-                    const { data: profileData, error: profileError } = await supabase
+                    const { data: profileData, error: profileError } = await db
                         .from('profiles')
                         .select('username')
                         .eq('id', participant.user_id)
@@ -59,7 +60,7 @@ export const load = async ({ params, url }) => {
 
         // Fetch participant products
         try {
-            const { data: productsData, error: productsError } = await supabase
+            const { data: productsData, error: productsError } = await db
                 .from('participant_products')
                 .select('*')
                 .eq('participant_id', participantId)

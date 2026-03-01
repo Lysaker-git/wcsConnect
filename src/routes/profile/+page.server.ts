@@ -1,21 +1,10 @@
 import { createEvent } from '$lib/api/createEvent';
 import { fail, redirect } from '@sveltejs/kit';
-import { getUserClient } from '$lib/server/supabaseUserClient';
 
-export const load = async ({ cookies }) => {
-  const sbUser = cookies.get('sb_user');
-  if (!sbUser) throw redirect(303, '/signin');
-
-  let user: any = null;
-  try {
-    user = JSON.parse(sbUser);
-  } catch {
-    throw redirect(303, '/signin');
-  }
-
-  // Use user client for all reads — RLS ensures they only see their own data
-  const db = getUserClient(cookies);
-  if (!db) throw redirect(303, '/signin');
+export const load = async ({ locals }) => {
+  const db = locals.supabase;
+  const { user } = await locals.safeGetSession();
+  if (!user) throw redirect(303, '/signin');
 
   // Fetch profile
   let profile = null;
@@ -37,12 +26,7 @@ export const load = async ({ cookies }) => {
       .from('event_participants')
       .select(`
         event_id,
-        events (
-          id,
-          title,
-          start_date,
-          end_date
-        )
+        events ( id, title, start_date, end_date )
       `)
       .eq('user_id', user.id)
       .eq('event_role', 'Event Director');
@@ -82,16 +66,14 @@ export const load = async ({ cookies }) => {
     console.warn('[profile load] registrations fetch error', e);
   }
 
-  return { user, profile, myEvents, myRegistrations };
+  return { user: { id: user.id, email: user.email }, profile, myEvents, myRegistrations };
 };
 
 export const actions = {
-  createEvent: async ({ request, cookies }) => {
+  createEvent: async ({ request, locals }) => {
     try {
-      const sbUser = cookies.get('sb_user');
-      if (!sbUser) return fail(401, { success: false, message: 'Not authenticated' });
-
-      const user = JSON.parse(sbUser);
+      const { user } = await locals.safeGetSession();
+      if (!user) return fail(401, { success: false, message: 'Not authenticated' });
 
       const contentType = request.headers.get('content-type') ?? '';
       let title: string | undefined;
@@ -114,7 +96,7 @@ export const actions = {
         return fail(400, { success: false, message: 'Missing required fields' });
       }
 
-      // Service role needed here — createEvent inserts on behalf of user
+      // Service role needed — createEvent does multi-table orchestration
       const result = await createEvent({ title, start_date, end_date }, user.id);
 
       if ((result as any).error) {
@@ -128,15 +110,11 @@ export const actions = {
     }
   },
 
-  updateProfile: async ({ request, cookies }) => {
+  updateProfile: async ({ request, locals }) => {
     try {
-      // Use user client — RLS allows users to update their own profile
-      const db = getUserClient(cookies);
-      if (!db) return fail(401, { success: false, message: 'Not authenticated' });
-
-      const sbUser = cookies.get('sb_user');
-      if (!sbUser) return fail(401, { success: false, message: 'Not authenticated' });
-      const user = JSON.parse(sbUser);
+      const db = locals.supabase;
+      const { user } = await locals.safeGetSession();
+      if (!user) return fail(401, { success: false, message: 'Not authenticated' });
 
       const form = await request.formData();
       const username = form.get('username')?.toString();

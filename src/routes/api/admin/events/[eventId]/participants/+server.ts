@@ -1,11 +1,12 @@
 import { supabase } from '$lib/api/supabaseClient';
 import { json, type RequestHandler } from '@sveltejs/kit';
 
-export const GET: RequestHandler = async ({ params }) => {
+export const GET: RequestHandler = async ({ params, locals }) => {
   try {
     const { eventId } = params;
+    const db = locals.supabase;
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('event_participants')
       .select(`
         id,

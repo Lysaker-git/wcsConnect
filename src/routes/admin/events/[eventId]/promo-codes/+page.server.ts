@@ -22,14 +22,11 @@ async function verifyAccess(eventId: string, userId: string) {
   return !!ed;
 }
 
-export const load: PageServerLoad = async ({ params, cookies }) => {
+export const load: PageServerLoad = async ({ params, locals }) => {
   const { eventId } = params;
 
-  const sbUser = cookies.get('sb_user');
-  if (!sbUser) throw svelteError(401, 'Not authenticated');
-
-  let user: any;
-  try { user = JSON.parse(sbUser); } catch { throw svelteError(401, 'Invalid session'); }
+  const { user } = await locals.safeGetSession();
+  if (!user) throw svelteError(401, 'Not authenticated');
 
   if (!(await verifyAccess(eventId, user.id))) throw svelteError(403, 'Access denied');
 
@@ -49,14 +46,11 @@ export const load: PageServerLoad = async ({ params, cookies }) => {
 };
 
 export const actions: Actions = {
-  createCode: async ({ request, params, cookies }) => {
+  createCode: async ({ request, params, locals }) => {
     const { eventId } = params;
 
-    const sbUser = cookies.get('sb_user');
-    if (!sbUser) return fail(401, { message: 'Not authenticated' });
-
-    let user: any;
-    try { user = JSON.parse(sbUser); } catch { return fail(401, { message: 'Invalid session' }); }
+    const { user } = await locals.safeGetSession();
+    if (!user) return fail(401, { message: 'Not authenticated' });
 
     if (!(await verifyAccess(eventId, user.id))) return fail(403, { message: 'Access denied' });
 
@@ -94,14 +88,11 @@ export const actions: Actions = {
     return { success: true };
   },
 
-  toggleCode: async ({ request, params, cookies }) => {
+  toggleCode: async ({ request, params, locals }) => {
     const { eventId } = params;
 
-    const sbUser = cookies.get('sb_user');
-    if (!sbUser) return fail(401, { message: 'Not authenticated' });
-
-    let user: any;
-    try { user = JSON.parse(sbUser); } catch { return fail(401, { message: 'Invalid session' }); }
+    const { user } = await locals.safeGetSession();
+    if (!user) return fail(401, { message: 'Not authenticated' });
 
     if (!(await verifyAccess(eventId, user.id))) return fail(403, { message: 'Access denied' });
 
@@ -119,14 +110,11 @@ export const actions: Actions = {
     return { success: true };
   },
 
-  deleteCode: async ({ request, params, cookies }) => {
+  deleteCode: async ({ request, params, locals }) => {
     const { eventId } = params;
 
-    const sbUser = cookies.get('sb_user');
-    if (!sbUser) return fail(401, { message: 'Not authenticated' });
-
-    let user: any;
-    try { user = JSON.parse(sbUser); } catch { return fail(401, { message: 'Invalid session' }); }
+    const { user } = await locals.safeGetSession();
+    if (!user) return fail(401, { message: 'Not authenticated' });
 
     if (!(await verifyAccess(eventId, user.id))) return fail(403, { message: 'Access denied' });
 

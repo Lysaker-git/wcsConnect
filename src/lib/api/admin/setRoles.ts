@@ -1,65 +1,41 @@
-import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_API_KEY } from '$env/static/public';
-import { createClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 export type Role = 'Owner' | 'Super User' | 'Event director' | 'Local Teacher' | 'Dancer' | 'Scorer';
 
 export interface SetRolesResult {
-	success: boolean;
-	data?: any;
-	error?: any;
+  success: boolean;
+  data?: any;
+  error?: any;
 }
 
-/**
- * Update the roles array for a profile using the caller's JWT so RLS applies.
- * This implementation creates a temporary Supabase client per-request and
- * attaches the caller JWT in the global headers so auth.uid() will be set
- * for Row Level Security.
- */
-export async function setRolesAsCaller(callerJwt: string, targetId: string, roles: Role[] | string[]): Promise<SetRolesResult> {
+export async function setRolesAsCaller(
+  client: SupabaseClient,
+  targetId: string,
+  roles: Role[] | string[]
+): Promise<SetRolesResult> {
+  if (!targetId) {
+    console.error('[setRoles] Missing target id');
+    return { success: false, error: 'missing target id' };
+  }
 
-	// Initial input validation
-	if (!callerJwt) {
-		console.error('🔑 [API/Admin/setRoles] Aborting: Missing caller JWT.');
-		return { success: false, error: 'missing caller JWT' };
-	}
-	if (!targetId) {
-		console.error('🆔 [API/Admin/setRoles] Aborting: Missing target id.');
-		return { success: false, error: 'missing target id' };
-	}
+  try {
+    const { data, error } = await client
+      .from('profiles')
+      .update({ userRole: roles })
+      .eq('id', targetId)
+      .select()
+      .maybeSingle();
 
-	// create a temporary supabase client that includes the caller's JWT
-	const temp = createClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_API_KEY, {
-		global: {
-			headers: {
-				Authorization: `Bearer ${callerJwt}`,
-				apikey: PUBLIC_SUPABASE_API_KEY
-			}
-		}
-	});
+    if (error) {
+      console.error('[setRoles] UPDATE failed:', error);
+      return { success: false, error };
+    }
 
-	try {
-		// Log the database operation details
-
-		// write into `userRole` jsonb column (your schema uses jsonb for roles)
-		const { data, error } = await temp
-			.from('profiles')
-			.update({ userRole: roles })
-			.eq('id', targetId)
-			.select()
-			.maybeSingle();
-
-		if (error) {
-			console.error('❌ [API/Admin/setRoles] Supabase UPDATE failed. Error details:', error);
-			return { success: false, error };
-		}
-		
-		// Log successful operation
-		return { success: true, data };
-	} catch (err) {
-		// Log any unexpected error during the process
-		console.error('🔥 [API/Admin/setRoles] Unexpected error during database operation:', err);
-		return { success: false, error: err };
-	}
+    return { success: true, data };
+  } catch (err) {
+    console.error('[setRoles] Unexpected error:', err);
+    return { success: false, error: err };
+  }
 }
 
 export default setRolesAsCaller;

@@ -1,16 +1,14 @@
 import { fail } from '@sveltejs/kit';
-import { createAnonClient } from '$lib/server/supabaseAnonClient';
 import type { Actions } from './$types';
 
 export const actions: Actions = {
-  default: async ({ request }) => {
+  default: async ({ request, locals }) => {
     const form = await request.formData();
     const email = form.get('email')?.toString();
 
     if (!email) return fail(400, { message: 'Email is required' });
 
-    const supabaseAnon = createAnonClient();
-    const { error } = await supabaseAnon.auth.resetPasswordForEmail(email, {
+    const { error } = await locals.supabase.auth.resetPasswordForEmail(email, {
       redirectTo: 'https://dancepoint.no/auth/reset-password'
     });
 

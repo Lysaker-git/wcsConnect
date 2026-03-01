@@ -6,17 +6,15 @@ import type { PageServerLoad, Actions } from './$types';
 
 const stripe = new Stripe(STRIPE_SECRET_KEY);
 
-export const load: PageServerLoad = async ({ params, cookies, url }) => {
+export const load: PageServerLoad = async ({ params, cookies, url, locals }) => {
+  const db = locals.supabase;
+  const { user } = await locals.safeGetSession();
   const { registrationID } = params;
 
-  const sbUser = cookies.get('sb_user');
-  if (!sbUser) throw redirect(303, '/signin');
-
-  let user: any;
-  try { user = JSON.parse(sbUser); } catch { throw redirect(303, '/signin'); }
+  if (!user) throw redirect(303, '/signin');
 
   // Fetch participant — must belong to this user and be approved
-  const { data: participant, error: pError } = await supabase
+  const { data: participant, error: pError } = await db
     .from('event_participants')
     .select(`
       id, event_id, user_id, status,
@@ -59,17 +57,15 @@ export const load: PageServerLoad = async ({ params, cookies, url }) => {
 };
 
 export const actions: Actions = {
-  book: async ({ request, params, cookies, url }) => {
+  book: async ({ request, params, cookies, url, locals }) => {
+    const db = locals.supabase;
     const { registrationID } = params;
 
-    const sbUser = cookies.get('sb_user');
-    if (!sbUser) return fail(401, { message: 'Not authenticated' });
-
-    let user: any;
-    try { user = JSON.parse(sbUser); } catch { return fail(401, { message: 'Invalid session' }); }
+    const { user } = await locals.safeGetSession();
+    if (!user) return fail(401, { message: 'Not authenticated' });
 
     // Verify participant
-    const { data: participant } = await supabase
+    const { data: participant } = await db
       .from('event_participants')
       .select(`
         id, event_id, user_id, status,
@@ -86,7 +82,7 @@ export const actions: Actions = {
     if (participant.status !== 'approved') return fail(400, { message: 'Registration must be approved' });
 
     // Check no existing booking
-    const { data: existingBooking } = await supabase
+    const { data: existingBooking } = await db
       .from('hotel_bookings')
       .select('id')
       .eq('participant_id', registrationID)
@@ -111,7 +107,7 @@ export const actions: Actions = {
     }
 
     // Fetch room product
-    const { data: room } = await supabase
+    const { data: room } = await db
       .from('products')
       .select('*')
       .eq('id', product_id)
@@ -140,14 +136,14 @@ export const actions: Actions = {
     const platformFeePercent = event.platform_fee_percent ?? 1;
 
     // Find ED with Stripe connected
-    const { data: edParticipants } = await supabase
+    const { data: edParticipants } = await db
       .from('event_participants')
       .select('user_id')
       .eq('event_id', participant.event_id)
       .eq('event_role', 'Event Director');
 
     const edUserIds = (edParticipants ?? []).map(ep => ep.user_id);
-    const { data: organizers } = await supabase
+    const { data: organizers } = await db
       .from('profiles')
       .select('id, stripe_account_id, stripe_onboarding_complete')
       .in('id', edUserIds)
@@ -201,7 +197,7 @@ export const actions: Actions = {
     const origin = url.origin.includes('localhost') ? 'https://dancepoint.no' : url.origin;
 
     // Create hotel_booking record first (pending)
-    const { data: booking, error: bookingError } = await supabase
+    const { data: booking, error: bookingError } = await db
       .from('hotel_bookings')
       .insert({
         participant_id: registrationID,
@@ -245,13 +241,13 @@ export const actions: Actions = {
     });
 
     // Update booking with session id
-    await supabase
+    await db
       .from('hotel_bookings')
       .update({ deposit_stripe_session_id: session.id })
       .eq('id', booking.id);
 
     // Increment quantity_sold
-    await supabase
+    await db
       .from('products')
       .update({ quantity_sold: (room.quantity_sold ?? 0) + 1 })
       .eq('id', room.id);
@@ -259,17 +255,15 @@ export const actions: Actions = {
     throw redirect(303, session.url!);
   },
 
-  payRemaining: async ({ params, cookies, url }) => {
+  payRemaining: async ({ params, cookies, url, locals }) => {
+    const db = locals.supabase;
     const { registrationID } = params;
 
-    const sbUser = cookies.get('sb_user');
-    if (!sbUser) return fail(401, { message: 'Not authenticated' });
-
-    let user: any;
-    try { user = JSON.parse(sbUser); } catch { return fail(401, { message: 'Invalid session' }); }
+    const { user } = await locals.safeGetSession();
+    if (!user) return fail(401, { message: 'Not authenticated' });
 
     // Fetch booking
-    const { data: booking } = await supabase
+    const { data: booking } = await db
       .from('hotel_bookings')
       .select('*, events(stripe_fee_model, platform_fee_percent, title)')
       .eq('participant_id', registrationID)
@@ -279,7 +273,7 @@ export const actions: Actions = {
     if (!booking.deposit_paid) return fail(400, { message: 'Deposit must be paid first' });
     if (booking.remaining_paid) return fail(400, { message: 'Remaining balance already paid' });
 
-    const { data: participant } = await supabase
+    const { data: participant } = await db
       .from('event_participants')
       .select('event_id, user_id')
       .eq('id', registrationID)
@@ -288,14 +282,14 @@ export const actions: Actions = {
     if (!participant || participant.user_id !== user.id) return fail(403, { message: 'Access denied' });
 
     // Find ED with Stripe
-    const { data: edParticipants } = await supabase
+    const { data: edParticipants } = await db
       .from('event_participants')
       .select('user_id')
       .eq('event_id', participant.event_id)
       .eq('event_role', 'Event Director');
 
     const edUserIds = (edParticipants ?? []).map(ep => ep.user_id);
-    const { data: organizers } = await supabase
+    const { data: organizers } = await db
       .from('profiles')
       .select('id, stripe_account_id, stripe_onboarding_complete')
       .in('id', edUserIds)
@@ -363,23 +357,21 @@ export const actions: Actions = {
       cancel_url: `${origin}/profile/${registrationID}/accommodation?cancelled=true`
     });
 
-    await supabase
+    await db
       .from('hotel_bookings')
       .update({ remaining_stripe_session_id: session.id })
       .eq('id', booking.id);
 
     throw redirect(303, session.url!);
   },
-  updateRoommates: async ({ request, params, cookies }) => {
+  updateRoommates: async ({ request, params, cookies , locals }) => {
+    const db = locals.supabase;
     const { registrationID } = params;
 
-    const sbUser = cookies.get('sb_user');
-    if (!sbUser) return fail(401, { message: 'Not authenticated' });
+    const { user } = await locals.safeGetSession();
+    if (!user) return fail(401, { message: 'Not authenticated' });
 
-    let user: any;
-    try { user = JSON.parse(sbUser); } catch { return fail(401, { message: 'Invalid session' }); }
-
-    const { data: participant } = await supabase
+    const { data: participant } = await db
       .from('event_participants')
       .select('user_id')
       .eq('id', registrationID)
@@ -387,7 +379,7 @@ export const actions: Actions = {
 
     if (!participant || participant.user_id !== user.id) return fail(403, { message: 'Access denied' });
 
-    const { data: booking } = await supabase
+    const { data: booking } = await db
       .from('hotel_bookings')
       .select('id')
       .eq('participant_id', registrationID)
@@ -400,7 +392,7 @@ export const actions: Actions = {
       .map(v => v.toString().trim())
       .filter(v => v.length > 0);
 
-    const { error } = await supabase
+    const { error } = await db
       .from('hotel_bookings')
       .update({ roommate_names, updated_at: new Date().toISOString() })
       .eq('participant_id', registrationID);
