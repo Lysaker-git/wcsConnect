@@ -14,13 +14,13 @@ export const load = async ({ params, locals }) => {
   const isOwner = locals.userRole.includes('Owner');
 
 
-  // Check if user is Event Director for this event
+  // Check if user is Event Director or Event Super User for this event
   const { data: participant, error: participantError } = await supabase
     .from('event_participants')
     .select('event_role')
     .eq('event_id', eventId)
     .eq('user_id', user.id)
-    .eq('event_role', 'Event Director')
+    .in('event_role', ['Event Director', 'Event Super User'])
     .single();
 
   if (participantError || !participant) {
@@ -75,7 +75,7 @@ export const actions = {
       .select('event_role')
       .eq('event_id', eventId)
       .eq('user_id', user.id)
-      .eq('event_role', 'Event Director')
+      .in('event_role', ['Event Director', 'Event Super User'])
       .single();
 
     if (!participant) {
@@ -140,7 +140,7 @@ export const actions = {
       .select('event_role')
       .eq('event_id', eventId)
       .eq('user_id', user.id)
-      .eq('event_role', 'Event Director')
+      .in('event_role', ['Event Director', 'Event Super User'])
       .single();
 
     if (!participant) {
@@ -180,7 +180,7 @@ export const actions = {
       .select('event_role')
       .eq('event_id', eventId)
       .eq('user_id', user.id)
-      .eq('event_role', 'Event Director')
+      .in('event_role', ['Event Director', 'Event Super User'])
       .single();
 
     if (!participant) {
@@ -247,7 +247,7 @@ export const actions = {
       .select('event_role')
       .eq('event_id', eventId)
       .eq('user_id', user.id)
-      .eq('event_role', 'Event Director')
+      .in('event_role', ['Event Director', 'Event Super User'])
       .single();
 
     if (!participant) {
@@ -308,7 +308,7 @@ export const actions = {
       .select('event_role')
       .eq('event_id', eventId)
       .eq('user_id', user.id)
-      .eq('event_role', 'Event Director')
+      .in('event_role', ['Event Director', 'Event Super User'])
       .single();
 
     if (!participant) {
@@ -348,7 +348,7 @@ export const actions = {
       .select('event_role')
       .eq('event_id', eventId)
       .eq('user_id', user.id)
-      .eq('event_role', 'Event Director')
+      .in('event_role', ['Event Director', 'Event Super User'])
       .single();
 
     if (!participant) {
@@ -385,7 +385,7 @@ export const actions = {
       .select('event_role')
       .eq('event_id', eventId)
       .eq('user_id', user.id)
-      .eq('event_role', 'Event Director')
+      .in('event_role', ['Event Director', 'Event Super User'])
       .single();
 
     

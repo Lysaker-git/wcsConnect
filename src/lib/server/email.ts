@@ -268,7 +268,7 @@ export async function sendReceiptEmail({
 
   await sendEmail({
     to,
-    subject: `Kvittering – ${eventTitle} (${invoiceNumber})`,
+    subject: `Receipt – ${eventTitle} (${invoiceNumber})`,
     html: `
 <!DOCTYPE html>
 <html>
@@ -291,20 +291,20 @@ export async function sendReceiptEmail({
         <table style="width:100%;border-collapse:collapse;">
           <tr>
             <td style="vertical-align:top;padding-right:16px;">
-              <h2 style="margin:0 0 10px;color:#111827;font-size:20px;font-weight:700;">Kvittering</h2>
+              <h2 style="margin:0 0 10px;color:#111827;font-size:20px;font-weight:700;">Receipt</h2>
               <table style="border-collapse:collapse;font-size:13px;">
                 <tr>
-                  <td style="padding:2px 12px 2px 0;color:#6b7280;">Fakturanr:</td>
+                  <td style="padding:2px 12px 2px 0;color:#6b7280;">Invoice No.:</td>
                   <td style="color:#111827;font-weight:700;">${invoiceNumber}</td>
                 </tr>
                 <tr>
-                  <td style="padding:2px 12px 2px 0;color:#6b7280;">Fakturadato:</td>
+                  <td style="padding:2px 12px 2px 0;color:#6b7280;">Date:</td>
                   <td style="color:#374151;">${invoiceDate}</td>
                 </tr>
               </table>
             </td>
             <td style="vertical-align:top;text-align:right;">
-              <p style="margin:0 0 4px;font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.05em;">Selger</p>
+              <p style="margin:0 0 4px;font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.05em;">Seller</p>
               <p style="margin:0;font-size:13px;color:#374151;line-height:1.7;">${sellerBlock}</p>
             </td>
           </tr>
@@ -313,7 +313,7 @@ export async function sendReceiptEmail({
 
       <!-- Buyer info -->
       <div style="padding:16px 32px;background:#f9fafb;border-bottom:1px solid #e5e7eb;">
-        <p style="margin:0 0 4px;font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.05em;">Kjøper</p>
+        <p style="margin:0 0 4px;font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.05em;">Buyer</p>
         <p style="margin:0;font-size:14px;color:#374151;line-height:1.5;">
           ${buyerName}<br>
           <span style="font-size:13px;color:#6b7280;">${to}</span>
@@ -330,12 +330,12 @@ export async function sendReceiptEmail({
         <table style="width:100%;border-collapse:collapse;">
           <thead>
             <tr style="border-bottom:2px solid #e5e7eb;">
-              <th style="text-align:left;padding-bottom:8px;color:#6b7280;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">Beskrivelse</th>
-              <th style="text-align:center;padding-bottom:8px;color:#6b7280;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">Ant.</th>
-              <th style="text-align:right;padding-bottom:8px;color:#6b7280;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">Enhetspris</th>
-              <th style="text-align:right;padding-bottom:8px;color:#6b7280;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">MVA%</th>
-              <th style="text-align:right;padding-bottom:8px;color:#6b7280;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">MVA</th>
-              <th style="text-align:right;padding-bottom:8px;color:#6b7280;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">Beløp</th>
+              <th style="text-align:left;padding-bottom:8px;color:#6b7280;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">Description</th>
+              <th style="text-align:center;padding-bottom:8px;color:#6b7280;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">Qty.</th>
+              <th style="text-align:right;padding-bottom:8px;color:#6b7280;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">Unit Price</th>
+              <th style="text-align:right;padding-bottom:8px;color:#6b7280;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">VAT%</th>
+              <th style="text-align:right;padding-bottom:8px;color:#6b7280;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">VAT</th>
+              <th style="text-align:right;padding-bottom:8px;color:#6b7280;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">Amount</th>
             </tr>
           </thead>
           <tbody>
@@ -348,15 +348,15 @@ export async function sendReceiptEmail({
       <div style="padding:16px 32px 0;">
         <table style="width:100%;border-collapse:collapse;font-size:13px;max-width:320px;margin-left:auto;">
           <tr>
-            <td style="padding:5px 0;color:#6b7280;">Subtotal eks. MVA</td>
+            <td style="padding:5px 0;color:#6b7280;">Subtotal excl. VAT</td>
             <td style="padding:5px 0;text-align:right;color:#374151;">${fmt(totalExclMva)} ${cur}</td>
           </tr>
           <tr>
-            <td style="padding:5px 0;color:#6b7280;">MVA</td>
+            <td style="padding:5px 0;color:#6b7280;">VAT</td>
             <td style="padding:5px 0;text-align:right;color:#374151;">${fmt(totalMva)} ${cur}</td>
           </tr>
           <tr style="border-top:2px solid #111827;">
-            <td style="padding:12px 0 6px;color:#111827;font-size:15px;font-weight:700;">Totalt inkl. MVA</td>
+            <td style="padding:12px 0 6px;color:#111827;font-size:15px;font-weight:700;">Total incl. VAT</td>
             <td style="padding:12px 0 6px;text-align:right;color:#111827;font-size:15px;font-weight:700;">${fmt(totalInclMva)} ${cur}</td>
           </tr>
         </table>
@@ -365,8 +365,8 @@ export async function sendReceiptEmail({
       <!-- Payment info -->
       <div style="padding:16px 32px 24px;">
         <div style="padding:14px 16px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;">
-          <p style="margin:0 0 6px;font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.04em;">Betalingsinformasjon</p>
-          <p style="margin:0;color:#374151;">Betalingsmåte: Kortbetaling (Stripe)</p>
+          <p style="margin:0 0 6px;font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.04em;">Payment Information</p>
+          <p style="margin:0;color:#374151;">Payment method: Card (Stripe)</p>
           <p style="margin:4px 0 0;color:#9ca3af;font-size:12px;word-break:break-all;">Ref: ${stripeRef}</p>
         </div>
       </div>
@@ -375,14 +375,14 @@ export async function sendReceiptEmail({
       <div style="padding:0 32px 28px;text-align:center;">
         <a href="https://dancepoint.no/profile/${participantId}"
            style="display:inline-block;padding:12px 24px;background:#d97706;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:600;font-size:14px;">
-          Se din registrering →
+          View your registration →
         </a>
       </div>
 
       <!-- Footer -->
       <div style="padding:20px 32px;border-top:1px solid #e5e7eb;text-align:center;">
-        <p style="margin:0;font-size:12px;color:#9ca3af;">Takk for betalingen!</p>
-        <p style="margin:6px 0 0;font-size:11px;color:#d1d5db;">Betaling formidlet av ${PLATFORM_NAME} · ${PLATFORM_URL}</p>
+        <p style="margin:0;font-size:12px;color:#9ca3af;">Thank you for your payment!</p>
+        <p style="margin:6px 0 0;font-size:11px;color:#d1d5db;">Payment processed by ${PLATFORM_NAME} · ${PLATFORM_URL}</p>
       </div>
 
     </div>

@@ -80,12 +80,21 @@
             </p>
 
             <div class="flex flex-col sm:flex-row justify-center gap-4">
-                <a href="/signup" class="px-7 py-3 text-lg font-bold rounded-xl text-white neu-btn neu-hero-primary">
-                    Sign Up
-                </a>
-                <a href="/profile" class="px-7 py-3 text-lg font-semibold rounded-xl bg-transparent text-slate-200 neu-btn neu-hero-secondary">
-                    Sign In
-                </a>
+                {#if data.user}
+                    <a href="/events" class="px-7 py-3 text-lg font-bold rounded-xl text-white neu-btn neu-hero-primary">
+                        Events
+                    </a>
+                    <a href="/classes" class="px-7 py-3 text-lg font-semibold rounded-xl bg-transparent text-slate-200 neu-btn neu-hero-secondary">
+                        Classes
+                    </a>
+                {:else}
+                    <a href="/signup" class="px-7 py-3 text-lg font-bold rounded-xl text-white neu-btn neu-hero-primary">
+                        Sign Up
+                    </a>
+                    <a href="/profile" class="px-7 py-3 text-lg font-semibold rounded-xl bg-transparent text-slate-200 neu-btn neu-hero-secondary">
+                        Sign In
+                    </a>
+                {/if}
             </div>
         </div>
     </section>

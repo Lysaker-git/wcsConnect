@@ -104,30 +104,37 @@ export const POST: RequestHandler = async ({ request }) => {
 
       const email = authUser?.user?.email ?? session.customer_details?.email;
 
-      // Fetch the event director's organizer info for the seller block
+      // Fetch the Stripe-connected event director's organizer info for the seller block
       let seller = { name: 'Event Organizer' as string, orgNumber: null as string | null, address: null as string | null, email: null as string | null };
       if (participant?.event_id) {
+        // Step 1: Get all Event Directors for this event
         const { data: edRows } = await supabase
           .from('event_participants')
           .select('user_id')
           .eq('event_id', participant.event_id)
-          .eq('event_role', 'Event Director')
-          .limit(1);
+          .eq('event_role', 'Event Director');
 
-        const edUserId = edRows?.[0]?.user_id;
-        if (edUserId) {
-          const { data: edProfile } = await supabase
+        const edUserIds = (edRows ?? []).map(r => r.user_id);
+
+        if (edUserIds.length > 0) {
+          // Step 2: Find the one who has Stripe connected (same logic as checkout server)
+          const { data: stripeProfiles } = await supabase
             .from('profiles')
-            .select('username, organizer_name, organizer_org_number, organizer_address, organizer_email')
-            .eq('id', edUserId)
-            .single();
+            .select('id, username, organizer_name, organizer_org_number, organizer_address, organizer_email')
+            .in('id', edUserIds)
+            .eq('stripe_onboarding_complete', true)
+            .not('stripe_account_id', 'is', null)
+            .limit(1);
 
-          seller = {
-            name:      edProfile?.organizer_name || edProfile?.username || 'Event Organizer',
-            orgNumber: edProfile?.organizer_org_number ?? null,
-            address:   edProfile?.organizer_address ?? null,
-            email:     edProfile?.organizer_email ?? null
-          };
+          const edProfile = stripeProfiles?.[0];
+          if (edProfile) {
+            seller = {
+              name:      edProfile.organizer_name || edProfile.username || 'Event Organizer',
+              orgNumber: edProfile.organizer_org_number ?? null,
+              address:   edProfile.organizer_address ?? null,
+              email:     edProfile.organizer_email ?? null
+            };
+          }
         }
       }
 

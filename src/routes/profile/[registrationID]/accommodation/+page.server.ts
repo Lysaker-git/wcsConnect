@@ -173,13 +173,14 @@ export const actions: Actions = {
     ];
 
     const serviceFeeAmount = Math.round(chargeAmount * (platformFeePercent / 100) * 100);
+    const stripeFeeAmount = Math.round(chargeAmount * 0.035 * 100);
 
     if (stripeFeeModel === 'on_top') {
       lineItems.push({
         price_data: {
           currency,
           product_data: { name: 'Payment handling fee (3.5%)' },
-          unit_amount: Math.round(chargeAmount * 0.035 * 100)
+          unit_amount: stripeFeeAmount
         },
         quantity: 1
       });
@@ -193,6 +194,12 @@ export const actions: Actions = {
       },
       quantity: 1
     });
+
+    // on_top: capture both the Stripe recovery fee and platform fee
+    // included: organizer absorbs Stripe's cost, platform only takes platform fee
+    const applicationFee = stripeFeeModel === 'on_top'
+      ? serviceFeeAmount + stripeFeeAmount
+      : serviceFeeAmount;
 
     const origin = url.origin.includes('localhost') ? 'https://dancepoint.no' : url.origin;
 
@@ -227,7 +234,7 @@ export const actions: Actions = {
       mode: 'payment',
       line_items: lineItems,
       payment_intent_data: {
-        application_fee_amount: serviceFeeAmount,
+        application_fee_amount: applicationFee,
         transfer_data: { destination: organizer.stripe_account_id }
       },
       metadata: {
@@ -306,6 +313,7 @@ export const actions: Actions = {
     const stripeFeeModel = event?.stripe_fee_model ?? 'on_top';
     const platformFeePercent = event?.platform_fee_percent ?? 1;
     const serviceFeeAmount = Math.round(remainingAmount * (platformFeePercent / 100) * 100);
+    const stripeFeeAmount = Math.round(remainingAmount * 0.035 * 100);
 
     const lineItems: any[] = [
       {
@@ -323,7 +331,7 @@ export const actions: Actions = {
         price_data: {
           currency,
           product_data: { name: 'Payment handling fee (3.5%)' },
-          unit_amount: Math.round(remainingAmount * 0.035 * 100)
+          unit_amount: stripeFeeAmount
         },
         quantity: 1
       });
@@ -338,13 +346,17 @@ export const actions: Actions = {
       quantity: 1
     });
 
+    const applicationFee = stripeFeeModel === 'on_top'
+      ? serviceFeeAmount + stripeFeeAmount
+      : serviceFeeAmount;
+
     const origin = url.origin.includes('localhost') ? 'https://dancepoint.no' : url.origin;
 
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
       line_items: lineItems,
       payment_intent_data: {
-        application_fee_amount: serviceFeeAmount,
+        application_fee_amount: applicationFee,
         transfer_data: { destination: organizer.stripe_account_id }
       },
       metadata: {

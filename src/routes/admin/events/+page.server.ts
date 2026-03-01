@@ -14,7 +14,7 @@ export const load: PageServerLoad = async ({ locals }) => {
         `event_id, events ( id, title, start_date, end_date )`
       )
       .eq('user_id', user.id)
-      .eq('event_role', 'Event Director');
+      .in('event_role', ['Event Director', 'Event Super User']);
 
     if (error) {
       console.warn('[admin/events] supabase error', error);

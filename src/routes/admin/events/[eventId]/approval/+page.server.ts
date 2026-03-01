@@ -59,7 +59,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
     .select('id')
     .eq('event_id', eventId)
     .eq('user_id', user.id)
-    .eq('event_role', 'Event Director')
+    .in('event_role', ['Event Director', 'Event Super User'])
     .single();
 
   if (!edCheck) throw svelteError(403, 'Access denied');
@@ -87,7 +87,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
       profiles ( username, avatar_url )
     `)
     .eq('event_id', eventId)
-    .neq('event_role', 'Event Director')
+    .not('event_role', 'in', '("Event Director","Event Super User")')
     .order('created_at', { ascending: true });
 
   if (error) throw svelteError(500, 'Failed to load participants');
@@ -197,7 +197,7 @@ export const actions: Actions = {
       .select('id')
       .eq('event_id', eventId)
       .eq('user_id', user.id)
-      .eq('event_role', 'Event Director')
+      .in('event_role', ['Event Director', 'Event Super User'])
       .single();
 
     if (!edCheck) return fail(403, { message: 'Access denied' });
@@ -259,7 +259,7 @@ export const actions: Actions = {
       .select('id')
       .eq('event_id', eventId)
       .eq('user_id', user.id)
-      .eq('event_role', 'Event Director')
+      .in('event_role', ['Event Director', 'Event Super User'])
       .single();
 
     if (!edCheck) return fail(403, { message: 'Access denied' });
@@ -292,7 +292,7 @@ export const actions: Actions = {
       .select('id')
       .eq('event_id', eventId)
       .eq('user_id', user.id)
-      .eq('event_role', 'Event Director')
+      .in('event_role', ['Event Director', 'Event Super User'])
       .single();
 
     if (!edCheck) return fail(403, { message: 'Access denied' });
