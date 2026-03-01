@@ -23,6 +23,7 @@
   // Participant form state
   let status = data.participant.status ?? 'pending';
   let role = data.participant.role ?? 'follower';
+  let eventRole = data.participant.event_role ?? '';
   let wsdcLevel = data.participant.wsdcLevel ?? 'Newcomer';
   let partner_name = data.participant.partner_name ?? '';
   let country = data.participant.country ?? '';
@@ -121,11 +122,22 @@
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-stone-400 mb-1">Role</label>
+          <label class="block text-sm font-medium text-stone-400 mb-1">Dance Role</label>
           <select name="role" bind:value={role}
             class="w-full px-3 py-2.5 rounded-xl bg-stone-900 border border-stone-700 text-stone-100 focus:outline-none focus:border-amber-500">
             <option value="leader">Leader</option>
             <option value="follower">Follower</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-stone-400 mb-1">Event Role</label>
+          <select name="event_role" bind:value={eventRole}
+            class="w-full px-3 py-2.5 rounded-xl bg-stone-900 border border-stone-700 text-stone-100 focus:outline-none focus:border-amber-500">
+            <option value="">— Participant —</option>
+            <option value="Event Director">Event Director</option>
+            <option value="Event Super User">Event Super User</option>
+            <option value="Event Team">Event Team</option>
           </select>
         </div>
 

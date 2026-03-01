@@ -32,7 +32,7 @@ getRecipients: async ({ request, locals }) => {
     .from('event_participants')
     .select('user_id')
     .eq('event_id', eventId)
-    .neq('event_role', 'Event Director');
+    .not('event_role', 'in', '("Event Director","Event Super User")');
 
   if (error) return fail(500, { message: error.message });
   if (!participants || participants.length === 0) {

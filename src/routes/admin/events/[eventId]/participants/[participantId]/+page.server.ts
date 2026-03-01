@@ -16,7 +16,7 @@ async function verifyAccess(eventId: string, userId: string) {
     .select('id')
     .eq('event_id', eventId)
     .eq('user_id', userId)
-    .eq('event_role', 'Event Director')
+    .in('event_role', ['Event Director', 'Event Super User'])
     .single();
 
   return !!ed;
@@ -93,6 +93,7 @@ export const actions: Actions = {
 
     const status = form.get('status')?.toString();
     const role = form.get('role')?.toString();
+    const event_role = form.get('event_role')?.toString() || null;
     const wsdcLevel = form.get('wsdcLevel')?.toString();
     const partner_name = form.get('partner_name')?.toString() || null;
     const country = form.get('country')?.toString();
@@ -103,7 +104,7 @@ export const actions: Actions = {
       .update({
         status,
         role,
-        event_role: role,
+        event_role,
         wsdcLevel,
         partner_name,
         country,

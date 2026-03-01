@@ -16,7 +16,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
     .select('id')
     .eq('event_id', eventId)
     .eq('user_id', user.id)
-    .eq('event_role', 'Event Director')
+    .in('event_role', ['Event Director', 'Event Super User'])
     .single();
 
   if (!edCheck) throw error(403, 'Not authorized for this event');
@@ -39,7 +39,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
       profiles ( username, country )
     `)
     .eq('event_id', eventId)
-    .neq('event_role', 'Event Director');
+    .not('event_role', 'in', '("Event Director","Event Super User")');
 
 
   // Fetch all participant_products for this event's participants

@@ -8,7 +8,7 @@ async function verifyED(eventId: string, userId: string) {
     .select('event_role')
     .eq('event_id', eventId)
     .eq('user_id', userId)
-    .eq('event_role', 'Event Director')
+    .in('event_role', ['Event Director', 'Event Super User'])
     .single();
   return !!data;
 }
