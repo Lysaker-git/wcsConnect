@@ -1,14 +1,75 @@
 <script lang="ts">
-  import { enhance } from '$app/forms';
-
-  export let data: { sessionReady?: boolean; error?: string };
-  export let form: { message?: string } | null = null;
+  import { onMount } from 'svelte';
+  import { supabase } from '$lib/api/supabaseClient';
 
   let password = '';
   let passwordConfirm = '';
+  let successMessage = '';
+  let errorMessage = '';
   let isSubmitting = false;
+  let sessionReady = false;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 
   $: passwordMismatch = passwordConfirm.length > 0 && password !== passwordConfirm;
+
+  onMount(async () => {
+
+    // --- PKCE flow: ?code= in query string ---
+    const code = new URLSearchParams(window.location.search).get('code');
+    if (code) {
+      const { error } = await supabase.auth.exchangeCodeForSession(code);
+      if (!error) { sessionReady = true; return; }
+      errorMessage = 'This reset link has already been used or has expired.';
+      return;
+    }
+
+    // --- Implicit flow: #access_token=...&type=recovery in hash ---
+    // (produced by admin.generateLink())
+    const hash = window.location.hash.substring(1);
+    const params = new URLSearchParams(hash);
+    const accessToken = params.get('access_token') ?? '';
+    const refreshToken = params.get('refresh_token') ?? '';
+    const type = params.get('type');
+
+    if (!accessToken || type !== 'recovery') {
+      errorMessage = 'Invalid reset link. Please request a new one.';
+      return;
+    }
+
+    const { error } = await supabase.auth.setSession({
+      access_token: accessToken,
+      refresh_token: refreshToken
+    });
+
+    if (error) {
+      errorMessage = 'This reset link has already been used or has expired.';
+      return;
+    }
+
+    sessionReady = true;
+  });
+
+  async function handleReset(e: Event) {
+    e.preventDefault();
+    if (password !== passwordConfirm || !supabase) return;
+
+    isSubmitting = true;
+    errorMessage = '';
+
+    try {
+      const { error } = await supabase.auth.updateUser({ password });
+      if (error) {
+        errorMessage = error.message;
+        return;
+      }
+      successMessage = 'Password updated! Redirecting...';
+      setTimeout(() => { window.location.href = '/signin'; }, 2000);
+    } catch (err: any) {
+      errorMessage = err?.message ?? 'Something went wrong';
+    } finally {
+      isSubmitting = false;
+    }
+  }
 </script>
 
 <div class="min-h-screen bg-stone-900 flex items-center justify-center px-6">
@@ -21,47 +82,40 @@
 
     <div class="neomorph-card bg-stone-800 rounded-2xl p-8">
 
-      {#if data.error}
-        <!-- Invalid or expired link -->
+      {#if successMessage}
+        <div class="text-center">
+          <div class="text-5xl mb-4">✅</div>
+          <h2 class="text-xl font-bold text-stone-100 mb-2">Password updated</h2>
+          <p class="text-stone-400 text-sm">Redirecting you to sign in...</p>
+        </div>
+
+      {:else if errorMessage && !sessionReady}
         <div class="text-center">
           <div class="text-5xl mb-4">❌</div>
           <h2 class="text-lg font-bold text-stone-100 mb-2">Link invalid or expired</h2>
-          <p class="text-stone-400 text-sm mb-6">
-            This reset link has already been used or has expired. Reset links are valid for 1 hour.
-          </p>
+          <p class="text-stone-400 text-sm mb-6">{errorMessage}</p>
           <a href="/signin/forgot-password" class="text-amber-400 hover:text-amber-300 text-sm transition">
             Request a new reset link →
           </a>
         </div>
 
-      {:else if data.sessionReady}
+      {:else if sessionReady}
         <h2 class="text-xl font-bold text-stone-100 mb-2">Choose a new password</h2>
         <p class="text-stone-400 text-sm mb-6">Must be at least 8 characters.</p>
 
-        {#if form?.message}
+        {#if errorMessage}
           <div class="mb-4 p-3 bg-red-900/30 border border-red-700 text-red-300 rounded-lg text-sm">
-            {form.message}
+            {errorMessage}
           </div>
         {/if}
 
-        <form
-          method="POST"
-          use:enhance={() => {
-            isSubmitting = true;
-            return async ({ update }) => {
-              await update();
-              isSubmitting = false;
-            };
-          }}
-          class="space-y-5"
-        >
+        <form on:submit|preventDefault={handleReset} class="space-y-5">
           <div>
             <label for="password" class="block text-sm font-medium text-stone-300 mb-1.5">
               New password
             </label>
             <input
               id="password"
-              name="password"
               type="password"
               bind:value={password}
               required
@@ -77,7 +131,6 @@
             </label>
             <input
               id="passwordConfirm"
-              name="passwordConfirm"
               type="password"
               bind:value={passwordConfirm}
               required
@@ -98,7 +151,14 @@
           </button>
         </form>
 
+      {:else}
+        <!-- Loading state while onMount resolves the token -->
+        <div class="text-center py-8">
+          <div class="inline-block w-6 h-6 border-2 border-amber-500 border-t-transparent rounded-full animate-spin mb-3"></div>
+          <p class="text-stone-400 text-sm">Verifying reset link...</p>
+        </div>
       {/if}
+
     </div>
   </div>
 </div>
