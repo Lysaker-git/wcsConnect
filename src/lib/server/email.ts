@@ -393,6 +393,66 @@ export async function sendReceiptEmail({
 }
 
 
+export async function sendPasswordResetEmail({
+  to,
+  resetLink
+}: {
+  to: string;
+  resetLink: string;
+}) {
+  await sendEmail({
+    to,
+    subject: 'Reset your DancePoint password',
+    html: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+</head>
+<body style="margin:0;padding:0;background:#f7f7f7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
+    <div style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+
+      <!-- Header -->
+      <div style="background:linear-gradient(135deg,#d97706,#b45309);padding:32px;text-align:center;">
+        <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:800;">DancePoint</h1>
+      </div>
+
+      <!-- Body -->
+      <div style="padding:32px;">
+        <h2 style="margin:0 0 8px;color:#111827;font-size:22px;font-weight:700;">Reset your password</h2>
+        <p style="color:#374151;line-height:1.6;margin:16px 0 24px;">
+          We received a request to reset the password for your DancePoint account.
+          Click the button below to choose a new password.
+        </p>
+
+        <div style="text-align:center;margin:0 0 32px;">
+          <a href="${resetLink}"
+            style="display:inline-block;padding:14px 32px;background:#d97706;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:700;font-size:16px;">
+            Reset password
+          </a>
+        </div>
+
+        <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:16px;">
+          <p style="margin:0;color:#6b7280;font-size:13px;line-height:1.5;">
+            This link expires in <strong>1 hour</strong>. If you didn't request a password reset, you can safely ignore this email — your password won't change.
+          </p>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div style="padding:24px 32px;border-top:1px solid #e5e7eb;text-align:center;">
+        <p style="margin:0;font-size:12px;color:#9ca3af;">© DancePoint · dancepoint.no</p>
+      </div>
+
+    </div>
+  </div>
+</body>
+</html>`
+  });
+}
+
 export async function sendMassEmail({
   recipients,
   subject,
