@@ -1,6 +1,7 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
   import { tick } from 'svelte';
+  import { PUBLIC_PAYMENTS_ENABLED } from '$env/static/public';
 
   export let data: {
     participant: any;
@@ -215,16 +216,16 @@
           <!-- Role + WSDC ID -->
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="block text-xs font-medium text-stone-400 mb-1">Role</label>
-              <select name="role" bind:value={roleInput}
+              <label for="edit-role" class="block text-xs font-medium text-stone-400 mb-1">Role</label>
+              <select id="edit-role" name="role" bind:value={roleInput}
                 class="w-full px-3 py-2 rounded-lg bg-stone-900 border border-stone-700 text-stone-100 text-sm focus:outline-none focus:border-amber-500">
                 <option value="follower">Follower</option>
                 <option value="leader">Leader</option>
               </select>
             </div>
             <div>
-              <label class="block text-xs font-medium text-stone-400 mb-1">WSDC ID</label>
-              <input name="wsdcID" bind:value={wsdcIDInput} type="number" placeholder="e.g. 12345"
+              <label for="edit-wsdcID" class="block text-xs font-medium text-stone-400 mb-1">WSDC ID</label>
+              <input id="edit-wsdcID" name="wsdcID" bind:value={wsdcIDInput} type="number" placeholder="e.g. 12345"
                 class="w-full px-3 py-2 rounded-lg bg-stone-900 border border-stone-700 text-stone-100 text-sm focus:outline-none focus:border-amber-500" />
             </div>
           </div>
@@ -232,13 +233,13 @@
           <!-- WSDC Level + Country -->
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="block text-xs font-medium text-stone-400 mb-1">WSDC Level</label>
-              <input name="wsdcLevel" bind:value={wsdcLevelInput} placeholder="e.g. Novice"
+              <label for="edit-wsdcLevel" class="block text-xs font-medium text-stone-400 mb-1">WSDC Level</label>
+              <input id="edit-wsdcLevel" name="wsdcLevel" bind:value={wsdcLevelInput} placeholder="e.g. Novice"
                 class="w-full px-3 py-2 rounded-lg bg-stone-900 border border-stone-700 text-stone-100 text-sm focus:outline-none focus:border-amber-500" />
             </div>
             <div>
-              <label class="block text-xs font-medium text-stone-400 mb-1">Country</label>
-              <input name="country" bind:value={countryInput} placeholder="e.g. Norway"
+              <label for="edit-country" class="block text-xs font-medium text-stone-400 mb-1">Country</label>
+              <input id="edit-country" name="country" bind:value={countryInput} placeholder="e.g. Norway"
                 class="w-full px-3 py-2 rounded-lg bg-stone-900 border border-stone-700 text-stone-100 text-sm focus:outline-none focus:border-amber-500" />
             </div>
           </div>
@@ -246,23 +247,23 @@
           <!-- Birthdate + Partner -->
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="block text-xs font-medium text-stone-400 mb-1">Birthdate</label>
-              <input name="age" bind:value={ageInput} type="date"
+              <label for="edit-age" class="block text-xs font-medium text-stone-400 mb-1">Birthdate</label>
+              <input id="edit-age" name="age" bind:value={ageInput} type="date"
                 class="w-full px-3 py-2 rounded-lg bg-stone-900 border border-stone-700 text-stone-100 text-sm focus:outline-none focus:border-amber-500" />
             </div>
             <div class="relative">
-              <label class="block text-xs font-medium text-stone-400 mb-1">Partner name</label>
-              <input name="partner_name" bind:value={partnerNameInput}
+              <label for="edit-partner" class="block text-xs font-medium text-stone-400 mb-1">Partner name</label>
+              <input id="edit-partner" name="partner_name" bind:value={partnerNameInput}
                 on:input={() => searchPartnerProfiles(partnerNameInput)}
                 autocomplete="off" placeholder="Search by name…"
                 class="w-full px-3 py-2 rounded-lg bg-stone-900 border border-stone-700 text-stone-100 text-sm focus:outline-none focus:border-amber-500" />
               {#if showPartnerDropdown}
                 <div class="absolute left-0 right-0 bg-stone-900 border border-stone-700 mt-1 rounded-lg max-h-40 overflow-auto z-20 shadow-xl">
                   {#each partnerSuggestions as s}
-                    <div class="px-3 py-2 hover:bg-stone-800 cursor-pointer text-stone-100 text-sm"
+                    <button type="button" class="w-full text-left px-3 py-2 hover:bg-stone-800 text-stone-100 text-sm"
                       on:click={() => selectPartnerSuggestion(s)}>
                       {s.username}{s.wsdcID ? ` (${s.wsdcID})` : ''}
-                    </div>
+                    </button>
                   {/each}
                 </div>
               {/if}
@@ -275,8 +276,8 @@
 
             <!-- Ticket selector -->
             <div class="mb-3">
-              <label class="block text-xs font-medium text-stone-400 mb-1">Event Ticket</label>
-              <select name="ticket_product_id" bind:value={selectedTicket}
+              <label for="edit-ticket" class="block text-xs font-medium text-stone-400 mb-1">Event Ticket</label>
+              <select id="edit-ticket" name="ticket_product_id" bind:value={selectedTicket}
                 class="w-full px-3 py-2 rounded-lg bg-stone-900 border border-stone-700 text-stone-100 text-sm focus:outline-none focus:border-amber-500">
                 <option value="">(Keep current ticket)</option>
                 {#each availableTickets as t}
@@ -290,9 +291,9 @@
 
             <!-- Promo code -->
             <div>
-              <label class="block text-xs font-medium text-stone-400 mb-1">Promo Code <span class="text-stone-600">(optional)</span></label>
+              <label for="edit-promo" class="block text-xs font-medium text-stone-400 mb-1">Promo Code <span class="text-stone-600">(optional)</span></label>
               <div class="flex gap-2">
-                <input type="text" bind:value={promoInputTicket} placeholder="Enter code"
+                <input id="edit-promo" type="text" bind:value={promoInputTicket} placeholder="Enter code"
                   class="flex-1 px-3 py-2 rounded-lg bg-stone-900 border border-stone-700 text-stone-100 text-sm focus:outline-none focus:border-amber-500" />
                 <button type="button" disabled={promoCheckingTicket}
                   on:click={async () => {
@@ -500,21 +501,25 @@
           <div class="mt-3 p-3 bg-red-900/30 border border-red-700 text-red-300 rounded-lg text-sm">{checkoutError}</div>
         {/if}
 
-        {#if participant.status === 'approved'}
-          <button on:click={checkout} disabled={isCheckingOut}
-            class="mt-4 w-full py-3 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl transition disabled:opacity-50 flex items-center justify-center gap-2">
-            {#if isCheckingOut}
-              <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-              </svg>
-              Redirecting to payment…
-            {:else}
-              Pay {grandTotal.toFixed(2)} {unpaidProducts[0]?.currency_type}
-            {/if}
-          </button>
+        {#if PUBLIC_PAYMENTS_ENABLED === 'true'}
+          {#if participant.status === 'approved'}
+            <button on:click={checkout} disabled={isCheckingOut}
+              class="mt-4 w-full py-3 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl transition disabled:opacity-50 flex items-center justify-center gap-2">
+              {#if isCheckingOut}
+                <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                </svg>
+                Redirecting to payment…
+              {:else}
+                Pay {grandTotal.toFixed(2)} {unpaidProducts[0]?.currency_type}
+              {/if}
+            </button>
+          {:else}
+            <p class="mt-3 text-xs text-stone-500 text-center">Payment available once your registration is approved.</p>
+          {/if}
         {:else}
-          <p class="mt-3 text-xs text-stone-500 text-center">Payment available once your registration is approved.</p>
+          <p class="mt-4 text-xs text-stone-500 text-center">Online payment is not yet available — we'll notify you when it opens.</p>
         {/if}
       </div>
     {/if}

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
   import { page } from '$app/stores';
+  import { PUBLIC_PAYMENTS_ENABLED } from '$env/static/public';
 
   export let data: {
     participant: any;
@@ -194,6 +195,7 @@
 
         <!-- Pay deposit or full amount -->
         {#if !existingBooking.deposit_paid}
+          {#if PUBLIC_PAYMENTS_ENABLED === 'true'}
           <div class="mt-5 grid grid-cols-2 gap-3">
 
             <!-- Deposit -->
@@ -259,10 +261,13 @@
             </form>
 
           </div>
+          {:else}
+            <p class="mt-4 text-xs text-stone-500 text-center">Online payment is not yet available — we'll notify you when it opens.</p>
+          {/if}
         {/if}
 
         <!-- Pay remaining -->
-        {#if existingBooking.deposit_paid && !existingBooking.remaining_paid && existingBooking.remaining_amount > 0 && !isDeadlinePassed}
+        {#if PUBLIC_PAYMENTS_ENABLED === 'true' && existingBooking.deposit_paid && !existingBooking.remaining_paid && existingBooking.remaining_amount > 0 && !isDeadlinePassed}
           <form method="POST" action="?/payRemaining" use:enhance class="mt-5">
             <div class="bg-stone-900 rounded-xl p-4 space-y-1 mb-4 text-xs text-stone-400">
               <div class="flex justify-between">
@@ -407,13 +412,13 @@
             {#if selectedRoom}
               <div class="grid grid-cols-2 gap-4">
                 <div>
-                  <label class="block text-sm font-medium text-stone-300 mb-1.5">Check-in</label>
-                  <input type="date" name="check_in" bind:value={checkIn} required
+                  <label for="accom-checkin" class="block text-sm font-medium text-stone-300 mb-1.5">Check-in</label>
+                  <input id="accom-checkin" type="date" name="check_in" bind:value={checkIn} required
                     class="w-full px-4 py-2.5 rounded-xl bg-stone-900 border border-stone-700 text-stone-100 focus:outline-none focus:border-amber-500" />
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-stone-300 mb-1.5">Check-out</label>
-                  <input type="date" name="check_out" bind:value={checkOut} required
+                  <label for="accom-checkout" class="block text-sm font-medium text-stone-300 mb-1.5">Check-out</label>
+                  <input id="accom-checkout" type="date" name="check_out" bind:value={checkOut} required
                     class="w-full px-4 py-2.5 rounded-xl bg-stone-900 border border-stone-700 text-stone-100 focus:outline-none focus:border-amber-500" />
                 </div>
               </div>
@@ -427,9 +432,9 @@
 
                 {#if roommateSlots > 0}
                   <div class="space-y-2">
-                    <label class="block text-sm font-medium text-stone-300">
+                    <p class="block text-sm font-medium text-stone-300">
                       Roommates <span class="text-stone-500 font-normal">(optional)</span>
-                    </label>
+                    </p>
                     {#each Array(roommateSlots) as _, i}
                       <input
                         type="text"
@@ -443,10 +448,10 @@
                 {/if}
 
                 <div>
-                  <label class="block text-sm font-medium text-stone-300 mb-1.5">
+                  <label for="accom-membership" class="block text-sm font-medium text-stone-300 mb-1.5">
                     Hotel Membership ID <span class="text-stone-500 font-normal">(optional)</span>
                   </label>
-                  <input type="text" name="hotel_membership_id" bind:value={hotelMembershipId}
+                  <input id="accom-membership" type="text" name="hotel_membership_id" bind:value={hotelMembershipId}
                     placeholder="e.g. Scandic Friends, Nordic Choice Club..."
                     class="w-full px-4 py-2.5 rounded-xl bg-stone-900 border border-stone-700 text-stone-100 focus:outline-none focus:border-amber-500" />
                   <p class="text-xs text-stone-500 mt-1">Enter your hotel loyalty membership number if you have one</p>

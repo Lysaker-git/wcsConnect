@@ -174,8 +174,8 @@
                                     {item.location}
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                    <a href={item.link} class="inline-flex items-center justify-center w-9 h-9 rounded-md bg-stone-800 hover:bg-stone-700 text-amber-300" style="box-shadow: inset 2px 2px 6px rgba(2,6,23,0.6), -2px -2px 6px rgba(255,255,255,0.01);">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                                    <a href={item.link} aria-label="View {item.date}" class="inline-flex items-center justify-center w-9 h-9 rounded-md bg-stone-800 hover:bg-stone-700 text-amber-300" style="box-shadow: inset 2px 2px 6px rgba(2,6,23,0.6), -2px -2px 6px rgba(255,255,255,0.01);">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                                             <path fill-rule="evenodd" d="M10.293 15.707a1 1 0 010-1.414L13.586 11H4a1 1 0 110-2h9.586l-3.293-3.293a1 1 0 111.414-1.414l5 5a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0z" clip-rule="evenodd" />
                                         </svg>
                                     </a>

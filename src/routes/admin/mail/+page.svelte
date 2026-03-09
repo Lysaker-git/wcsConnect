@@ -87,8 +87,9 @@
 
       <!-- Event selector -->
       <div class="bg-stone-800 rounded-2xl border border-stone-700 p-6">
-        <label class="block text-sm font-semibold text-stone-300 mb-2">Select event</label>
+        <label for="mail-event" class="block text-sm font-semibold text-stone-300 mb-2">Select event</label>
         <select
+          id="mail-event"
           bind:value={selectedEventId}
           on:change={loadRecipients}
           class="w-full px-4 py-3 rounded-xl bg-stone-900 border border-stone-700 text-stone-100 focus:outline-none focus:border-amber-500"
@@ -148,8 +149,9 @@
         <h2 class="text-lg font-semibold text-stone-100">Compose</h2>
 
         <div>
-          <label class="block text-sm font-medium text-stone-400 mb-1.5">Subject</label>
+          <label for="mail-subject" class="block text-sm font-medium text-stone-400 mb-1.5">Subject</label>
           <input
+            id="mail-subject"
             type="text"
             bind:value={subject}
             placeholder="e.g. Important update about the event"
@@ -158,11 +160,12 @@
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-stone-400 mb-1.5">
+          <label for="mail-body" class="block text-sm font-medium text-stone-400 mb-1.5">
             Body
             <span class="text-stone-600 font-normal ml-1">— use blank lines to separate paragraphs. Write {'{{username}}'} to personalise.</span>
           </label>
           <textarea
+            id="mail-body"
             bind:value={body}
             rows="10"
             placeholder="Write your message here…"
@@ -181,8 +184,9 @@
             <p class="text-xs text-stone-400">Sends <strong class="text-stone-300">{testCount}</strong> copies of the email to each test address instead of real recipients.</p>
             
             <div>
-                <label class="block text-xs font-medium text-stone-400 mb-1">Test email addresses <span class="text-stone-600">(one per line)</span></label>
+                <label for="mail-test-emails" class="block text-xs font-medium text-stone-400 mb-1">Test email addresses <span class="text-stone-600">(one per line)</span></label>
                 <textarea
+                id="mail-test-emails"
                 bind:value={testEmailsRaw}
                 rows="3"
                 placeholder="you@example.com&#10;colleague@example.com"
@@ -191,8 +195,9 @@
             </div>
 
             <div>
-                <label class="block text-xs font-medium text-stone-400 mb-1">Copies per address</label>
+                <label for="mail-test-count" class="block text-xs font-medium text-stone-400 mb-1">Copies per address</label>
                 <input
+                id="mail-test-count"
                 type="number"
                 bind:value={testCount}
                 min="1"

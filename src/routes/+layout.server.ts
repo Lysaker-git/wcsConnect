@@ -34,10 +34,24 @@ export const load: LayoutServerLoad = async ({ locals, cookies }) => {
     let displayUser = null;
     try { displayUser = sbUser ? JSON.parse(sbUser) : null; } catch { displayUser = null; }
 
-    return { user: displayUser, session };
+    const { data: banner } = await serviceRole
+      .from('status_banner')
+      .select('message, is_active')
+      .eq('id', 1)
+      .maybeSingle();
+
+    console.log('Loaded layout with user:', displayUser, 'session:', session, 'banner:', banner);
+    return { user: displayUser, session, statusBanner: banner?.is_active ? (banner.message || null) : null };
   }
 
   // No session — clear display cookie
   cookies.delete('sb_user', { path: '/' });
-  return { user: null, session: null };
+
+  const { data: banner } = await serviceRole
+    .from('status_banner')
+    .select('message, is_active')
+    .eq('id', 1)
+    .maybeSingle();
+
+  return { user: null, session: null, statusBanner: banner?.is_active ? (banner.message || null) : null };
 };
