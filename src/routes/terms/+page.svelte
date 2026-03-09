@@ -33,7 +33,7 @@
       <section>
         <h2 class="text-xl font-semibold text-stone-100 mb-3">4. Payments</h2>
         <ul class="list-disc list-inside space-y-1 mt-2 text-stone-400">
-          <li>All payments are processed securely by Stripe</li>
+          <li>All payments are processed securely by NETS Easy</li>
           <li>A platform service fee of 1% applies to all transactions</li>
           <li>An optional payment handling fee of 3.5% may apply depending on the event configuration</li>
           <li>Refunds are handled at the discretion of the Event Director</li>

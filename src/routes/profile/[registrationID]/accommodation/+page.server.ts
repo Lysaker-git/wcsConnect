@@ -273,6 +273,65 @@ export const actions: Actions = {
     throw redirect(303, hostedPaymentPageUrl);
   },
 
+  payFull: async ({ params, url, locals }) => {
+    const db = locals.supabase;
+    const { registrationID } = params;
+
+    const { user } = await locals.safeGetSession();
+    if (!user) return fail(401, { message: 'Not authenticated' });
+
+    const { data: booking } = await db
+      .from('hotel_bookings')
+      .select('*, events(stripe_fee_model, platform_fee_percent, title)')
+      .eq('participant_id', registrationID)
+      .eq('deposit_paid', false)
+      .is('cancelled_at', null)
+      .single();
+
+    if (!booking) return fail(404, { message: 'No unpaid booking found' });
+
+    const { data: participant } = await db
+      .from('event_participants')
+      .select('event_id, user_id')
+      .eq('id', registrationID)
+      .single();
+
+    if (!participant || participant.user_id !== user.id) return fail(403, { message: 'Access denied' });
+
+    const event = booking.events as any;
+    const chargeAmount = parseFloat(booking.total_amount);
+    const feeModel = event?.stripe_fee_model ?? 'on_top';
+    const platformFeePercent = event?.platform_fee_percent ?? 1;
+
+    const chargeOre = Math.round(chargeAmount * 100);
+    const handlingFeeOre = feeModel === 'on_top' ? Math.round(chargeAmount * 0.035 * 100) : 0;
+    const serviceFeeOre = Math.round(chargeAmount * (platformFeePercent / 100) * 100);
+    const totalOre = chargeOre + handlingFeeOre + serviceFeeOre;
+
+    const netsReference = `accommodation_full:${registrationID}:${booking.id}`;
+    const netsItems: any[] = [{ reference: booking.id, name: `${booking.room_name} — Full Payment`, quantity: 1, unit: 'pcs', unitPrice: chargeOre, taxRate: 0, taxAmount: 0, grossTotalAmount: chargeOre, netTotalAmount: chargeOre }];
+    if (feeModel === 'on_top') {
+      netsItems.push({ reference: 'handling-fee', name: 'Payment handling fee (3.5%)', quantity: 1, unit: 'pcs', unitPrice: handlingFeeOre, taxRate: 0, taxAmount: 0, grossTotalAmount: handlingFeeOre, netTotalAmount: handlingFeeOre });
+    }
+    netsItems.push({ reference: 'service-fee', name: `Platform service fee (${platformFeePercent}%)`, quantity: 1, unit: 'pcs', unitPrice: serviceFeeOre, taxRate: 0, taxAmount: 0, grossTotalAmount: serviceFeeOre, netTotalAmount: serviceFeeOre });
+
+    const returnOrigin = url.origin;
+    const webhookOrigin = url.origin.includes('localhost') ? (NETS_LOCAL_TUNNEL_URL || 'https://dancepoint.no') : url.origin;
+    const webhookUrl = `${webhookOrigin}/api/nets/webhook`;
+
+    const { hostedPaymentPageUrl } = await createNetsPayment({
+      order: { items: netsItems, amount: totalOre, currency: (booking.currency ?? 'NOK').toUpperCase(), reference: netsReference },
+      checkout: { integrationType: 'HostedPaymentPage', returnUrl: `${returnOrigin}/profile/${registrationID}/accommodation?success=true`, cancelUrl: `${returnOrigin}/profile/${registrationID}/accommodation?cancelled=true`, termsUrl: `${returnOrigin}/terms`, charge: true },
+      notifications: { webHooks: [
+        { eventName: 'payment.checkout.completed', url: webhookUrl, authorization: NETS_WEBHOOK_SECRET },
+        { eventName: 'payment.charge.failed', url: webhookUrl, authorization: NETS_WEBHOOK_SECRET },
+        { eventName: 'payment.cancel.created', url: webhookUrl, authorization: NETS_WEBHOOK_SECRET }
+      ]}
+    });
+
+    throw redirect(303, hostedPaymentPageUrl);
+  },
+
   payRemaining: async ({ params, url, locals }) => {
     const db = locals.supabase;
     const { registrationID } = params;

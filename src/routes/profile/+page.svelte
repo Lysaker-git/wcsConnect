@@ -9,6 +9,7 @@
   $: isSuperUser = (data.profile?.userRole ?? []).includes('Super User');
   $: stripeConnected = data.profile?.stripe_onboarding_complete === true;
   $: isOrganizer = isSuperUser || (data.myEvents && data.myEvents.length > 0);
+  $: canAccessAdmin = (data.profile?.userRole ?? []).some((r: string) => ['Super User', 'Owner'].includes(r)) || (data.myEvents && data.myEvents.length > 0);
 
   // Use static public URLs (moved to static/images/avatar/)
   const maleAvatar = '/images/avatar/male.png';
@@ -181,7 +182,35 @@ $: isProfileIncomplete = user && (!profile || (
 
 
     <!-- UPDATED PROFILE SECTION -->
-    <section class="neomorph-card mb-8 p-6 rounded-lg bg-stone-800 shadow-xl">
+    <section class="neomorph-card mb-8 p-6 rounded-lg bg-stone-800 shadow-xl relative">
+
+      <!-- Actions button — top right -->
+      <div class="absolute top-4 right-4">
+        <button
+          on:click={() => showDropdown = !showDropdown}
+          class="p-2 rounded-lg text-stone-500 hover:text-stone-300 hover:bg-stone-700/50 transition"
+          title="Actions"
+          aria-label="User actions menu"
+        >
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="5" r="1" fill="currentColor" stroke="none"/>
+            <circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/>
+            <circle cx="12" cy="19" r="1" fill="currentColor" stroke="none"/>
+          </svg>
+        </button>
+        {#if showDropdown}
+          <div class="absolute right-0 mt-1 w-44 bg-stone-800 border border-stone-700 rounded-xl shadow-lg z-10 overflow-hidden" role="menu" aria-label="User actions menu">
+            <button on:click={() => { showModal = true; showDropdown = false; }} class="block w-full text-left px-4 py-2.5 text-sm text-stone-300 hover:bg-stone-700 hover:text-stone-100 transition">Edit Profile</button>
+            {#if canAccessAdmin}
+              <a href="/admin" class="block w-full text-left px-4 py-2.5 text-sm text-stone-300 hover:bg-stone-700 hover:text-stone-100 transition">Admin panel</a>
+            {/if}
+            {#if user && (profile?.userRole?.includes('Owner') || profile?.userRole?.includes('Superuser') || profile?.userRole?.includes('EventDirector'))}
+              <a href="/admin/events/createEvent" class="block w-full text-left px-4 py-2.5 text-sm text-stone-300 hover:bg-stone-700 hover:text-stone-100 transition">Create Event</a>
+            {/if}
+          </div>
+        {/if}
+      </div>
+
       <div class="flex items-start gap-6">
         <!-- Avatar -->
         <img src={profile?.avatar_url ?? editAvatar} alt="avatar" class="w-20 h-20 rounded-full object-cover shadow-md ring-4 ring-amber-500" />
@@ -317,32 +346,6 @@ $: isProfileIncomplete = user && (!profile || (
         {/if}
       </section>
 
-    <!-- Settings Dropdown -->
-    <section class="mt-6 p-6 rounded-lg bg-stone-800 shadow relative neomorph-card">
-      {#if isSuperUser}
-        {#if stripeConnected}
-          <div class="stripe-connect-banner p-2 mb-4 bg-stone-900/90 rounded-md text-sm text-center">
-            <p class="italic">Stripe account connected.</p>
-          </div>
-            {:else}
-          <a href="/api/stripe/connect" class="block mt-4 mb-2 px-4 py-2 bg-amber-600 text-white rounded-md font-semibold text-center shadow hover:bg-amber-700 transition">
-                Connect with Stripe to sell tickets
-          </a>
-        {/if}
-      {/if}
-      <button on:click={() => showDropdown = !showDropdown} class="px-4 py-2 bg-stone-700 text-stone-100 rounded-md flex items-center gap-2">
-        <span>⚙️</span> Actions
-      </button>
-      {#if showDropdown}
-        <div class="absolute left-6 w-48 bg-stone-800 border border-stone-700 rounded-md shadow-lg z-10 overflow-hidden">
-          <button on:click={() => { showModal = true; showDropdown = false; }} class="block w-full text-left px-4 py-2 text-stone-100 hover:bg-stone-900">Edit Profile</button>
-          {#if user && (profile?.userRole?.includes('Owner') || profile?.userRole?.includes('Superuser') || profile?.userRole?.includes('EventDirector'))}
-            <a href="/admin/events/createEvent" class="block w-full text-left px-4 py-2 text-stone-100 hover:bg-stone-700">Create Event</a>
-          {/if}
-        </div>
-      {/if}
-
-    </section>
 
     <!-- Modal -->
     {#if showModal}

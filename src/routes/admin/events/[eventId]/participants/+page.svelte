@@ -78,12 +78,12 @@
   </div>
 
   <a href="/admin/events/{data.event?.id}/approval"
-    class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-bold rounded-xl transition">
+    class="px-4 py-2 mb-4 bg-amber-600 hover:bg-amber-700 text-white text-sm font-bold rounded-xl transition">
     Open approval queue →
   </a>
 
   <!-- Search -->
-  <div class="mb-6">
+  <div class="mb-6 pt-4">
     <input
       type="search"
       bind:value={search}

@@ -19,7 +19,7 @@
 <div class="min-h-screen bg-stone-900 flex">
 
   <!-- Sidebar -->
-  <aside class="w-56 shrink-0 border-r border-stone-700 bg-stone-800/50 flex flex-col">
+  <aside class="w-56 shrink-0  flex flex-col bg-gradient-to-b from-stone-900 via-stone-800/50 to-stone-950 [box-shadow:4px_0_16px_-2px_rgba(0,0,0,0.4)]">
     <div class="p-5 border-b border-stone-700">
       <a href="/admin" class="text-xs font-semibold tracking-widest uppercase text-stone-500 hover:text-stone-300 transition">
         Admin

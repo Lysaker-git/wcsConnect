@@ -35,6 +35,12 @@
   $: remServiceFee = rem * ((event?.platform_fee_percent ?? 1) / 100);
   $: remGrandTotal = rem + remHandlingFee + remServiceFee;
 
+  // Full payment totals (for unpaid deposit — pay everything at once)
+  $: fullAmount = existingBooking ? parseFloat(existingBooking.total_amount) : 0;
+  $: fullHandlingFee = feeModel === 'on_top' ? fullAmount * 0.035 : 0;
+  $: fullServiceFee = fullAmount * ((event?.platform_fee_percent ?? 1) / 100);
+  $: fullGrandTotal = fullAmount + fullHandlingFee + fullServiceFee;
+
   $: finalDeadline = event?.accommodation_final_payment_deadline
     ? new Date(event.accommodation_final_payment_deadline).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
     : null;
@@ -97,6 +103,8 @@
         {form.message}
       </div>
     {/if}
+
+
 
     <!-- ── Cancelled booking notice ────────────────────────────────────────── -->
     {#if existingBooking && isCancelled}
@@ -184,32 +192,73 @@
           {/if}
         </div>
 
-        <!-- Pay outstanding deposit (legacy / edge case) -->
+        <!-- Pay deposit or full amount -->
         {#if !existingBooking.deposit_paid}
-          <form method="POST" action="?/payDeposit" use:enhance class="mt-5">
-            <div class="bg-stone-900 rounded-xl p-4 space-y-1 mb-4 text-xs text-stone-400">
-              <div class="flex justify-between">
-                <span>Deposit due</span>
-                <span>{parseFloat(existingBooking.deposit_amount).toFixed(2)} {existingBooking.currency}</span>
-              </div>
-              {#if feeModel === 'on_top'}
+          <div class="mt-5 grid grid-cols-2 gap-3">
+
+            <!-- Deposit -->
+            <form method="POST" action="?/payDeposit" use:enhance>
+              <div class="bg-stone-900 rounded-xl p-3 space-y-1 mb-3 text-xs text-stone-400">
+                <p class="text-stone-300 font-semibold text-sm mb-1">Deposit ({depositPercent}%)</p>
                 <div class="flex justify-between">
-                  <span>Payment handling (3.5%)</span>
-                  <span>{(parseFloat(existingBooking.deposit_amount) * 0.035).toFixed(2)} {existingBooking.currency}</span>
+                  <span>Deposit</span>
+                  <span>{parseFloat(existingBooking.deposit_amount).toFixed(2)} {existingBooking.currency}</span>
                 </div>
-              {/if}
-              <div class="flex justify-between border-t border-stone-700 pt-1 font-semibold text-stone-200">
-                <span>Total due</span>
-                <span class="text-amber-400">
-                  {(parseFloat(existingBooking.deposit_amount) * (feeModel === 'on_top' ? 1.035 : 1) * (1 + (event?.platform_fee_percent ?? 1) / 100)).toFixed(2)} {existingBooking.currency}
-                </span>
+                {#if feeModel === 'on_top'}
+                  <div class="flex justify-between">
+                    <span>Handling (3.5%)</span>
+                    <span>{(parseFloat(existingBooking.deposit_amount) * 0.035).toFixed(2)} {existingBooking.currency}</span>
+                  </div>
+                {/if}
+                <div class="flex justify-between">
+                  <span>Service fee ({event?.platform_fee_percent ?? 1}%)</span>
+                  <span>{(parseFloat(existingBooking.deposit_amount) * ((event?.platform_fee_percent ?? 1) / 100)).toFixed(2)} {existingBooking.currency}</span>
+                </div>
+                <div class="flex justify-between border-t border-stone-700 pt-1 font-semibold text-stone-200">
+                  <span>Due now</span>
+                  <span class="text-amber-400">
+                    {(parseFloat(existingBooking.deposit_amount) * (feeModel === 'on_top' ? 1.035 : 1) * (1 + (event?.platform_fee_percent ?? 1) / 100)).toFixed(2)} {existingBooking.currency}
+                  </span>
+                </div>
+                {#if finalDeadline}
+                  <p class="text-stone-600 pt-0.5">Rest due {finalDeadline}</p>
+                {/if}
               </div>
-            </div>
-            <button type="submit"
-              class="w-full py-3 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl transition">
-              Pay deposit now
-            </button>
-          </form>
+              <button type="submit" class="w-full py-2.5 bg-stone-700 hover:bg-stone-600 text-white font-bold rounded-xl transition text-sm">
+                Pay deposit
+              </button>
+            </form>
+
+            <!-- Full payment -->
+            <form method="POST" action="?/payFull" use:enhance>
+              <div class="bg-stone-900 rounded-xl p-3 space-y-1 mb-3 text-xs text-stone-400">
+                <p class="text-stone-300 font-semibold text-sm mb-1">Pay in full</p>
+                <div class="flex justify-between">
+                  <span>Total</span>
+                  <span>{fullAmount.toFixed(2)} {existingBooking.currency}</span>
+                </div>
+                {#if feeModel === 'on_top'}
+                  <div class="flex justify-between">
+                    <span>Handling (3.5%)</span>
+                    <span>{fullHandlingFee.toFixed(2)} {existingBooking.currency}</span>
+                  </div>
+                {/if}
+                <div class="flex justify-between">
+                  <span>Service fee ({event?.platform_fee_percent ?? 1}%)</span>
+                  <span>{fullServiceFee.toFixed(2)} {existingBooking.currency}</span>
+                </div>
+                <div class="flex justify-between border-t border-stone-700 pt-1 font-semibold text-stone-200">
+                  <span>Due now</span>
+                  <span class="text-amber-400">{fullGrandTotal.toFixed(2)} {existingBooking.currency}</span>
+                </div>
+                <p class="text-stone-600 pt-0.5">No further payments</p>
+              </div>
+              <button type="submit" class="w-full py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl transition text-sm">
+                Pay in full
+              </button>
+            </form>
+
+          </div>
         {/if}
 
         <!-- Pay remaining -->
@@ -471,5 +520,37 @@
       {/if}
     {/if}
 
+        <!-- ── Booking policy ────────────────────────────────────────────────── -->
+    <div class="bg-stone-800/60 rounded-2xl border border-stone-700 p-5 space-y-3">
+      <div class="flex items-center gap-2">
+        <span class="text-base">📋</span>
+        <h3 class="text-sm font-semibold text-stone-200">Booking policy</h3>
+      </div>
+      <ul class="space-y-2 text-sm text-stone-400">
+        <li class="flex gap-2">
+          <span class="text-stone-500 mt-0.5 shrink-0">•</span>
+          <span>The prices listed are the rates we have negotiated directly with the hotel on your behalf.</span>
+        </li>
+        <li class="flex gap-2">
+          <span class="text-stone-500 mt-0.5 shrink-0">•</span>
+          <span>Your room is <strong class="text-stone-300">not guaranteed</strong> until a deposit or full payment has been completed.</span>
+        </li>
+        <li class="flex gap-2">
+          <span class="text-amber-600 mt-0.5 shrink-0">•</span>
+          <span><strong class="text-stone-300">The deposit is non-refundable</strong> regardless of cancellation.</span>
+        </li>
+        <li class="flex gap-2">
+          <span class="text-stone-500 mt-0.5 shrink-0">•</span>
+          <span>You may cancel your room booking free of charge (excluding the deposit) up until <strong class="text-stone-300">28 June</strong>. Cancellations after this date may incur the full room cost.</span>
+        </li>
+        <li class="flex gap-2">
+          <span class="text-stone-500 mt-0.5 shrink-0">•</span>
+          <span>After 28 June, room availability through DancePoint is no longer guaranteed. You will need to contact the hotel directly to arrange accommodation.</span>
+        </li>
+      </ul>
+    </div>
+
   </div>
 </div>
+
+

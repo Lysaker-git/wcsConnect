@@ -1,5 +1,6 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { supabase } from '$lib/server/supabaseServiceClient';
+import { sendRegistrationReceivedEmail } from '$lib/server/email';
 
 export const load = async ({ params, locals }) => {
     const db = locals.supabase;
@@ -256,6 +257,25 @@ export const actions = {
                 const product = productData.find(p => p.id === sp.productID);
                 return sum + (product ? parseFloat(product.price.toString()) * sp.quantity : 0);
             }, 0);
+
+            // Send registration received email — non-blocking, don't fail registration if it errors
+            try {
+                const [{ data: eventRow }, { data: profileRow }] = await Promise.all([
+                    db.from('events').select('title').eq('id', eventID).single(),
+                    db.from('profiles').select('username').eq('id', userID).single()
+                ]);
+
+                if (user.email && eventRow?.title) {
+                    await sendRegistrationReceivedEmail({
+                        to: user.email,
+                        username: profileRow?.username ?? 'dancer',
+                        eventTitle: eventRow.title,
+                        participantId: participantData.id
+                    });
+                }
+            } catch (emailErr) {
+                console.warn('[registration] confirmation email failed:', emailErr);
+            }
 
             return {
                 success: true,
