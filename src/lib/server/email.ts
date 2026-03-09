@@ -227,6 +227,8 @@ export async function sendReceiptEmail({
   totalInclMva,
   currency,
   stripeRef,
+  paymentRef,
+  paymentProvider = 'Stripe',
   participantId
 }: {
   to: string;
@@ -239,7 +241,10 @@ export async function sendReceiptEmail({
   totalMva: number;
   totalInclMva: number;
   currency: string;
-  stripeRef: string;
+  /** @deprecated use paymentRef instead */
+  stripeRef?: string;
+  paymentRef?: string;
+  paymentProvider?: string;
   participantId: string;
 }) {
   const cur = currency.toUpperCase();
@@ -366,8 +371,8 @@ export async function sendReceiptEmail({
       <div style="padding:16px 32px 24px;">
         <div style="padding:14px 16px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;">
           <p style="margin:0 0 6px;font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.04em;">Payment Information</p>
-          <p style="margin:0;color:#374151;">Payment method: Card (Stripe)</p>
-          <p style="margin:4px 0 0;color:#9ca3af;font-size:12px;word-break:break-all;">Ref: ${stripeRef}</p>
+          <p style="margin:0;color:#374151;">Payment method: Card (${paymentProvider})</p>
+          <p style="margin:4px 0 0;color:#9ca3af;font-size:12px;word-break:break-all;">Ref: ${paymentRef ?? stripeRef}</p>
         </div>
       </div>
 

@@ -1,19 +1,16 @@
 import { supabase } from '$lib/server/supabaseServiceClient';
 import { error as svelteError, fail, redirect } from '@sveltejs/kit';
-import Stripe from 'stripe';
-import { STRIPE_SECRET_KEY } from '$env/static/private';
+import { NETS_WEBHOOK_SECRET, NETS_LOCAL_TUNNEL_URL } from '$env/static/private';
+import { createNetsPayment } from '$lib/server/netsEasyClient';
 import type { PageServerLoad, Actions } from './$types';
 
-const stripe = new Stripe(STRIPE_SECRET_KEY);
-
-export const load: PageServerLoad = async ({ params, cookies, url, locals }) => {
+export const load: PageServerLoad = async ({ params, locals }) => {
   const db = locals.supabase;
   const { user } = await locals.safeGetSession();
   const { registrationID } = params;
 
   if (!user) throw redirect(303, '/signin');
 
-  // Fetch participant — must belong to this user and be approved
   const { data: participant, error: pError } = await db
     .from('event_participants')
     .select(`
@@ -32,7 +29,6 @@ export const load: PageServerLoad = async ({ params, cookies, url, locals }) => 
 
   const event = participant.events;
 
-  // Fetch accommodation products for this event
   const { data: rooms } = await supabase
     .from('products')
     .select('*')
@@ -41,12 +37,17 @@ export const load: PageServerLoad = async ({ params, cookies, url, locals }) => 
     .eq('is_active', true)
     .order('price', { ascending: true });
 
-  // Fetch existing booking for this registration if any
-  const { data: existingBooking } = await supabase
+  // Prefer the active booking; fall back to the most recent cancelled one for history display
+  const { data: allBookings } = await supabase
     .from('hotel_bookings')
     .select('*')
     .eq('participant_id', registrationID)
-    .maybeSingle();
+    .order('created_at', { ascending: false });
+
+  const existingBooking =
+    (allBookings ?? []).find(b => !b.cancelled_at) ??
+    (allBookings ?? [])[0] ??
+    null;
 
   return {
     participant,
@@ -57,14 +58,13 @@ export const load: PageServerLoad = async ({ params, cookies, url, locals }) => 
 };
 
 export const actions: Actions = {
-  book: async ({ request, params, cookies, url, locals }) => {
+  book: async ({ request, params, url, locals }) => {
     const db = locals.supabase;
     const { registrationID } = params;
 
     const { user } = await locals.safeGetSession();
     if (!user) return fail(401, { message: 'Not authenticated' });
 
-    // Verify participant
     const { data: participant } = await db
       .from('event_participants')
       .select(`
@@ -81,18 +81,19 @@ export const actions: Actions = {
     if (!participant) return fail(404, { message: 'Registration not found' });
     if (participant.status !== 'approved') return fail(400, { message: 'Registration must be approved' });
 
-    // Check no existing booking
-    const { data: existingBooking } = await db
+    // Only block if there's an active (non-cancelled) booking
+    const { data: activeBooking } = await db
       .from('hotel_bookings')
       .select('id')
       .eq('participant_id', registrationID)
+      .is('cancelled_at', null)
       .maybeSingle();
 
-    if (existingBooking) return fail(400, { message: 'You already have a room booking' });
+    if (activeBooking) return fail(400, { message: 'You already have a room booking' });
 
     const form = await request.formData();
     const product_id = form.get('product_id')?.toString();
-    const payment_type = form.get('payment_type')?.toString(); // 'full' or 'deposit'
+    const payment_type = form.get('payment_type')?.toString();
 
     if (!product_id || !payment_type) return fail(400, { message: 'Missing required fields' });
 
@@ -107,7 +108,6 @@ export const actions: Actions = {
       return fail(400, { message: 'Please select valid check-in and check-out dates' });
     }
 
-    // Fetch room product
     const { data: room } = await db
       .from('products')
       .select('*')
@@ -117,7 +117,6 @@ export const actions: Actions = {
 
     if (!room) return fail(404, { message: 'Room not found' });
 
-    // Check availability
     if (room.quantity_total && (room.quantity_sold ?? 0) >= room.quantity_total) {
       return fail(400, { message: 'This room type is fully booked' });
     }
@@ -127,155 +126,165 @@ export const actions: Actions = {
     const depositPercent = event.accommodation_deposit_percent ?? 10;
     const depositAmount = parseFloat((totalAmount * depositPercent / 100).toFixed(2));
     const remainingAmount = parseFloat((totalAmount - depositAmount).toFixed(2));
-    const currency = room.currency_type?.toLowerCase() ?? 'eur';
     const roommate_names = form.getAll('roommate_names')
       .map(v => v.toString().trim())
       .filter(v => v.length > 0);
 
     const chargeAmount = payment_type === 'full' ? totalAmount : depositAmount;
-    const stripeFeeModel = event.stripe_fee_model ?? 'on_top';
+    const feeModel = event.stripe_fee_model ?? 'on_top';
     const platformFeePercent = event.platform_fee_percent ?? 1;
 
-    // Find ED with Stripe connected
-    const { data: edParticipants } = await db
-      .from('event_participants')
-      .select('user_id')
-      .eq('event_id', participant.event_id)
-      .eq('event_role', 'Event Director');
+    // Generate a session ID upfront so it can be embedded in the NETS reference
+    const sessionId = crypto.randomUUID();
+    const netsReference = `accommodation_book:${registrationID}:${sessionId}`;
 
-    const edUserIds = (edParticipants ?? []).map(ep => ep.user_id);
-    const { data: organizers } = await db
-      .from('profiles')
-      .select('id, stripe_account_id, stripe_onboarding_complete')
-      .in('id', edUserIds)
-      .eq('stripe_onboarding_complete', true)
-      .not('stripe_account_id', 'is', null)
-      .limit(1);
+    const chargeOre = Math.round(chargeAmount * 100);
+    const handlingFeeOre = feeModel === 'on_top' ? Math.round(chargeAmount * 0.035 * 100) : 0;
+    const serviceFeeOre = Math.round(chargeAmount * (platformFeePercent / 100) * 100);
+    const totalOre = chargeOre + handlingFeeOre + serviceFeeOre;
 
-    const organizer = organizers?.[0];
-    if (!organizer?.stripe_account_id) {
-      return fail(400, { message: 'Event organiser has not connected Stripe' });
+    const lineItemName = payment_type === 'full'
+      ? `${room.name} — Full Payment`
+      : `${room.name} — Deposit (${depositPercent}%)`;
+
+    const netsItems: any[] = [{
+      reference: sessionId,
+      name: nights > 1 ? `${lineItemName} (${nights} nights)` : lineItemName,
+      quantity: 1,
+      unit: 'pcs',
+      unitPrice: chargeOre,
+      taxRate: 0,
+      taxAmount: 0,
+      grossTotalAmount: chargeOre,
+      netTotalAmount: chargeOre
+    }];
+
+    if (feeModel === 'on_top') {
+      netsItems.push({ reference: 'handling-fee', name: 'Payment handling fee (3.5%)', quantity: 1, unit: 'pcs', unitPrice: handlingFeeOre, taxRate: 0, taxAmount: 0, grossTotalAmount: handlingFeeOre, netTotalAmount: handlingFeeOre });
     }
+    netsItems.push({ reference: 'service-fee', name: `Platform service fee (${platformFeePercent}%)`, quantity: 1, unit: 'pcs', unitPrice: serviceFeeOre, taxRate: 0, taxAmount: 0, grossTotalAmount: serviceFeeOre, netTotalAmount: serviceFeeOre });
 
-    // Build line items
-    const lineItems: any[] = [
-      {
-        price_data: {
-          currency,
-          product_data: {
-            name: payment_type === 'full'
-              ? `${room.name} — Full Payment`
-              : `${room.name} — Deposit (${depositPercent}%)`
-          },
-          unit_amount: Math.round(chargeAmount * 100)
-        },
-        quantity: 1
+    const returnOrigin = url.origin;
+    const webhookOrigin = url.origin.includes('localhost') ? (NETS_LOCAL_TUNNEL_URL || 'https://dancepoint.no') : url.origin;
+    const webhookUrl = `${webhookOrigin}/api/nets/webhook`;
+
+    const { paymentId, hostedPaymentPageUrl } = await createNetsPayment({
+      order: { items: netsItems, amount: totalOre, currency: (room.currency_type ?? 'NOK').toUpperCase(), reference: netsReference },
+      checkout: {
+        integrationType: 'HostedPaymentPage',
+        returnUrl: `${returnOrigin}/profile/${registrationID}/accommodation?success=true`,
+        cancelUrl: `${returnOrigin}/profile/${registrationID}/accommodation?cancelled=true`,
+        termsUrl: `${returnOrigin}/terms`,
+        charge: true
+      },
+      notifications: {
+        webHooks: [
+          { eventName: 'payment.checkout.completed', url: webhookUrl, authorization: NETS_WEBHOOK_SECRET },
+          { eventName: 'payment.charge.failed', url: webhookUrl, authorization: NETS_WEBHOOK_SECRET },
+          { eventName: 'payment.cancel.created', url: webhookUrl, authorization: NETS_WEBHOOK_SECRET }
+        ]
       }
-    ];
-
-    const serviceFeeAmount = Math.round(chargeAmount * (platformFeePercent / 100) * 100);
-    const stripeFeeAmount = Math.round(chargeAmount * 0.035 * 100);
-
-    if (stripeFeeModel === 'on_top') {
-      lineItems.push({
-        price_data: {
-          currency,
-          product_data: { name: 'Payment handling fee (3.5%)' },
-          unit_amount: stripeFeeAmount
-        },
-        quantity: 1
-      });
-    }
-
-    lineItems.push({
-      price_data: {
-        currency,
-        product_data: { name: `Platform service fee (${platformFeePercent}%)` },
-        unit_amount: serviceFeeAmount
-      },
-      quantity: 1
     });
 
-    // on_top: capture both the Stripe recovery fee and platform fee
-    // included: organizer absorbs Stripe's cost, platform only takes platform fee
-    const applicationFee = stripeFeeModel === 'on_top'
-      ? serviceFeeAmount + stripeFeeAmount
-      : serviceFeeAmount;
-
-    const origin = url.origin.includes('localhost') ? 'https://dancepoint.no' : url.origin;
-
-    // Create hotel_booking record first (pending)
-    const { data: booking, error: bookingError } = await db
-      .from('hotel_bookings')
-      .insert({
-        participant_id: registrationID,
-        event_id: participant.event_id,
-        product_id: room.id,
-        room_name: room.name,
-        total_amount: totalAmount,
-        deposit_amount: depositAmount,
-        remaining_amount: payment_type === 'full' ? 0 : remainingAmount,
-        deposit_paid: false,
-        remaining_paid: payment_type === 'full',
-        currency: room.currency_type ?? 'EUR',
-        final_payment_deadline: event.accommodation_final_payment_deadline ?? null,
-        roommate_names: roommate_names,
-        room_capacity: room.room_capacity ?? 1,
-        hotel_membership_id,
-        check_in,
-        check_out,
-        nights
-      })
-      .select()
-      .single();
-
-    if (bookingError) return fail(500, { message: bookingError.message });
-
-    // Create Stripe session
-    const session = await stripe.checkout.sessions.create({
-      mode: 'payment',
-      line_items: lineItems,
-      payment_intent_data: {
-        application_fee_amount: applicationFee,
-        transfer_data: { destination: organizer.stripe_account_id }
-      },
-      metadata: {
-        type: payment_type === 'full' ? 'accommodation_full' : 'accommodation_deposit',
-        hotel_booking_id: booking.id,
-        participant_id: registrationID,
-        user_id: user.id
-      },
-      success_url: `${origin}/profile/${registrationID}/accommodation?success=true`,
-      cancel_url: `${origin}/profile/${registrationID}/accommodation?cancelled=true`
+    // Store all booking data in a session — the webhook will create hotel_bookings after payment succeeds
+    await supabase.from('accommodation_payment_sessions').insert({
+      id: sessionId,
+      nets_payment_id: paymentId,
+      participant_id: registrationID,
+      event_id: participant.event_id,
+      product_id: room.id,
+      payment_type,
+      total_amount: totalAmount,
+      deposit_amount: depositAmount,
+      remaining_amount: payment_type === 'full' ? 0 : remainingAmount,
+      currency: room.currency_type ?? 'EUR',
+      room_name: room.name,
+      room_capacity: room.room_capacity ?? 1,
+      check_in,
+      check_out,
+      nights,
+      roommate_names,
+      hotel_membership_id,
+      deposit_percent: depositPercent,
+      fee_model: feeModel,
+      platform_fee_percent: platformFeePercent,
+      final_payment_deadline: event.accommodation_final_payment_deadline ?? null
     });
 
-    // Update booking with session id
-    await db
-      .from('hotel_bookings')
-      .update({ deposit_stripe_session_id: session.id })
-      .eq('id', booking.id);
-
-    // Increment quantity_sold
-    await db
-      .from('products')
-      .update({ quantity_sold: (room.quantity_sold ?? 0) + 1 })
-      .eq('id', room.id);
-
-    throw redirect(303, session.url!);
+    throw redirect(303, hostedPaymentPageUrl);
   },
 
-  payRemaining: async ({ params, cookies, url, locals }) => {
+  payDeposit: async ({ params, url, locals }) => {
     const db = locals.supabase;
     const { registrationID } = params;
 
     const { user } = await locals.safeGetSession();
     if (!user) return fail(401, { message: 'Not authenticated' });
 
-    // Fetch booking
     const { data: booking } = await db
       .from('hotel_bookings')
       .select('*, events(stripe_fee_model, platform_fee_percent, title)')
       .eq('participant_id', registrationID)
+      .eq('deposit_paid', false)
+      .is('cancelled_at', null)
+      .single();
+
+    if (!booking) return fail(404, { message: 'No unpaid deposit found' });
+
+    const { data: participant } = await db
+      .from('event_participants')
+      .select('event_id, user_id')
+      .eq('id', registrationID)
+      .single();
+
+    if (!participant || participant.user_id !== user.id) return fail(403, { message: 'Access denied' });
+
+    const event = booking.events as any;
+    const chargeAmount = parseFloat(booking.deposit_amount);
+    const feeModel = event?.stripe_fee_model ?? 'on_top';
+    const platformFeePercent = event?.platform_fee_percent ?? 1;
+
+    const chargeOre = Math.round(chargeAmount * 100);
+    const handlingFeeOre = feeModel === 'on_top' ? Math.round(chargeAmount * 0.035 * 100) : 0;
+    const serviceFeeOre = Math.round(chargeAmount * (platformFeePercent / 100) * 100);
+    const totalOre = chargeOre + handlingFeeOre + serviceFeeOre;
+
+    const netsReference = `accommodation_deposit:${registrationID}:${booking.id}`;
+    const netsItems: any[] = [{ reference: booking.id, name: `${booking.room_name} — Deposit`, quantity: 1, unit: 'pcs', unitPrice: chargeOre, taxRate: 0, taxAmount: 0, grossTotalAmount: chargeOre, netTotalAmount: chargeOre }];
+    if (feeModel === 'on_top') {
+      netsItems.push({ reference: 'handling-fee', name: 'Payment handling fee (3.5%)', quantity: 1, unit: 'pcs', unitPrice: handlingFeeOre, taxRate: 0, taxAmount: 0, grossTotalAmount: handlingFeeOre, netTotalAmount: handlingFeeOre });
+    }
+    netsItems.push({ reference: 'service-fee', name: `Platform service fee (${platformFeePercent}%)`, quantity: 1, unit: 'pcs', unitPrice: serviceFeeOre, taxRate: 0, taxAmount: 0, grossTotalAmount: serviceFeeOre, netTotalAmount: serviceFeeOre });
+
+    const returnOrigin = url.origin;
+    const webhookOrigin = url.origin.includes('localhost') ? (NETS_LOCAL_TUNNEL_URL || 'https://dancepoint.no') : url.origin;
+    const webhookUrl = `${webhookOrigin}/api/nets/webhook`;
+
+    const { hostedPaymentPageUrl } = await createNetsPayment({
+      order: { items: netsItems, amount: totalOre, currency: (booking.currency ?? 'NOK').toUpperCase(), reference: netsReference },
+      checkout: { integrationType: 'HostedPaymentPage', returnUrl: `${returnOrigin}/profile/${registrationID}/accommodation?success=true`, cancelUrl: `${returnOrigin}/profile/${registrationID}/accommodation?cancelled=true`, termsUrl: `${returnOrigin}/terms`, charge: true },
+      notifications: { webHooks: [
+        { eventName: 'payment.checkout.completed', url: webhookUrl, authorization: NETS_WEBHOOK_SECRET },
+        { eventName: 'payment.charge.failed', url: webhookUrl, authorization: NETS_WEBHOOK_SECRET },
+        { eventName: 'payment.cancel.created', url: webhookUrl, authorization: NETS_WEBHOOK_SECRET }
+      ]}
+    });
+
+    throw redirect(303, hostedPaymentPageUrl);
+  },
+
+  payRemaining: async ({ params, url, locals }) => {
+    const db = locals.supabase;
+    const { registrationID } = params;
+
+    const { user } = await locals.safeGetSession();
+    if (!user) return fail(401, { message: 'Not authenticated' });
+
+    const { data: booking } = await db
+      .from('hotel_bookings')
+      .select('*, events(stripe_fee_model, platform_fee_percent, title)')
+      .eq('participant_id', registrationID)
+      .is('cancelled_at', null)
       .single();
 
     if (!booking) return fail(404, { message: 'Booking not found' });
@@ -290,95 +299,107 @@ export const actions: Actions = {
 
     if (!participant || participant.user_id !== user.id) return fail(403, { message: 'Access denied' });
 
-    // Find ED with Stripe
-    const { data: edParticipants } = await db
+    const event = booking.events as any;
+    const remainingAmount = parseFloat(booking.remaining_amount);
+    const feeModel = event?.stripe_fee_model ?? 'on_top';
+    const platformFeePercent = event?.platform_fee_percent ?? 1;
+
+    const chargeOre = Math.round(remainingAmount * 100);
+    const handlingFeeOre = feeModel === 'on_top' ? Math.round(remainingAmount * 0.035 * 100) : 0;
+    const serviceFeeOre = Math.round(remainingAmount * (platformFeePercent / 100) * 100);
+    const totalOre = chargeOre + handlingFeeOre + serviceFeeOre;
+
+    const netsReference = `accommodation_remaining:${registrationID}:${booking.id}`;
+    const netsItems: any[] = [{
+      reference: booking.id,
+      name: `${booking.room_name} — Remaining Balance`,
+      quantity: 1,
+      unit: 'pcs',
+      unitPrice: chargeOre,
+      taxRate: 0,
+      taxAmount: 0,
+      grossTotalAmount: chargeOre,
+      netTotalAmount: chargeOre
+    }];
+    if (feeModel === 'on_top') {
+      netsItems.push({ reference: 'handling-fee', name: 'Payment handling fee (3.5%)', quantity: 1, unit: 'pcs', unitPrice: handlingFeeOre, taxRate: 0, taxAmount: 0, grossTotalAmount: handlingFeeOre, netTotalAmount: handlingFeeOre });
+    }
+    netsItems.push({ reference: 'service-fee', name: `Platform service fee (${platformFeePercent}%)`, quantity: 1, unit: 'pcs', unitPrice: serviceFeeOre, taxRate: 0, taxAmount: 0, grossTotalAmount: serviceFeeOre, netTotalAmount: serviceFeeOre });
+
+    const returnOrigin = url.origin;
+    const webhookOrigin = url.origin.includes('localhost') ? (NETS_LOCAL_TUNNEL_URL || 'https://dancepoint.no') : url.origin;
+    const webhookUrl = `${webhookOrigin}/api/nets/webhook`;
+
+    const { hostedPaymentPageUrl } = await createNetsPayment({
+      order: { items: netsItems, amount: totalOre, currency: (booking.currency ?? 'NOK').toUpperCase(), reference: netsReference },
+      checkout: {
+        integrationType: 'HostedPaymentPage',
+        returnUrl: `${returnOrigin}/profile/${registrationID}/accommodation?success=true`,
+        cancelUrl: `${returnOrigin}/profile/${registrationID}/accommodation?cancelled=true`,
+        termsUrl: `${returnOrigin}/terms`,
+        charge: true
+      },
+      notifications: {
+        webHooks: [
+          { eventName: 'payment.checkout.completed', url: webhookUrl, authorization: NETS_WEBHOOK_SECRET },
+          { eventName: 'payment.charge.failed', url: webhookUrl, authorization: NETS_WEBHOOK_SECRET },
+          { eventName: 'payment.cancel.created', url: webhookUrl, authorization: NETS_WEBHOOK_SECRET }
+        ]
+      }
+    });
+
+    throw redirect(303, hostedPaymentPageUrl);
+  },
+
+  cancelBooking: async ({ params, locals }) => {
+    const db = locals.supabase;
+    const { registrationID } = params;
+
+    const { user } = await locals.safeGetSession();
+    if (!user) return fail(401, { message: 'Not authenticated' });
+
+    const { data: participant } = await db
       .from('event_participants')
       .select('user_id')
-      .eq('event_id', participant.event_id)
-      .eq('event_role', 'Event Director');
+      .eq('id', registrationID)
+      .single();
 
-    const edUserIds = (edParticipants ?? []).map(ep => ep.user_id);
-    const { data: organizers } = await db
-      .from('profiles')
-      .select('id, stripe_account_id, stripe_onboarding_complete')
-      .in('id', edUserIds)
-      .eq('stripe_onboarding_complete', true)
-      .not('stripe_account_id', 'is', null)
-      .limit(1);
+    if (!participant || participant.user_id !== user.id) return fail(403, { message: 'Access denied' });
 
-    const organizer = organizers?.[0];
-    if (!organizer?.stripe_account_id) return fail(400, { message: 'Organiser Stripe not connected' });
-
-    const event = booking.events as any;
-    const currency = booking.currency?.toLowerCase() ?? 'eur';
-    const remainingAmount = parseFloat(booking.remaining_amount);
-    const stripeFeeModel = event?.stripe_fee_model ?? 'on_top';
-    const platformFeePercent = event?.platform_fee_percent ?? 1;
-    const serviceFeeAmount = Math.round(remainingAmount * (platformFeePercent / 100) * 100);
-    const stripeFeeAmount = Math.round(remainingAmount * 0.035 * 100);
-
-    const lineItems: any[] = [
-      {
-        price_data: {
-          currency,
-          product_data: { name: `${booking.room_name} — Remaining Balance` },
-          unit_amount: Math.round(remainingAmount * 100)
-        },
-        quantity: 1
-      }
-    ];
-
-    if (stripeFeeModel === 'on_top') {
-      lineItems.push({
-        price_data: {
-          currency,
-          product_data: { name: 'Payment handling fee (3.5%)' },
-          unit_amount: stripeFeeAmount
-        },
-        quantity: 1
-      });
-    }
-
-    lineItems.push({
-      price_data: {
-        currency,
-        product_data: { name: `Platform service fee (${platformFeePercent}%)` },
-        unit_amount: serviceFeeAmount
-      },
-      quantity: 1
-    });
-
-    const applicationFee = stripeFeeModel === 'on_top'
-      ? serviceFeeAmount + stripeFeeAmount
-      : serviceFeeAmount;
-
-    const origin = url.origin.includes('localhost') ? 'https://dancepoint.no' : url.origin;
-
-    const session = await stripe.checkout.sessions.create({
-      mode: 'payment',
-      line_items: lineItems,
-      payment_intent_data: {
-        application_fee_amount: applicationFee,
-        transfer_data: { destination: organizer.stripe_account_id }
-      },
-      metadata: {
-        type: 'accommodation_remaining',
-        hotel_booking_id: booking.id,
-        participant_id: registrationID,
-        user_id: user.id
-      },
-      success_url: `${origin}/profile/${registrationID}/accommodation?success=true`,
-      cancel_url: `${origin}/profile/${registrationID}/accommodation?cancelled=true`
-    });
-
-    await db
+    const { data: booking } = await supabase
       .from('hotel_bookings')
-      .update({ remaining_stripe_session_id: session.id })
+      .select('id, product_id')
+      .eq('participant_id', registrationID)
+      .is('cancelled_at', null)
+      .single();
+
+    if (!booking) return fail(404, { message: 'No active booking found' });
+
+    const { error } = await supabase
+      .from('hotel_bookings')
+      .update({ cancelled_at: new Date().toISOString(), updated_at: new Date().toISOString() })
       .eq('id', booking.id);
 
-    throw redirect(303, session.url!);
+    if (error) return fail(500, { message: error.message });
+
+    // Release the room slot
+    const { data: product } = await supabase
+      .from('products')
+      .select('quantity_sold')
+      .eq('id', booking.product_id)
+      .single();
+
+    if (product) {
+      await supabase
+        .from('products')
+        .update({ quantity_sold: Math.max((product.quantity_sold ?? 0) - 1, 0) })
+        .eq('id', booking.product_id);
+    }
+
+    throw redirect(303, `/profile/${registrationID}/accommodation`);
   },
-  updateRoommates: async ({ request, params, cookies , locals }) => {
+
+  updateRoommates: async ({ request, params, locals }) => {
     const db = locals.supabase;
     const { registrationID } = params;
 

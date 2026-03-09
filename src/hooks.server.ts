@@ -8,6 +8,7 @@ const PUBLIC_ROUTES = [
   '/signup',
   '/auth',
   '/api/stripe/webhook',
+  '/api/nets/webhook',
   '/events',
   '/classes',
   '/competition',

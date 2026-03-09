@@ -1,15 +1,49 @@
 <script lang="ts">
-  // simple admin layout with internal navigation
+  import { page } from '$app/stores';
+
+  const navLinks = [
+    { href: '/admin/events',      label: 'Events',      icon: '📅' },
+    { href: '/admin/users',       label: 'Users',       icon: '👥' },
+    { href: '/admin/mail',        label: 'Mail',        icon: '✉️' },
+    { href: '/admin/competition', label: 'Competition', icon: '🏆' },
+  ];
+
+  $: currentPath = $page.url.pathname;
+
+  function isActive(href: string): boolean {
+    if (href === '/admin') return currentPath === '/admin';
+    return currentPath.startsWith(href);
+  }
 </script>
 
-<div class="min-h-screen bg-stone-900">
-  <nav class="bg-stone-800 border-b border-stone-700">
-    <div class="max-w-5xl mx-auto px-4 py-3 flex gap-4">
-      <a href="/admin/events" class="text-sm font-medium text-gray-600">Events</a>
-    </div>
-  </nav>
+<div class="min-h-screen bg-stone-900 flex">
 
-  <main class="max-w-5xl mx-auto p-6">
+  <!-- Sidebar -->
+  <aside class="w-56 shrink-0 border-r border-stone-700 bg-stone-800/50 flex flex-col">
+    <div class="p-5 border-b border-stone-700">
+      <a href="/admin" class="text-xs font-semibold tracking-widest uppercase text-stone-500 hover:text-stone-300 transition">
+        Admin
+      </a>
+    </div>
+
+    <nav class="flex flex-col gap-1 p-3 flex-1">
+      {#each navLinks as link}
+        <a
+          href={link.href}
+          class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition {isActive(link.href)
+            ? 'bg-stone-700 text-stone-100'
+            : 'text-stone-400 hover:text-stone-200 hover:bg-stone-700/50'}"
+        >
+          <span class="text-base leading-none">{link.icon}</span>
+          {link.label}
+        </a>
+      {/each}
+    </nav>
+  </aside>
+
+  <!-- Content -->
+  <main class="flex-1 min-w-0 p-8">
     <slot />
   </main>
+
 </div>

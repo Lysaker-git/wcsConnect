@@ -12,6 +12,7 @@
     availableProducts: any[];
     availableTickets: any[];
     stripe_fee_model: string;
+    useNets: boolean;
     event: any;
   };
 
@@ -21,6 +22,7 @@
     availableProducts,
     availableTickets,
     stripe_fee_model,
+    useNets,
     event
   } = data;
 
@@ -148,8 +150,9 @@
   async function checkout() {
     isCheckingOut = true;
     checkoutError = '';
+    const endpoint = useNets ? '/api/nets/checkout' : '/api/stripe/checkout';
     try {
-      const res = await fetch('/api/stripe/checkout', {
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

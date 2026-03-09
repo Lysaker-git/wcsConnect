@@ -11,6 +11,7 @@
   let recipients: { email: string; username: string }[] = [];
   let loadingRecipients = false;
   let recipientError = '';
+  let showRecipients = false;
 
   let step: 'compose' | 'preview' | 'sent' = 'compose';
   let isSending = false;
@@ -22,19 +23,15 @@
     loadingRecipients = true;
     recipientError = '';
     recipients = [];
+    showRecipients = false;
 
     try {
-      const fd = new FormData();
-      fd.append('event_id', selectedEventId);
-      const res = await fetch('?/getRecipients', { method: 'POST', body: fd });
-      const json = await res.json();
-      const parsed = JSON.parse(json.data);
-      const idx = parsed.find((x: any) => typeof x === 'object' && x !== null) ?? {};
-
-      if (res.ok && parsed[idx.recipients]) {
-        recipients = parsed[idx.recipients];
+      const res = await fetch(`/api/admin/mail-recipients?event_id=${selectedEventId}`);
+      const data = await res.json();
+      if (res.ok && data.recipients) {
+        recipients = data.recipients;
       } else {
-        recipientError = parsed[idx.message] ?? 'Failed to load recipients';
+        recipientError = data.error ?? 'Failed to load recipients';
       }
     } catch {
       recipientError = 'Failed to load recipients';
@@ -78,13 +75,11 @@
     $: activeRecipients = testMode ? testRecipients : recipients;
 </script>
 
-<div class="min-h-screen bg-stone-900 py-10 px-6">
-  <div class="max-w-3xl mx-auto space-y-6">
+<div class="max-w-3xl mx-auto space-y-6">
 
     <!-- Header -->
     <div>
-      <a href="/admin" class="text-sm text-amber-500 hover:underline">← Admin</a>
-      <h1 class="text-3xl font-bold text-stone-100 mt-2">Mass Email</h1>
+      <h1 class="text-2xl font-bold text-stone-100">Mass Email</h1>
       <p class="text-stone-400 text-sm mt-1">Send a message to all participants of an event</p>
     </div>
 
@@ -117,9 +112,33 @@
         {:else if recipientError}
           <p class="text-sm text-red-400 mt-3">{recipientError}</p>
         {:else if recipients.length > 0}
-          <div class="mt-3 flex items-center gap-2">
-            <span class="w-2 h-2 rounded-full bg-green-500"></span>
-            <p class="text-sm text-green-400 font-medium">{recipients.length} recipients loaded</p>
+          <div class="mt-3 border border-stone-700 rounded-xl overflow-hidden">
+            <button
+              type="button"
+              on:click={() => showRecipients = !showRecipients}
+              class="w-full flex items-center justify-between px-4 py-3 bg-stone-900 hover:bg-stone-750 transition text-left"
+            >
+              <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-green-500"></span>
+                <span class="text-sm text-green-400 font-medium">{recipients.length} recipients loaded</span>
+              </div>
+              <svg
+                class="w-4 h-4 text-stone-500 transition-transform {showRecipients ? 'rotate-180' : ''}"
+                fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
+              >
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            {#if showRecipients}
+              <div class="max-h-48 overflow-y-auto divide-y divide-stone-700/50">
+                {#each recipients as r}
+                  <div class="flex items-center justify-between px-4 py-2">
+                    <span class="text-sm text-stone-300">{r.username}</span>
+                    <span class="text-xs text-stone-500 font-mono">{r.email}</span>
+                  </div>
+                {/each}
+              </div>
+            {/if}
           </div>
         {/if}
       </div>
@@ -237,7 +256,6 @@
               <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:800;">DancePoint</h1>
             </div>
             <div style="padding:24px;">
-              <p style="color:#6b7280;margin:0 0 16px;font-family:sans-serif;">Hi [username],</p>
               {@html previewHtml}
             </div>
             <div style="padding:16px 24px;border-top:1px solid #e5e7eb;text-align:center;">
@@ -333,5 +351,4 @@
 
     {/if}
 
-  </div>
 </div>
