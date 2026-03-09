@@ -14,7 +14,7 @@
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
     <div class="flex flex-col md:flex-row md:justify-between md:items-start gap-8">
       <div class="flex items-start gap-3">
-        <svg class="w-10 h-10 text-stone-300" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+        <svg class="w-10 h-10 text-stone-300" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
           <rect x="1" y="1" width="22" height="22" rx="5" fill="currentColor" opacity="0.08" />
           <path d="M6 12c1.333-2.667 4-4 6-4s4.667 1.333 6 4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" />
           <circle cx="12" cy="12" r="2.4" fill="currentColor" />

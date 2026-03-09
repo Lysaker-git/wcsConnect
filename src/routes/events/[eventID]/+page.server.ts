@@ -55,5 +55,25 @@ export const load: PageServerLoad = async ({ params, locals }) => {
     throw svelteError(404, 'Event not found');
   }
 
-  return { event, user, isAuthenticated: !!user, eventDetails };
+  // Fetch Event Director's org number for the organizer card
+  let organizerOrgNumber: string | null = null;
+  const { data: edRows } = await supabase
+    .from('event_participants')
+    .select('user_id')
+    .eq('event_id', eventId)
+    .eq('event_role', 'Event Director');
+
+  const edUserIds = (edRows ?? []).map((r) => r.user_id);
+  if (edUserIds.length > 0) {
+    const { data: edProfile } = await supabase
+      .from('profiles')
+      .select('organizer_org_number')
+      .in('id', edUserIds)
+      .not('organizer_org_number', 'is', null)
+      .limit(1)
+      .maybeSingle();
+    organizerOrgNumber = edProfile?.organizer_org_number ?? null;
+  }
+
+  return { event, user, isAuthenticated: !!user, eventDetails, organizerOrgNumber };
 };

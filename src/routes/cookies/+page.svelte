@@ -40,9 +40,12 @@
           <div class="bg-stone-800 rounded-xl p-4 border border-stone-700">
             <div class="flex items-center gap-2 mb-2">
               <span class="px-2 py-0.5 rounded-full text-xs bg-stone-600 text-stone-300 font-medium">Third party</span>
-              <p class="font-medium text-stone-100">Stripe</p>
+              <p class="font-medium text-stone-100">NETS Easy</p>
             </div>
-            <p class="text-sm text-stone-400">When you proceed to payment, Stripe may set cookies to facilitate secure payment processing and fraud prevention. These are governed by <a href="https://stripe.com/en-no/privacy" target="_blank" class="text-amber-400 hover:underline">Stripe's Privacy Policy</a>.</p>
+            <p class="text-sm text-stone-400">When you proceed to payment, you are redirected to NETS Easy's hosted payment page. NETS Easy may set cookies on their domain to facilitate secure payment processing and fraud prevention. We do not have access to these cookies. They are governed by <a href="https://www.nets.eu/Pages/privacy-policy.aspx" target="_blank" class="text-amber-400 hover:underline">NETS Privacy Policy</a>.</p>
+            <div class="mt-3 text-xs text-stone-500">
+              <p><code class="text-stone-400">easy-payment-*</code> — session and fraud-prevention cookies set by NETS Easy during checkout (third-party domain)</p>
+            </div>
           </div>
         </div>
       </section>

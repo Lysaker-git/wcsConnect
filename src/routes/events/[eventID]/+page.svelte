@@ -4,15 +4,16 @@
   import SiInstagram from '@icons-pack/svelte-simple-icons/icons/SiInstagram';
   import SiTiktok from '@icons-pack/svelte-simple-icons/icons/SiTiktok';
   import { onMount, onDestroy } from 'svelte';
+  import type { EventDetails } from '$lib/types';
 
   export let data;
-  console.log(data)
 
   const event = data.event;
   const error = data.error;
   const user = data.user ?? null;
   const isAuthenticated = data.isAuthenticated ?? false;
-  const eventDetails = data.eventDetails ?? null;
+  const eventDetails: EventDetails | null = data.eventDetails ?? null as EventDetails | null;
+  const organizerOrgNumber: string | null = data.organizerOrgNumber ?? null;
 
   function formatDate(dateString: string | undefined): string {
     if (!dateString) return 'N/A';
@@ -166,6 +167,9 @@
                                 {/if}
                                 {#if eventDetails?.organizer_phone}
                                     <p class="mt-2 text-stone-200">Phone: <a href={`tel:${eventDetails.organizer_phone}`} class="text-blue-400">{eventDetails.organizer_phone}</a></p>
+                                {/if}
+                                {#if organizerOrgNumber}
+                                    <p class="mt-2 text-stone-200">Org.nr: <span class="font-medium text-stone-100">{organizerOrgNumber}</span></p>
                                 {/if}
                                 {#if event.social_links || eventDetails.social_links}
                                 {@const socials = normalizeSocialLinks(event.social_links ?? eventDetails.social_links)}

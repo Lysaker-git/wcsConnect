@@ -266,17 +266,17 @@
       <div class="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
         <div class="space-y-4">
           <div>
-            <label class="block text-sm font-medium text-stone-400">Title</label>
+            <p class="block text-sm font-medium text-stone-400">Title</p>
             <p class="mt-1 text-lg font-semibold text-stone-100">{data.event.title}</p>
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-stone-400">When</label>
+            <p class="block text-sm font-medium text-stone-400">When</p>
             <p class="mt-1 text-stone-100">{new Date(data.event.start_date).toLocaleDateString()} — {new Date(data.event.end_date).toLocaleDateString()}</p>
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-stone-400">Organizer</label>
+            <p class="block text-sm font-medium text-stone-400">Organizer</p>
             <p class="mt-1 text-stone-100">{data.eventDetails?.organizer_name || '—'}</p>
             {#if data.eventDetails?.organizer_email}
               <p class="text-sm text-stone-500">{data.eventDetails.organizer_email}</p>
@@ -287,7 +287,7 @@
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-stone-400">Location</label>
+            <p class="block text-sm font-medium text-stone-400">Location</p>
             <p class="mt-1 text-stone-100">{data.eventDetails?.venue || data.eventDetails?.hotel || '—'}</p>
             {#if data.eventDetails?.address}
               <p class="text-sm text-stone-500">{data.eventDetails.address}</p>
@@ -298,24 +298,24 @@
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-stone-400">Capacity</label>
+            <p class="block text-sm font-medium text-stone-400">Capacity</p>
             <p class="mt-1 text-stone-100">{data.eventDetails?.max_participants ?? '—'}</p>
           </div>
         </div>
 
         <div class="space-y-4">
           <div>
-            <label class="block text-sm font-medium text-stone-400">Event Type</label>
+            <p class="block text-sm font-medium text-stone-400">Event Type</p>
             <p class="mt-1 text-stone-100">{data.eventDetails?.event_type || '—'}</p>
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-stone-400">Languages</label>
+            <p class="block text-sm font-medium text-stone-400">Languages</p>
             <p class="mt-1 text-stone-100">{data.eventDetails?.languages || '—'}</p>
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-stone-400">Social Links</label>
+            <p class="block text-sm font-medium text-stone-400">Social Links</p>
             <div class="mt-2 flex items-center space-x-3">
               {#each data.eventDetails?.social_links || [] as link}
                 {#if link.includes('facebook.com')}
@@ -336,7 +336,7 @@
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-stone-400">Media / Links</label>
+            <p class="block text-sm font-medium text-stone-400">Media / Links</p>
             <div class="mt-1 space-y-1">
               {#if data.eventDetails?.banner_image_url}
                 <img src='{data.eventDetails.banner_image_url}' alt="Banner" class="mt-2 rounded-md border border-stone-700" />
@@ -354,7 +354,7 @@
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-stone-400">Tags</label>
+            <p class="block text-sm font-medium text-stone-400">Tags</p>
             <div class="mt-2 flex flex-wrap gap-2">
               {#if Array.isArray(data.eventDetails?.tags) && data.eventDetails.tags.length > 0}
                 {#each data.eventDetails.tags as tag}
@@ -462,8 +462,9 @@
     >
       <div class="grid grid-cols-2 gap-4">
         <div>
-          <label class="block text-sm font-medium text-stone-300 mb-1.5">Deposit %</label>
+          <label for="deposit-percent" class="block text-sm font-medium text-stone-300 mb-1.5">Deposit %</label>
           <input
+            id="deposit-percent"
             name="accommodation_deposit_percent"
             type="number"
             step="1"
@@ -475,8 +476,9 @@
           <p class="text-xs text-stone-600 mt-1">e.g. 10 = 10% deposit to secure room</p>
         </div>
         <div>
-          <label class="block text-sm font-medium text-stone-300 mb-1.5">Final Payment Deadline</label>
+          <label for="final-payment-deadline" class="block text-sm font-medium text-stone-300 mb-1.5">Final Payment Deadline</label>
           <input
+            id="final-payment-deadline"
             name="accommodation_final_payment_deadline"
             type="date"
             value={finalPaymentDeadline}
@@ -510,11 +512,6 @@
 		box-shadow: inset 4px 4px 10px rgba(2,6,23,0.5), inset -4px -4px 8px rgba(255,255,255,0.02);
 		border-radius: 12px;
 	}
-	.neumorph-btn {
-		box-shadow: 6px 6px 16px rgba(2,6,23,0.6), -6px -6px 12px rgba(255,255,255,0.02);
-		border: 1px solid rgba(255,255,255,0.03);
-	}
-
 	input:-webkit-autofill,
   input:-webkit-autofill:hover,
   input:-webkit-autofill:focus,

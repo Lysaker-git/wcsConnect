@@ -5,7 +5,6 @@
   import SiInstagram from '@icons-pack/svelte-simple-icons/icons/SiInstagram';
   import SiTiktok from '@icons-pack/svelte-simple-icons/icons/SiTiktok';
   export let data;
-  console.log(data)
 
   let query = '';
   const events = data?.events ?? [];

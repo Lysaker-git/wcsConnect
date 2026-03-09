@@ -1,6 +1,7 @@
 import { error as svelteError, fail } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { redirect } from '@sveltejs/kit';
+import { NETS_ALLOWED_EVENT_ID } from '$env/static/private';
 
 export const load: PageServerLoad = async ({ params, locals }) => {
   const db = locals.supabase;
@@ -91,6 +92,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
     availableProducts,
     availableTickets,
     stripe_fee_model: (participant.events as any)?.stripe_fee_model ?? 'on_top',
+    useNets: participant.event_id === NETS_ALLOWED_EVENT_ID,
     event: participant.events
   };
 };
