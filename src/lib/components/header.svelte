@@ -29,7 +29,7 @@
   }
 </script>
 
-<header class="relative w-full bg-stone-900 backdrop-blur-md border-b border-stone-800 text-stone-100">
+<header class="relative w-full bg-stone-900 backdrop-blur-md border-b border-stone-800 text-stone-100 z-50 sticky top-0">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <div class="flex items-center justify-between h-16">
       <!-- Logo -->
@@ -97,7 +97,7 @@
       <div class="lg:hidden absolute left-0 right-0 top-full mt-2 pb-4 border-t border-stone-800 bg-stone-900 z-50 shadow-lg">
         <div class="flex flex-col px-4 py-3 space-y-1 max-w-7xl mx-auto">
           {#each navLinks as link}
-            <a href={link.href} class="block px-3 py-2 rounded-md text-base font-medium text-stone-300 hover:bg-stone-800">{link.title}</a>
+            <a href={link.href} on:click={() => mobileOpen = false} class="block px-3 py-2 rounded-md text-base font-medium text-stone-300 hover:bg-stone-800">{link.title}</a>
           {/each}
           <!--
             Preserved mobile auth links (commented out in original). If needed, uncomment and adjust styles.

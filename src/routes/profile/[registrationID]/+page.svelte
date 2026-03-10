@@ -167,6 +167,14 @@
 
   function openEditModal() { saveError = ''; showEditModal = true; }
   function closeEditModal() { showEditModal = false; }
+
+  // Mock — replace with real competition fetched in +page.server.ts load() once backend exists.
+  // Only shows when the competition's status is 'registration_open' and is linked to this event.
+  const linkedCompetition: { id: string; name: string; status: string } | null = {
+    id: 'lysaker-open-2026',
+    name: 'Lysaker Open 2026',
+    status: 'registration_open',
+  };
 </script>
 
 <!-- ─── Saving overlay ────────────────────────────────────────────────────── -->
@@ -614,6 +622,23 @@
           <a href="/profile/{participant.id}/accommodation"
             class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold rounded-xl transition">
             View rooms →
+          </a>
+        </div>
+      </div>
+    {/if}
+
+    <!-- Competition registration (approved + paid + competition open) -->
+    {#if participant.status === 'approved' && paidProducts.length > 0 && linkedCompetition?.status === 'registration_open'}
+      <div class="bg-stone-800 rounded-2xl border border-amber-700/40 p-5 neomorph-card">
+        <div class="flex justify-between items-center gap-4 flex-wrap">
+          <div>
+            <h2 class="text-base font-semibold text-stone-100">🏆 Competition</h2>
+            <p class="text-stone-300 text-sm mt-0.5">{linkedCompetition.name}</p>
+            <p class="text-stone-500 text-xs mt-1">Registration is open — enter your division as Leader and/or Follower</p>
+          </div>
+          <a href="/competition/{linkedCompetition.id}/register"
+            class="shrink-0 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold rounded-xl transition">
+            Register →
           </a>
         </div>
       </div>

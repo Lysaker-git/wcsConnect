@@ -40,7 +40,6 @@ export const load: LayoutServerLoad = async ({ locals, cookies }) => {
       .eq('id', 1)
       .maybeSingle();
 
-    console.log('Loaded layout with user:', displayUser, 'session:', session, 'banner:', banner);
     return { user: displayUser, session, statusBanner: banner?.is_active ? (banner.message || null) : null };
   }
 
